@@ -1,0 +1,166 @@
+services:
+  app:
+    # `image:` names the image CI publishes (.github/workflows/deploy.yml
+    # tags ghcr.io/<owner>/<repo>:<sha> and :latest), so a VPS that has run
+    # `docker login ghcr.io` can `docker compose pull app` and run exactly
+    # the artifact CI tested. `build:` is kept as the fallback for a box
+    # without registry auth and for local development — `up -d --build`
+    # builds from source and tags the result with this same name. Without
+    # both, CI publishes an image nothing consumes.
+    build: .
+    # APP_TAG is the commit being deployed. The deploy's forced command sets
+    # it to `git rev-parse HEAD` right after pulling, so the box runs the
+    # image built from EXACTLY the checkout it just fetched.
+    #
+    # It used to be a bare `:latest`, which is a race: `git pull` takes commit
+    # X while `docker compose pull` takes whatever :latest points at, so two
+    # merges landing close together could leave the running image ahead of
+    # the checkout — with nothing failing to say so. CI tags every build with
+    # the full github.sha alongside :latest, which is what makes this work.
+    #
+    # There is deliberately NO default. A bare `docker compose up -d` used to
+    # fall back to `:latest`, which reads as harmless and is not: compose
+    # starts the LOCALLY CACHED `:latest` without pulling, and on a box that
+    # has been deployed by sha for months that cached layer is ancient.
+    #
+    # Demonstrated in production on 2026-09-18: a hand-run `docker compose
+    # up -d` — the exact command server/README.md gave for re-reading .env
+    # after a CRON_KEY rotation — silently rolled the site back to an image
+    # so old it predated both the /api/reports/prompt route and the cron-key
+    # guard on /api/remind, leaving that endpoint answering 200 to anyone.
+    # Nothing failed; the site stayed up serving old code.
+    #
+    # `:?` turns that silent downgrade into a refusal that says what to do.
+    # Bootstrapping a fresh box passes it explicitly (APP_TAG=latest), which
+    # is honest about what it is asking for.
+    image: ghcr.io/lior-nis/meabeclick:${APP_TAG:?set APP_TAG to the commit you are deploying, e.g. APP_TAG=$(git rev-parse HEAD) — or APP_TAG=latest to bootstrap a new box}
+    restart: unless-stopped
+    # Loopback only, never 0.0.0.0: Caddy fronts every public request, and
+    # this mapping exists for one caller — the two systemd --user timers on
+    # the host (server/meabeclick-*.service), which curl
+    # http://127.0.0.1:3000 so the CRON_KEY never leaves the box.
+    #
+    # Those units always said the app "is published on 127.0.0.1 — see
+    # docker-compose.yml". It was not. Only Caddy published anything, so the
+    # timers could not reach the app at all: the first run after installing
+    # them failed with `curl: (7) Failed to connect to 127.0.0.1 port 3000`.
+    # The units were written when the app was a bare Node process on the
+    # host and were never revisited when it moved into a container. The
+    # comment described an intention; this line implements it.
+    ports:
+      - "127.0.0.1:3000:3000"
+    env_file: .env
+    environment:
+      # Non-secret config — safe to commit. Secret VALUES (SESSION_SECRET,
+      # ADMIN_PASSWORD, API keys, etc.) come only from .env via env_file
+      # above, never from here.
+      #
+      # PORT is set HERE, not left to .env, and that is deliberate:
+      # `environment:` overrides `env_file:`, so a stale PORT in .env
+      # (the pre-migration Express deployment used 8080) cannot silently
+      # win. It must agree with server/Caddyfile's `reverse_proxy app:…`
+      # — when they disagree the app boots fine and Caddy 502s, and if
+      # Caddy has not been restarted since the change it keeps working on
+      # its old in-memory config until the next reload, which turns the
+      # mismatch into a delayed-action outage.
+      - PORT=3000
+      - ORIGIN=https://meabeclick.com
+      # adapter-node's equivalent of Express's app.set('trust proxy', 1).
+      # Must be exactly 'x-forwarded-proto' — boot-checks.ts refuses to
+      # start on any other value (see src/lib/server/boot-checks.ts).
+      - PROTOCOL_HEADER=x-forwarded-proto
+      - HOST_HEADER=x-forwarded-host
+      # adapter-node's equivalent of Express's app.set('trust proxy', 1) for
+      # the CLIENT's real IP, not just the protocol. Left unset,
+      # getClientAddress() (POST /api/events' per-IP rate limit — see
+      # src/lib/server/events-rate-limit.ts) sees Caddy's own container IP
+      # for every request, so the per-IP limit becomes a site-wide one.
+      # XFF_DEPTH=1 trusts exactly the one hop Caddy itself appends: Caddy's
+      # `reverse_proxy` (server/Caddyfile has no `trusted_proxies`) REPLACES
+      # any client-supplied X-Forwarded-For rather than appending to it, so a
+      # client cannot spoof its way past depth 1.
+      - ADDRESS_HEADER=x-forwarded-for
+      - XFF_DEPTH=1
+      - DATA_DIR=/app/data
+      # portalDir() (src/lib/server/paths.ts) is DELIBERATELY NOT part of
+      # content.ts/DATA_DIR — see that file's header for why. Left unset,
+      # it defaults to a path computed from paths.ts's own location, which
+      # in the built image resolves under build/ (e.g. /app/build/portal)
+      # — never mounted, never populated, and wiped on every redeploy.
+      # Setting it explicitly here, to a path INSIDE the data volume below,
+      # is what actually gives portal files (real student PII) a
+      # persistent home without changing paths.ts's code default. See
+      # server/README.md's "Portal data" section for the one-time seeding
+      # step this still requires, and boot-checks.ts's checkPortalDir,
+      # which refuses to start rather than silently writing to the wrong
+      # place.
+      - PORTAL_DIR=/app/data/portal
+      # Must match the ENV in the Dockerfile and the mount below. Credentials
+      # are a FILE that Codex rewrites on refresh, not a token in .env — that
+      # is the one real difference from the Claude Code deployment this
+      # replaced, and the reason for a mount here at all.
+      - CODEX_HOME=/app/.codex
+    volumes:
+      # Everything the app generates or writes at runtime — lesson slides,
+      # games-data, drafts, results.db (SQLite), and (via PORTAL_DIR above)
+      # portal files — lives under one DATA_DIR-backed mount. This replaced
+      # five separate app-owned mounts (data/lessons/portal/games-data/
+      # drafts); keeping it to one directory is what DATA_DIR (see
+      # boot-checks.ts and content.ts) exists to make possible. portal/ is
+      # a subdirectory of this same mount, reached via PORTAL_DIR rather
+      # than DATA_DIR — it is a separate config knob, not a separate mount.
+      - ./data:/app/data
+      # Codex credentials. Deliberately NOT :ro — `codex login` writes
+      # auth.json and the CLI refreshes the token in place, so a read-only
+      # mount works right up until the first refresh and then starts failing
+      # as an auth error, which is the hardest possible version of this bug
+      # to diagnose.
+      #
+      # One-time setup on the VPS, as the user that owns ./codex-home:
+      #   mkdir -p codex-home
+      #   docker compose run --rm -e CODEX_HOME=/app/.codex app codex login
+      # then confirm `docker compose exec app codex login status` says
+      # "Logged in". The directory must be writable by uid 1000 (the image's
+      # `node` user): chown -R 1000:1000 codex-home
+      #
+      # This directory holds a live credential. It is git-ignored; do not
+      # commit it, and do not copy it into the knowledgebase.
+      - ./codex-home:/app/.codex
+      - ./service-account.json:/app/service-account.json:ro
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+  caddy:
+    image: caddy:2-alpine
+    restart: unless-stopped
+    depends_on:
+      - app
+    ports:
+      - "80:80"
+      - "443:443"
+    volumes:
+      - ./server/Caddyfile:/etc/caddy/Caddyfile:ro
+      - caddy_data:/data
+      - caddy_config:/config
+    networks:
+      - internal
+    logging:
+      driver: json-file
+      options:
+        max-size: "10m"
+        max-file: "3"
+
+# "internal" here is just this network's name, not Compose's `internal: true`
+# flag — the app needs real egress (the lesson engine's API, Google Calendar,
+# Gmail, CallMeBot), so don't add that flag.
+networks:
+  internal:
+
+volumes:
+  caddy_data:
+  caddy_config:

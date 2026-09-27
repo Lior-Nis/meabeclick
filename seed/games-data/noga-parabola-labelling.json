@@ -1,0 +1,27 @@
+{
+  "title": "תיוג פרבולה",
+  "subject": "מתמטיקה · פונקציה ריבועית",
+  "svg": "<svg viewBox=\"0 0 400 300\" xmlns=\"http://www.w3.org/2000/svg\">\n  <line x1=\"20\" y1=\"240\" x2=\"380\" y2=\"240\" stroke=\"#94A3B8\" stroke-width=\"2\"/>\n  <line x1=\"200\" y1=\"20\" x2=\"200\" y2=\"280\" stroke=\"#94A3B8\" stroke-width=\"2\"/>\n  <text x=\"372\" y=\"258\" font-size=\"14\" fill=\"#64748B\">x</text>\n  <text x=\"208\" y=\"30\" font-size=\"14\" fill=\"#64748B\">y</text>\n  <path d=\"M90,40 Q200,330 310,40\" fill=\"none\" stroke=\"#2563EB\" stroke-width=\"3\"/>\n  <line id=\"axis\" x1=\"200\" y1=\"30\" x2=\"200\" y2=\"270\" stroke=\"#FA8231\" stroke-width=\"3\" stroke-dasharray=\"7 5\"/>\n  <circle id=\"vertex\" cx=\"200\" cy=\"186\" r=\"9\" fill=\"#10B981\" stroke=\"#fff\" stroke-width=\"2\"/>\n  <circle id=\"root1\" cx=\"128\" cy=\"240\" r=\"9\" fill=\"#FA8231\" stroke=\"#fff\" stroke-width=\"2\"/>\n  <circle id=\"root2\" cx=\"272\" cy=\"240\" r=\"9\" fill=\"#FA8231\" stroke=\"#fff\" stroke-width=\"2\"/>\n  <circle id=\"yint\" cx=\"200\" cy=\"112\" r=\"9\" fill=\"#A855F7\" stroke=\"#fff\" stroke-width=\"2\"/>\n</svg>",
+  "targets": [
+    {
+      "id": "vertex",
+      "label": "קודקוד"
+    },
+    {
+      "id": "axis",
+      "label": "ציר סימטריה"
+    },
+    {
+      "id": "root1",
+      "label": "חיתוך עם ציר x (שורש)"
+    },
+    {
+      "id": "root2",
+      "label": "השורש השני"
+    },
+    {
+      "id": "yint",
+      "label": "חיתוך עם ציר y"
+    }
+  ]
+}

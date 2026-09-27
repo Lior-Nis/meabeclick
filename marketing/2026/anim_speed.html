@@ -1,0 +1,62 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+ :root{--bg:#F8FAFC;--card:#fff;--text:#1E293B;--muted:#64748B;--brand:#2563EB;
+       --cta:#FA8231;--mint:#10B981;--red:#DC2626;--border:#E2E8F0}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;background:var(--bg);
+      color:var(--text);overflow:hidden;position:relative}
+ body::before{content:'';position:absolute;inset:0;
+      background-image:radial-gradient(#E2E8F0 2px,transparent 2px);background-size:34px 34px;opacity:.5}
+ .wrap{position:relative;height:100%;padding:66px 76px;display:flex;flex-direction:column}
+ .kicker{align-self:flex-start;background:rgba(250,130,49,.12);border:2px solid var(--cta);color:var(--cta);
+      font-size:25px;font-weight:800;padding:11px 26px;border-radius:999px}
+ h1{font-size:74px;font-weight:900;line-height:1.1;margin-top:24px}
+ h1 em{font-style:normal}
+ .grow{flex:1}
+ .foot{display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--border);padding-top:26px}
+ .brand{display:flex;align-items:center;gap:12px;font-size:32px;font-weight:900;color:var(--brand)}
+ .phone{font-size:32px;font-weight:900;color:var(--cta);direction:ltr}
+</style></head><body><div class="wrap">
+ <div class="kicker">⚡ קרב מהירות — 60 שניות</div>
+ <h1>כמה תשובות<br><em style="color:var(--cta)">ב-60 שניות?</em></h1>
+ <div style="display:flex;align-items:center;gap:40px;margin-top:40px">
+   <svg width="150" height="150" viewBox="0 0 100 100">
+     <circle cx="50" cy="50" r="42" fill="none" stroke="#E2E8F0" stroke-width="10"/>
+     <circle id="ring" cx="50" cy="50" r="42" fill="none" stroke="#FA8231" stroke-width="10"
+             stroke-linecap="round" stroke-dasharray="264" stroke-dashoffset="0" transform="rotate(-90 50 50)"/>
+     <text id="secs" x="50" y="58" font-size="26" font-weight="800" fill="#FA8231"
+           text-anchor="middle" font-family="Heebo,sans-serif">60</text></svg>
+   <div>
+     <div id="eq" style="font-size:80px;font-weight:900;direction:ltr">7 × 8</div>
+     <div style="font-size:29px;color:var(--muted);margin-top:6px">שיא אישי: <span id="best">0</span></div>
+   </div>
+ </div>
+ <div id="opts" style="display:grid;grid-template-columns:1fr 1fr;gap:20px;margin-top:34px"></div>
+ <div id="streak" style="margin-top:26px;font-size:34px;font-weight:800;color:var(--mint);opacity:0">🔥 רצף של 5!</div>
+<div class="grow"></div><div class="foot"><div class="brand"><svg width="44" height="33" viewBox="6 14 80 60" xmlns="http://www.w3.org/2000/svg">
+ <g fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+ <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/><path d="M14,30 Q30,25 45,33"/><path d="M76,30 Q60,25 45,33"/>
+ <path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/><circle cx="45" cy="40" r="15"/></g>
+ <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231"/></svg> מאה בקליק</div>
+ <div class="phone">054-696-9891</div></div></div><script>
+ const Q=[['7 × 8','56',['48','56','54','63']],['9 × 6','54',['54','56','45','63']],['8 × 7','56',['42','49','56','64']]];
+ const opts=document.getElementById('opts');
+ window.TOTAL=30;
+ window.setFrame=i=>{
+   const qi=Math.min(2,Math.floor(i/10)), [eq,ans,list]=Q[qi];
+   document.getElementById('eq').textContent=eq;
+   const t=60-Math.floor(i*1.8);
+   document.getElementById('secs').textContent=Math.max(0,t);
+   document.getElementById('ring').setAttribute('stroke-dashoffset', 264*(1-t/60));
+   document.getElementById('best').textContent=Math.floor(i/10)*4+2;
+   const phase=i%10;
+   opts.innerHTML=list.map(o=>{
+     const ok=o===ans, picked=phase>=6&&ok;
+     return '<div style="background:'+(picked?'#ECFDF5':'#fff')+';border:3px solid '+(picked?'#10B981':'#E2E8F0')+
+       ';border-radius:18px;padding:22px;text-align:center;font-size:40px;font-weight:800;direction:ltr;color:'+
+       (picked?'#047857':'#1E293B')+'">'+o+(picked?' ✓':'')+'</div>';}).join('');
+   document.getElementById('streak').style.opacity = i>=22?1:0;
+ };
+ window.setFrame(0);
+</script></body></html>

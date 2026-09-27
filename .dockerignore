@@ -1,0 +1,22 @@
+.git
+.claude
+.superpowers
+.github
+docs
+mea-beclick-kb
+marketing
+scripts
+node_modules
+data
+# Runtime bind mounts, not build inputs. codex-home holds live Codex
+# credentials and is mode 700 owned by the container's uid — the user that
+# sends the build context cannot read it, so leaving it in the context fails
+# the build outright with "error from sender: permission denied".
+codex-home
+lessons
+portal
+tests
+.vercel
+.env
+service-account.json
+*.md

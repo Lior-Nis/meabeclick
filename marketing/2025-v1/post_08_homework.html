@@ -1,0 +1,76 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;background:#04091e;}
+.wrap{width:100%;height:100%;display:flex;gap:0;}
+/* big left */
+.left{width:420px;flex-shrink:0;display:flex;flex-direction:column;
+  justify-content:center;padding:72px 52px;gap:28px;position:relative;
+  border-left:1px solid rgba(232,164,39,0.15);}
+.left::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,0.15) 1px,transparent 1px);
+  background-size:40px 40px;}
+.glow{position:absolute;bottom:-100px;right:-50px;width:400px;height:400px;
+  background:radial-gradient(ellipse,rgba(232,164,39,0.12) 0%,transparent 65%);}
+.l-label{position:relative;z-index:2;font-size:20px;font-weight:700;
+  color:#e8a427;letter-spacing:.12em;}
+.l-title{position:relative;z-index:2;font-size:86px;font-weight:900;
+  color:#f0e8d8;line-height:.95;}
+.l-title span{color:#e8a427;}
+.l-old{position:relative;z-index:2;display:flex;align-items:center;gap:12px;}
+.old-text{font-size:28px;color:#4a5580;text-decoration:line-through;}
+.arrow{font-size:24px;color:#e8a427;}
+.new-text{font-size:28px;font-weight:800;color:#f0e8d8;}
+/* right */
+.right{flex:1;display:flex;flex-direction:column;justify-content:center;padding:72px 52px;gap:20px;}
+.r-label{font-size:20px;font-weight:700;color:#e8a427;letter-spacing:.1em;margin-bottom:4px;}
+.hw-item{background:rgba(12,22,60,0.75);border:1px solid rgba(232,164,39,0.12);
+  border-radius:18px;padding:24px 28px;display:flex;gap:18px;align-items:center;}
+.hw-icon{font-size:44px;flex-shrink:0;}
+.hw-text h4{font-size:26px;font-weight:800;color:#f0e8d8;margin-bottom:4px;}
+.hw-text p{font-size:18px;color:#7a8bbd;}
+.vs-bar{background:rgba(232,164,39,0.08);border:1px solid rgba(232,164,39,0.15);
+  border-radius:12px;padding:16px 24px;text-align:center;
+  font-size:20px;color:#7a8bbd;}
+.vs-bar span{color:#e8a427;font-weight:700;}
+.cta{background:#e8a427;color:#04091e;font-family:'Heebo',sans-serif;
+  font-size:24px;font-weight:900;padding:16px;border-radius:14px;text-align:center;}
+</style></head><body><div class="wrap">
+  <div class="left">
+    <div class="glow"></div>
+    <div class="l-label">🎮 שיעורי בית חדשים</div>
+    <div class="l-title">שיעורי<br>בית<br><span>שאוהבים</span></div>
+    <div class="l-old">
+      <span class="old-text">דפי צילום</span>
+      <span class="arrow">→</span>
+      <span class="new-text">משחקים!</span>
+    </div>
+  </div>
+  <div class="right">
+    <div class="r-label">איך זה נראה אצלנו:</div>
+    <div class="hw-item">
+      <div class="hw-icon">🃏</div>
+      <div class="hw-text">
+        <h4>כרטיסיות לימוד דיגיטליות</h4>
+        <p>חזרה חכמה שמתאימה את עצמה לקצב</p>
+      </div>
+    </div>
+    <div class="hw-item">
+      <div class="hw-icon">🎯</div>
+      <div class="hw-text">
+        <h4>מבחוני ידע אינטראקטיביים</h4>
+        <p>נוצרו בבינה מלאכותית — כל פעם שאלות אחרות</p>
+      </div>
+    </div>
+    <div class="hw-item">
+      <div class="hw-icon">🕹️</div>
+      <div class="hw-text">
+        <h4>משחקי תרגול</h4>
+        <p>מתמטיקה ואנגלית כמשחק — לא כחובה</p>
+      </div>
+    </div>
+    <div class="vs-bar">תלמיד שנהנה לומד — <span>שנים מחקר מאחורי זה</span></div>
+    <div class="cta">💬 רוצים לנסות? — וואטסאפ</div>
+  </div>
+</div></body></html>

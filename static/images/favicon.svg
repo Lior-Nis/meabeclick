@@ -1,0 +1,18 @@
+<svg width="64" height="64" viewBox="0 0 64 64" xmlns="http://www.w3.org/2000/svg">
+  <!-- background -->
+  <rect width="64" height="64" rx="14" fill="#F8FAFC"/>
+  <!-- book + magnifier + click cursor, matching images/logos/logo-slate.svg -->
+  <g transform="translate(-5.55,-3.475) scale(0.825)" fill="none" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14,30 L14,64" stroke="#2563EB" stroke-width="3.4"/>
+    <path d="M76,30 L76,64" stroke="#2563EB" stroke-width="3.4"/>
+    <path d="M14,30 Q30,25 45,33" stroke="#2563EB" stroke-width="3.4"/>
+    <path d="M76,30 Q60,25 45,33" stroke="#2563EB" stroke-width="3.4"/>
+    <path d="M14,64 Q30,58 45,67" stroke="#2563EB" stroke-width="3.4"/>
+    <path d="M76,64 Q60,58 45,67" stroke="#2563EB" stroke-width="3.4"/>
+    <circle cx="45" cy="40" r="15" stroke="#2563EB" stroke-width="3.4"/>
+    <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231" stroke="#F8FAFC" stroke-width="2"/>
+    <line x1="64" y1="20" x2="60" y2="27" stroke="#FA8231" stroke-width="3"/>
+    <line x1="73" y1="24" x2="66" y2="29" stroke="#FA8231" stroke-width="3"/>
+    <line x1="77" y1="33" x2="70" y2="35" stroke="#FA8231" stroke-width="3"/>
+  </g>
+</svg>

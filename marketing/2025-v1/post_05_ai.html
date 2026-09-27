@@ -1,0 +1,72 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;background:#04091e;}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:40px;padding:80px;position:relative;}
+/* grid */
+.wrap::before{content:'';position:absolute;inset:0;
+  background-image:linear-gradient(rgba(232,164,39,0.04) 1px,transparent 1px),
+  linear-gradient(90deg,rgba(232,164,39,0.04) 1px,transparent 1px);
+  background-size:54px 54px;}
+.glow{position:absolute;bottom:-80px;left:50%;transform:translateX(-50%);
+  width:700px;height:400px;
+  background:radial-gradient(ellipse,rgba(232,164,39,0.12) 0%,transparent 65%);}
+.tag{position:relative;z-index:2;background:rgba(232,164,39,0.1);
+  border:1.5px solid rgba(232,164,39,0.4);color:#e8a427;
+  font-size:22px;font-weight:700;letter-spacing:.12em;padding:10px 36px;border-radius:40px;}
+.robot{position:relative;z-index:2;font-size:96px;line-height:1;}
+.title{position:relative;z-index:2;font-size:80px;font-weight:900;color:#f0e8d8;
+  line-height:1;text-align:center;}
+.title span{color:#e8a427;}
+.sub{position:relative;z-index:2;font-size:28px;color:#7a8bbd;font-weight:300;
+  text-align:center;max-width:700px;line-height:1.5;}
+/* flow diagram */
+.flow{position:relative;z-index:2;display:flex;align-items:center;gap:0;width:100%;}
+.flow-step{flex:1;background:rgba(12,22,60,0.8);border:1px solid rgba(232,164,39,0.15);
+  border-radius:16px;padding:20px 16px;text-align:center;}
+.flow-step .fs-icon{font-size:40px;display:block;margin-bottom:8px;}
+.flow-step h4{font-size:20px;font-weight:800;color:#f0e8d8;margin-bottom:4px;}
+.flow-step p{font-size:16px;color:#7a8bbd;}
+.flow-arrow{color:#e8a427;font-size:28px;padding:0 12px;flex-shrink:0;}
+.bottom-row{position:relative;z-index:2;display:flex;gap:20px;width:100%;align-items:center;}
+.bottom-text{flex:1;font-size:22px;color:#4a5580;}
+.cta{background:#e8a427;color:#04091e;font-family:'Heebo',sans-serif;
+  font-size:26px;font-weight:900;padding:16px 48px;border-radius:40px;}
+</style></head><body><div class="wrap">
+  <div class="glow"></div>
+  <div class="tag">🤖 בינה מלאכותית בשירות הלמידה</div>
+  <div class="robot">🤖</div>
+  <div class="title">המורה שלך<br>השתדרג ל<span>AI</span></div>
+  <div class="sub">אנחנו משתמשים בבינה מלאכותית כדי לבנות עבור כל תלמיד חוויית לימוד שלא קיימת בשום מקום אחר</div>
+  <div class="flow">
+    <div class="flow-step">
+      <span class="fs-icon">👤</span>
+      <h4>הכרת התלמיד</h4>
+      <p>רמה, קצב וחולשות</p>
+    </div>
+    <div class="flow-arrow">←</div>
+    <div class="flow-step">
+      <span class="fs-icon">🧠</span>
+      <h4>בינה מלאכותית</h4>
+      <p>בונה חומר מותאם</p>
+    </div>
+    <div class="flow-arrow">←</div>
+    <div class="flow-step">
+      <span class="fs-icon">📚</span>
+      <h4>שיעור אישי</h4>
+      <p>תרגולים ייחודיים</p>
+    </div>
+    <div class="flow-arrow">←</div>
+    <div class="flow-step">
+      <span class="fs-icon">✅</span>
+      <h4>סיכום אוטומטי</h4>
+      <p>נשלח מיד לאחר</p>
+    </div>
+  </div>
+  <div class="bottom-row">
+    <div class="bottom-text">ניקול וליאור · שיעורים פרטיים</div>
+    <div class="cta">💬 לפרטים בוואטסאפ</div>
+  </div>
+</div></body></html>

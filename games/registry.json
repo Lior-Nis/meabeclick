@@ -1,0 +1,411 @@
+{
+  "$comment": "Game repository for מאה בקליק. It declares which game templates exist and exactly what data shape each one needs; templates are static and tested once, and generation produces only a data file per assignment. NOTE: the `selection` block below is ADVISORY — nothing reads it. See its own comment.",
+  "version": 1,
+  "urlPattern": "/app/play/{template}?d={dataId}&s={student}&t={signature}",
+  "selection": {
+    "$comment": "Matching rules, most specific first. ENFORCED as prompt text since 2026-09-25: gameSelectionLines() in src/lib/server/lesson/prep.ts renders these rules, in this order, into the generation prompt, and tests/unit/lesson-teaching-rules.test.mjs fails if a rule names a game the plan schema cannot produce. The model still decides which rules match the lesson; the rules are what it is told to decide by. Before that date nothing read this block (3 of 4 repeated briefs came back with a different game set) — see docs/quality/game-standard.md.",
+    "rules": [
+      {
+        "when": "a worked solution the student can follow but not justify — find the faulty step",
+        "use": "error-hunt",
+        "goal": "diagnosis"
+      },
+      {
+        "when": "a concept students routinely get wrong — surface the misconception",
+        "use": "two-truths",
+        "goal": "misconception"
+      },
+      {
+        "when": "build fluency and speed on rules already understood",
+        "use": "speed-drill",
+        "goal": "fluency"
+      },
+      {
+        "when": "connect a function to its graph, or a graph to its derivative",
+        "use": "graph-match",
+        "goal": "visual-intuition"
+      },
+      {
+        "when": "place values on a number line — fractions, decimals, negatives",
+        "use": "number-line",
+        "goal": "magnitude"
+      },
+      {
+        "when": "memorise terms, vocabulary, formulas — 6 to 16 items",
+        "use": "memory",
+        "goal": "recall"
+      },
+      {
+        "when": "term to definition, symbol to meaning, Hebrew to English, rule to example",
+        "use": "matching",
+        "goal": "association"
+      },
+      {
+        "when": "order the steps of a process or a worked solution",
+        "use": "sequence",
+        "goal": "ordering"
+      },
+      {
+        "when": "sort items into 2-3 categories",
+        "use": "sort",
+        "goal": "classification"
+      },
+      {
+        "when": "label parts of a diagram, graph, or figure",
+        "use": "labelling",
+        "goal": "identification"
+      },
+      {
+        "when": "compare several things across several criteria",
+        "use": "table",
+        "goal": "comparison"
+      },
+      {
+        "when": "check understanding with mixed question types",
+        "use": "quiz",
+        "goal": "assessment"
+      }
+    ],
+    "fallback": "quiz"
+  },
+  "templates": {
+    "memory": {
+      "title": "משחק זיכרון",
+      "status": "ready",
+      "bestFor": "שינון מונחים, נוסחאות, אוצר מילים",
+      "itemRange": [
+        6,
+        16
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string — shown as the game heading",
+        "subject": "string",
+        "pairs": [
+          {
+            "a": "string — one face of the pair",
+            "b": "string — the matching face"
+          }
+        ]
+      },
+      "example": "noga-integrals-memory"
+    },
+    "matching": {
+      "title": "התאמת זוגות",
+      "status": "ready",
+      "bestFor": "מונח ↔ הגדרה, סימן ↔ משמעות",
+      "itemRange": [
+        4,
+        10
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "pairs": [
+          {
+            "left": "string — term",
+            "right": "string — definition",
+            "hint": "string, optional"
+          }
+        ]
+      },
+      "example": "noga-derivatives-matching",
+      "name": "התאמה"
+    },
+    "sequence": {
+      "title": "סידור רצף",
+      "status": "ready",
+      "bestFor": "סדר שלבים בתהליך או בפתרון תרגיל",
+      "itemRange": [
+        3,
+        8
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "steps": [
+          "string — in the CORRECT order; the template shuffles them"
+        ]
+      },
+      "example": "noga-integrals-sequence",
+      "name": "סדר השלבים"
+    },
+    "sort": {
+      "title": "מיון לקטגוריות",
+      "status": "ready",
+      "bestFor": "מיון פריטים ל-2-3 קבוצות",
+      "itemRange": [
+        6,
+        15
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "categories": [
+          "string — 2 or 3 bucket names"
+        ],
+        "items": [
+          {
+            "text": "string",
+            "category": "string — must match a category"
+          }
+        ]
+      },
+      "example": "noga-functions-sort",
+      "name": "מיון לקבוצות"
+    },
+    "labelling": {
+      "title": "גרירה ותיוג",
+      "status": "ready",
+      "bestFor": "תיוג חלקים בתרשים או בגרף",
+      "itemRange": [
+        3,
+        10
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "svg": "string — inline SVG of the diagram",
+        "targets": [
+          {
+            "id": "string — matches an element id in the svg",
+            "label": "string — correct label"
+          }
+        ]
+      },
+      "example": "noga-parabola-labelling",
+      "name": "תיוג תרשים"
+    },
+    "table": {
+      "title": "מילוי טבלה",
+      "status": "ready",
+      "bestFor": "השוואה בין מבנים/שיטות לפי כמה קריטריונים",
+      "itemRange": [
+        4,
+        20
+      ],
+      "ageRange": [
+        12,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "columns": [
+          "string"
+        ],
+        "rows": [
+          {
+            "label": "string",
+            "cells": [
+              "string — shown as given, OR { answer: 'string' } for a cell the student fills"
+            ]
+          }
+        ]
+      },
+      "example": "noga-derivatives-table",
+      "name": "השלמת טבלה"
+    },
+    "quiz": {
+      "title": "חידון",
+      "status": "ready",
+      "bestFor": "בדיקת הבנה כללית בסוף שיעור",
+      "itemRange": [
+        4,
+        15
+      ],
+      "ageRange": [
+        8,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "questions": [
+          {
+            "q": "string",
+            "options": [
+              "string"
+            ],
+            "answer": "number — index into options",
+            "why": "string — one-line explanation shown after answering"
+          }
+        ]
+      },
+      "example": "noga-integrals-quiz",
+      "name": "חידון"
+    },
+    "error-hunt": {
+      "title": "ציד טעויות",
+      "status": "ready",
+      "bestFor": "פתרון מלא עם שגיאה אחת — התלמיד מאתר את השורה השגויה",
+      "itemRange": [
+        2,
+        8
+      ],
+      "ageRange": [
+        11,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "rounds": [
+          {
+            "problem": "string — the exercise",
+            "steps": [
+              "string — one line of working"
+            ],
+            "badStep": "number — index of the faulty step",
+            "why": "string — what went wrong"
+          }
+        ]
+      },
+      "example": "noga-derivatives-errorhunt"
+    },
+    "two-truths": {
+      "title": "שתי אמיתות ושקר",
+      "status": "ready",
+      "bestFor": "איתור תפיסות שגויות — כתבו את השקר כטעות שתלמידים באמת עושים",
+      "itemRange": [
+        3,
+        10
+      ],
+      "ageRange": [
+        10,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "rounds": [
+          {
+            "statements": [
+              "string — exactly 3"
+            ],
+            "lieIndex": "number — index of the false one",
+            "why": "string"
+          }
+        ]
+      },
+      "example": "noga-integrals-twotruths"
+    },
+    "speed-drill": {
+      "title": "קרב מהירות",
+      "status": "ready",
+      "bestFor": "שליפה מהירה של כללים שכבר הובנו — לוח הכפל, כללי גזירה, אוצר מילים",
+      "itemRange": [
+        8,
+        40
+      ],
+      "ageRange": [
+        7,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "seconds": "number — default 60",
+        "items": [
+          {
+            "q": "string",
+            "a": "string — must appear in options",
+            "options": [
+              "string — 3 to 4 choices"
+            ]
+          }
+        ]
+      },
+      "notes": "Bank loops if the student outpaces it. Personal best is kept in the browser's localStorage per data file.",
+      "example": "nikol-derivrules-speed"
+    },
+    "graph-match": {
+      "title": "התאמת גרפים",
+      "status": "ready",
+      "bestFor": "אינטואיציה ויזואלית — פונקציה מול הנגזרת שלה",
+      "itemRange": [
+        2,
+        8
+      ],
+      "ageRange": [
+        14,
+        18
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "rounds": [
+          {
+            "prompt": "string",
+            "mainLabel": "string",
+            "main": [
+              "number — y samples, evenly spaced in x"
+            ],
+            "options": [
+              [
+                "number — y samples"
+              ]
+            ],
+            "answer": "number — index of the correct option",
+            "why": "string"
+          }
+        ]
+      },
+      "notes": "Curves are plain arrays of y values, auto-scaled by the template. Generate them with a script rather than by hand.",
+      "example": "noga-derivgraphs-match"
+    },
+    "number-line": {
+      "title": "ציר המספרים",
+      "status": "ready",
+      "bestFor": "גודל ומיקום — שברים, עשרוניים, מספרים שליליים",
+      "itemRange": [
+        3,
+        12
+      ],
+      "ageRange": [
+        7,
+        13
+      ],
+      "dataSchema": {
+        "title": "string",
+        "subject": "string",
+        "min": "number",
+        "max": "number",
+        "rounds": [
+          {
+            "target": "number",
+            "label": "string — how it is written, e.g. 2½",
+            "tolerance": "number — allowed error",
+            "why": "string"
+          }
+        ]
+      },
+      "example": "yonatan-fractions-numberline"
+    }
+  },
+  "conventions": {
+    "dataIdFormat": "{student-slug}-{topic-slug}-{template}",
+    "reporting": "Every template POSTs its result to /api/game-result on completion: { dataId, student, template, score, total, durationSec, missed: [] }. Stored in SQLite (server/db.mjs); if that write fails the request still returns ok, since a storage hiccup must never make a finished game look broken to the student.",
+    "reuse": "Data files are keyed by topic, not by student. Two students on the same topic share one data file; only the URL's student parameter differs.",
+    "styling": "All templates use the site palette: bg #F8FAFC, text #1E293B, brand #2563EB, CTA #FA8231, success #10B981 (fills only, #047857 for green text). RTL, Heebo, min 44px touch targets, works from 380px wide."
+  }
+}

@@ -1,0 +1,89 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  :root{--bg:#F8FAFC;--card:#fff;--text:#1E293B;--muted:#64748B;--brand:#2563EB;
+        --cta:#FA8231;--mint:#10B981;--red:#DC2626;--border:#E2E8F0}
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;
+       background:var(--bg);color:var(--text);overflow:hidden;position:relative}
+  body::before{content:'';position:absolute;inset:0;
+       background-image:radial-gradient(#E2E8F0 2px,transparent 2px);background-size:34px 34px;opacity:.5}
+  .wrap{position:relative;height:100%;padding:66px 76px;display:flex;flex-direction:column}
+  .kicker{align-self:flex-start;background:rgba(250,130,49,.12);border:2px solid var(--cta);
+       color:var(--cta);font-size:25px;font-weight:800;padding:11px 26px;border-radius:999px}
+  h1{font-size:74px;font-weight:900;line-height:1.1;margin-top:26px}
+  h1 em{font-style:normal;color:var(--cta)}
+  .q{font-size:33px;color:var(--muted);margin-top:14px}
+  .steps{margin-top:34px;display:flex;flex-direction:column;gap:16px}
+  .step{background:var(--card);border:3px solid var(--border);border-radius:20px;
+        padding:24px 30px;display:flex;align-items:center;gap:22px;
+        font-size:36px;font-weight:700;opacity:0;transform:translateY(14px)}
+  .step.in{opacity:1;transform:none}
+  .step .n{width:46px;height:46px;border-radius:50%;background:rgba(37,99,235,.10);
+        color:var(--brand);display:flex;align-items:center;justify-content:center;
+        font-size:26px;font-weight:900;flex-shrink:0}
+  .step .eq{direction:ltr;flex:1;text-align:left}
+  .step.bad{border-color:var(--red);background:#FEF2F2}
+  .step.bad .n{background:var(--red);color:#fff}
+  .step.bad .mark{color:var(--red);font-size:40px;font-weight:900}
+  .reveal{margin-top:26px;background:#FEF2F2;border-right:8px solid var(--red);
+        border-radius:0 18px 18px 0;padding:26px 30px;font-size:31px;line-height:1.5;opacity:0}
+  .reveal.in{opacity:1}
+  .grow{flex:1}
+  .foot{display:flex;align-items:center;justify-content:space-between;
+        border-top:3px solid var(--border);padding-top:26px}
+  .brand{display:flex;align-items:center;gap:12px;font-size:32px;font-weight:900;color:var(--brand)}
+  .phone{font-size:32px;font-weight:900;color:var(--cta);direction:ltr}
+</style></head><body><div class="wrap">
+  <div class="kicker">🔍 ציד טעויות — משחק אמיתי מהאתר</div>
+  <h1>מי מוצא<br><em>את הטעות?</em></h1>
+  <div class="q">גזרו: f(x) = 3x⁴ &nbsp;·&nbsp; יש בדיוק שגיאה אחת</div>
+
+  <div class="steps">
+    <div class="step" id="s0"><span class="n">1</span><span class="eq">f(x) = 3x⁴</span><span class="mark"></span></div>
+    <div class="step" id="s1"><span class="n">2</span><span class="eq">f'(x) = 3 · 4x³</span><span class="mark"></span></div>
+    <div class="step" id="s2"><span class="n">3</span><span class="eq">f'(x) = 12x³</span><span class="mark"></span></div>
+    <div class="step" id="s3"><span class="n">4</span><span class="eq">f'(x) = 12x⁴</span><span class="mark"></span></div>
+  </div>
+
+  <div class="reveal" id="rev"><strong>שורה 4:</strong> אחרי גזירה החזקה יורדת ל־3 ונשארת שם.
+    כאן היא "קפצה" חזרה ל־4.</div>
+
+  <div class="grow"></div>
+  <div class="foot">
+    <div class="brand">
+      <svg width="44" height="33" viewBox="6 14 80 60" xmlns="http://www.w3.org/2000/svg">
+        <g fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+          <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/><path d="M14,30 Q30,25 45,33"/>
+          <path d="M76,30 Q60,25 45,33"/><path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/>
+          <circle cx="45" cy="40" r="15"/></g>
+        <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231"/></svg>
+      מאה בקליק</div>
+    <div class="phone">054-696-9891</div>
+  </div>
+</div>
+
+<script>
+/* Frame-stepped rather than time-based, so the capture is deterministic:
+   the renderer calls window.setFrame(i) and screenshots. */
+const steps = [...document.querySelectorAll('.step')];
+const rev = document.getElementById('rev');
+
+window.TOTAL = 34;
+window.setFrame = i => {
+  steps.forEach(s => { s.classList.remove('in','bad'); s.querySelector('.mark').textContent=''; });
+  rev.classList.remove('in');
+
+  // 0-11: steps appear one by one   12-21: hold   22+: reveal the faulty line
+  const shown = Math.min(4, Math.floor(i / 3) + (i >= 0 ? 1 : 0));
+  for (let k = 0; k < shown; k++) steps[k].classList.add('in');
+
+  if (i >= 22) {
+    steps[3].classList.add('bad');
+    steps[3].querySelector('.mark').textContent = '✗';
+  }
+  if (i >= 26) rev.classList.add('in');
+};
+window.setFrame(0);
+</script></body></html>

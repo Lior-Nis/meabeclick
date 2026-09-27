@@ -1,0 +1,54 @@
+.vercel
+node_modules/
+.DS_Store
+/drafts/
+/lessons/
+# DATA_DIR — runtime-generated content (lessons, game data, drafts, portal
+# files) — ignored wholesale so future writes never get committed by
+# accident. This is also the app's writable bind mount on the VPS, so
+# NOTHING under it may be git-tracked: a tracked file living inside a
+# writable mount is exactly what let a live student record (portal/
+# noga.json, pre-move) and a dozen games-data fixtures dirty the VPS
+# working tree and block `git pull` on deploy (see server/README.md's
+# Cutover section). The dozen demo/example games-data fixtures that used
+# to live tracked at data/games-data/*.json now live tracked at
+# seed/games-data/ instead — outside DATA_DIR — and get copied into
+# data/games-data/ as a one-time seeding step, the same pattern portal/
+# already used for PORTAL_DIR.
+/data/
+# Real student portal records. The app reads them from PORTAL_DIR under the
+# data mount (backed up nightly), never from here; the last tracked one
+# (portal/noga.json) was removed from the index on 2026-09-25.
+/portal/*.json
+/.claude/worktrees/
+/.superpowers/
+/.env
+/service-account.json
+
+# Live Codex credentials, mounted into the container as $CODEX_HOME
+# (see docker-compose.yml). auth.json holds refreshable OAuth tokens.
+/codex-home/
+/build/
+/.svelte-kit/
+
+# Obsidian vault UI state (per-session, not shared settings)
+mea-beclick-kb/.obsidian/workspace.json
+mea-beclick-kb/.obsidian/workspace-mobile.json
+
+# Playwright MCP scratch output (console logs, page snapshots) from local
+# browser runs. Swept in once by a `git add -A` on 2026-09-16 and removed
+# again — it is per-run debris, never part of the project.
+/.playwright-mcp/
+
+# Obsidian's per-machine workspace state for the knowledgebase vault: pane
+# layout, graph settings, which file was last open. Personal to whoever
+# opened the vault, changes constantly, and means nothing to anyone else.
+mea-beclick-kb/.obsidian/
+
+# Real student and payment records. Already tracked (see
+# docs/superpowers/specs/2026-09-18-student-records-out-of-the-repo-design.md
+# for how they leave), so this does not untrack anything — it stops NEW ones
+# being swept in by a careless `git add -A`, which is exactly how this repo
+# picked up scratch files on 2026-09-16.
+mea-beclick-kb/students/
+mea-beclick-kb/pricing/

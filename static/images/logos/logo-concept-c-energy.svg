@@ -1,0 +1,60 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <style>
+      .bolt { animation: pulse 1.8s ease-in-out infinite; }
+      @keyframes pulse {
+        0%, 100% { opacity: 1; filter: drop-shadow(0 0 8px rgba(245,197,24,0.8)); }
+        50% { opacity: 0.85; filter: drop-shadow(0 0 18px rgba(245,197,24,1)); }
+      }
+    </style>
+    <linearGradient id="boltGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#FFE566;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#F5A623;stop-opacity:1" />
+    </linearGradient>
+    <linearGradient id="bgGrad" x1="0%" y1="0%" x2="100%" y2="100%">
+      <stop offset="0%" style="stop-color:#7C3FE4;stop-opacity:1" />
+      <stop offset="100%" style="stop-color:#5B2CA8;stop-opacity:1" />
+    </linearGradient>
+    <filter id="glow2">
+      <feGaussianBlur stdDeviation="6" result="blur"/>
+      <feMerge><feMergeNode in="blur"/><feMergeNode in="SourceGraphic"/></feMerge>
+    </filter>
+  </defs>
+
+  <!-- Deep purple background -->
+  <rect width="400" height="400" fill="url(#bgGrad)" rx="24"/>
+
+  <!-- Subtle radial glow behind bolt -->
+  <circle cx="200" cy="185" r="110" fill="rgba(245,197,24,0.07)"/>
+
+  <!-- Lightning bolt — thick, tilted slightly right, centered -->
+  <!-- Main bolt shape as a polygon -->
+  <g class="bolt" filter="url(#glow2)">
+    <polygon
+      points="225,55 170,190 205,190 175,340 270,175 228,175 265,55"
+      fill="url(#boltGrad)"
+      stroke="rgba(255,255,255,0.2)"
+      stroke-width="1"
+    />
+  </g>
+
+  <!-- "100" text overlaid to left of bolt, white bold -->
+  <text x="96" y="215" font-family="'Segoe UI', 'Arial Black', sans-serif" font-size="80" fill="white" font-weight="900" text-anchor="middle" letter-spacing="-3" opacity="0.95">100</text>
+
+  <!-- Thin separator -->
+  <line x1="80" y1="365" x2="320" y2="365" stroke="rgba(245,197,24,0.35)" stroke-width="1"/>
+
+  <!-- Hebrew brand name -->
+  <text x="200" y="348" font-family="'Segoe UI', Arial, sans-serif" font-size="26" fill="white" font-weight="700" text-anchor="middle" direction="rtl">מאה בקליק</text>
+
+  <!-- Subtitle -->
+  <text x="200" y="388" font-family="'Segoe UI', Arial, sans-serif" font-size="11" fill="#FFE566" font-weight="400" text-anchor="middle" letter-spacing="2">MAAH BAKLIK</text>
+
+  <!-- Small energy particles -->
+  <circle cx="140" cy="90" r="2.5" fill="#FFE566" opacity="0.7"/>
+  <circle cx="310" cy="120" r="2" fill="#FFE566" opacity="0.5"/>
+  <circle cx="330" cy="260" r="3" fill="#FFE566" opacity="0.6"/>
+  <circle cx="70" cy="280" r="2" fill="#FFE566" opacity="0.4"/>
+  <circle cx="160" cy="345" r="1.5" fill="#FFE566" opacity="0.5"/>
+  <circle cx="340" cy="175" r="2.5" fill="#FFE566" opacity="0.55"/>
+</svg>

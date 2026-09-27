@@ -1,0 +1,62 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 400" width="400" height="400">
+  <defs>
+    <style>
+      @import url('https://fonts.googleapis.com/css2?family=Space+Grotesk:wght@700;900&amp;display=swap');
+    </style>
+    <!-- Ripple animation -->
+    <style>
+      .ripple1 { animation: ripple 2s ease-out infinite; }
+      .ripple2 { animation: ripple 2s ease-out infinite 0.5s; }
+      .ripple3 { animation: ripple 2s ease-out infinite 1s; }
+      .cursor { animation: blink 1s step-end infinite; }
+      @keyframes ripple {
+        0% { r: 4; opacity: 0.8; }
+        100% { r: 28; opacity: 0; }
+      }
+      @keyframes blink {
+        0%, 100% { opacity: 1; }
+        50% { opacity: 0; }
+      }
+    </style>
+  </defs>
+
+  <!-- Background -->
+  <rect width="400" height="400" fill="#0F172A" rx="24"/>
+
+  <!-- Subtle grid overlay -->
+  <defs>
+    <pattern id="grid" width="40" height="40" patternUnits="userSpaceOnUse">
+      <path d="M 40 0 L 0 0 0 40" fill="none" stroke="rgba(255,255,255,0.03)" stroke-width="1"/>
+    </pattern>
+  </defs>
+  <rect width="400" height="400" fill="url(#grid)" rx="24"/>
+
+  <!-- Terminal/code bracket decorations -->
+  <text x="42" y="175" font-family="'Courier New', monospace" font-size="52" fill="rgba(74,222,128,0.15)" font-weight="700">{</text>
+  <text x="340" y="175" font-family="'Courier New', monospace" font-size="52" fill="rgba(74,222,128,0.15)" font-weight="700">}</text>
+
+  <!-- "100" main text -->
+  <text x="200" y="210" font-family="'Segoe UI', 'Arial Black', sans-serif" font-size="110" fill="white" font-weight="900" text-anchor="middle" letter-spacing="-3">100</text>
+
+  <!-- Green cursor | after 100 — positioned to right of the text -->
+  <rect x="298" y="120" width="8" height="90" fill="#4ADE80" rx="2" class="cursor"/>
+
+  <!-- Click ripple circles emanating from cursor -->
+  <circle cx="302" cy="165" r="4" fill="none" stroke="#4ADE80" stroke-width="2.5" opacity="0.8" class="ripple1"/>
+  <circle cx="302" cy="165" r="4" fill="none" stroke="#4ADE80" stroke-width="2" opacity="0.5" class="ripple2"/>
+  <circle cx="302" cy="165" r="4" fill="none" stroke="#4ADE80" stroke-width="1.5" opacity="0.3" class="ripple3"/>
+
+  <!-- Thin separator line -->
+  <line x1="120" y1="248" x2="280" y2="248" stroke="rgba(74,222,128,0.3)" stroke-width="1"/>
+
+  <!-- Hebrew brand name -->
+  <text x="200" y="295" font-family="'Segoe UI', Arial, sans-serif" font-size="28" fill="#CBD5E1" font-weight="700" text-anchor="middle" direction="rtl">מאה בקליק</text>
+
+  <!-- Subtitle -->
+  <text x="200" y="328" font-family="'Segoe UI', Arial, sans-serif" font-size="13" fill="#4ADE80" font-weight="400" text-anchor="middle" letter-spacing="1">MAAH BAKLIK</text>
+
+  <!-- Small dot accent bottom -->
+  <circle cx="200" cy="358" r="3" fill="#4ADE80" opacity="0.6"/>
+  <circle cx="185" cy="358" r="2" fill="#4ADE80" opacity="0.3"/>
+  <circle cx="215" cy="358" r="2" fill="#4ADE80" opacity="0.3"/>
+</svg>

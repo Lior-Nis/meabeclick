@@ -1,0 +1,28 @@
+# Caddy runs as the "caddy" service in docker-compose.yml — this file is
+# bind-mounted read-only into it. Caddy gets and renews the Let's Encrypt
+# certificate automatically; no host-level Caddy install needed.
+
+meabeclick.com, www.meabeclick.com {
+	encode zstd gzip
+	# adapter-node listens on 3000 by default (not 8080 — that was the old
+	# Express port). Caddy sets X-Forwarded-Proto/X-Forwarded-Host by
+	# default via reverse_proxy, which is what PROTOCOL_HEADER/HOST_HEADER
+	# in docker-compose.yml tell adapter-node to trust.
+	reverse_proxy app:3000
+
+	# The app derives the session cookie's Secure flag from ORIGIN/
+	# PROTOCOL_HEADER (adapter-node), which works because the app trusts
+	# this proxy's forwarded headers.
+	header {
+		Strict-Transport-Security "max-age=31536000; includeSubDomains"
+		X-Content-Type-Options    "nosniff"
+		X-Frame-Options           "SAMEORIGIN"
+		Referrer-Policy           "strict-origin-when-cross-origin"
+		-Server
+	}
+
+	log {
+		output stdout
+		format console
+	}
+}

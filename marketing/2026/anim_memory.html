@@ -1,0 +1,53 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+ :root{--bg:#F8FAFC;--card:#fff;--text:#1E293B;--muted:#64748B;--brand:#2563EB;
+       --cta:#FA8231;--mint:#10B981;--red:#DC2626;--border:#E2E8F0}
+ *{box-sizing:border-box;margin:0;padding:0}
+ body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;background:var(--bg);
+      color:var(--text);overflow:hidden;position:relative}
+ body::before{content:'';position:absolute;inset:0;
+      background-image:radial-gradient(#E2E8F0 2px,transparent 2px);background-size:34px 34px;opacity:.5}
+ .wrap{position:relative;height:100%;padding:66px 76px;display:flex;flex-direction:column}
+ .kicker{align-self:flex-start;background:rgba(250,130,49,.12);border:2px solid var(--cta);color:var(--cta);
+      font-size:25px;font-weight:800;padding:11px 26px;border-radius:999px}
+ h1{font-size:74px;font-weight:900;line-height:1.1;margin-top:24px}
+ h1 em{font-style:normal}
+ .grow{flex:1}
+ .foot{display:flex;align-items:center;justify-content:space-between;border-top:3px solid var(--border);padding-top:26px}
+ .brand{display:flex;align-items:center;gap:12px;font-size:32px;font-weight:900;color:var(--brand)}
+ .phone{font-size:32px;font-weight:900;color:var(--cta);direction:ltr}
+</style></head><body><div class="wrap">
+ <div class="kicker">🧠 משחק זיכרון — נוסחאות</div>
+ <h1>שינון שלא<br><em style="color:var(--brand)">מרגיש כמו שינון</em></h1>
+ <div id="grid" style="display:grid;grid-template-columns:repeat(4,1fr);gap:20px;margin-top:44px"></div>
+ <div style="margin-top:30px;font-size:31px;color:var(--muted)">הופכים, מוצאים זוגות, וזוכרים בלי לשנן</div>
+<div class="grow"></div><div class="foot"><div class="brand"><svg width="44" height="33" viewBox="6 14 80 60" xmlns="http://www.w3.org/2000/svg">
+ <g fill="none" stroke="#2563EB" stroke-width="4" stroke-linecap="round" stroke-linejoin="round">
+ <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/><path d="M14,30 Q30,25 45,33"/><path d="M76,30 Q60,25 45,33"/>
+ <path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/><circle cx="45" cy="40" r="15"/></g>
+ <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231"/></svg> מאה בקליק</div>
+ <div class="phone">054-696-9891</div></div></div><script>
+ const P=[['∫ eˣ','eˣ+C'],['∫ 1/x','ln|x|'],['d/dx x²','2x'],['sin′','cos']];
+ const cells=[]; P.forEach((p,i)=>{cells.push({p:i,t:p[0]});cells.push({p:i,t:p[1]});});
+ const order=[0,5,2,7,4,1,6,3];
+ const grid=document.getElementById('grid');
+ window.TOTAL=32;
+ window.setFrame=i=>{
+   // pairs resolve one at a time; each takes 7 frames
+   const done=Math.min(4,Math.floor(i/7));
+   const flipping=Math.floor(i/7), ph=i%7;
+   grid.innerHTML=order.map(idx=>{
+     const c=cells[idx];
+     const matched=c.p<done;
+     const open=matched||(c.p===flipping&&ph>=2);
+     const bg=matched?'#ECFDF5':open?'#fff':'#1E293B';
+     const bd=matched?'#10B981':open?'#2563EB':'#1E293B';
+     const col=matched?'#047857':open?'#1E293B':'#64748B';
+     return '<div style="aspect-ratio:3/4;background:'+bg+';border:3px solid '+bd+
+       ';border-radius:20px;display:flex;align-items:center;justify-content:center;font-size:'+
+       (open?'30':'44')+'px;font-weight:800;color:'+col+';direction:ltr;text-align:center;padding:8px">'+
+       (open?c.t:'?')+'</div>';}).join('');
+ };
+ window.setFrame(0);
+</script></body></html>

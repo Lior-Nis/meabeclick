@@ -1,0 +1,19 @@
+{
+  "title": "קרב מהירות — כללי גזירה",
+  "subject": "מתמטיקה · נגזרות",
+  "seconds": 60,
+  "items": [
+    { "q": "d/dx (x²)",    "a": "2x",        "options": ["2x", "x", "2", "x³"] },
+    { "q": "d/dx (x³)",    "a": "3x²",       "options": ["3x²", "x²", "3x", "2x³"] },
+    { "q": "d/dx (5x)",    "a": "5",         "options": ["5", "5x", "0", "x"] },
+    { "q": "d/dx (12)",    "a": "0",         "options": ["0", "12", "1", "12x"] },
+    { "q": "d/dx (sin x)", "a": "cos x",     "options": ["cos x", "−cos x", "−sin x", "tan x"] },
+    { "q": "d/dx (cos x)", "a": "−sin x",    "options": ["−sin x", "sin x", "cos x", "−cos x"] },
+    { "q": "d/dx (eˣ)",    "a": "eˣ",        "options": ["eˣ", "x·eˣ", "eˣ⁻¹", "1"] },
+    { "q": "d/dx (ln x)",  "a": "1/x",       "options": ["1/x", "ln x", "x", "−1/x²"] },
+    { "q": "d/dx (√x)",    "a": "1/(2√x)",   "options": ["1/(2√x)", "2√x", "1/√x", "√x/2"] },
+    { "q": "d/dx (x⁻¹)",   "a": "−1/x²",     "options": ["−1/x²", "1/x²", "−x⁻²", "ln x"] },
+    { "q": "d/dx (7x⁴)",   "a": "28x³",      "options": ["28x³", "7x³", "28x⁴", "4x³"] },
+    { "q": "d/dx (tan x)", "a": "1/cos²x",   "options": ["1/cos²x", "sec x", "−tan x", "cos²x"] }
+  ]
+}

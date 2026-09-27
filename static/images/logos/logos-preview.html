@@ -1,0 +1,72 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl">
+<head>
+<meta charset="UTF-8">
+<title>מאה בקליק — לוגו אפשרויות</title>
+<style>
+  * { box-sizing: border-box; margin: 0; padding: 0; }
+  body {
+    font-family: 'Segoe UI', Arial, sans-serif;
+    background: #f0ede6;
+    min-height: 100vh;
+    padding: 40px 24px 60px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 28px;
+  }
+  h1 { font-size: 26px; font-weight: 900; color: #1A3333; }
+  .grid {
+    display: grid;
+    grid-template-columns: repeat(2, 1fr);
+    gap: 24px;
+    width: 100%;
+    max-width: 960px;
+  }
+  .card {
+    background: white;
+    border-radius: 18px;
+    padding: 36px 28px 24px;
+    display: flex;
+    flex-direction: column;
+    align-items: center;
+    gap: 14px;
+    box-shadow: 0 3px 20px rgba(0,0,0,0.07);
+    transition: transform 0.2s, box-shadow 0.2s;
+    cursor: pointer;
+  }
+  .card:hover { transform: translateY(-3px); box-shadow: 0 8px 32px rgba(0,128,128,0.14); }
+  .card img { max-width: 100%; height: auto; }
+  .card-label { font-size: 11px; font-weight: 700; letter-spacing: 1.5px; color: #008080; text-transform: uppercase; }
+  .card-name  { font-size: 15px; font-weight: 800; color: #1A3333; }
+</style>
+</head>
+<body>
+
+<h1>מאה בקליק — אפשרויות לוגו</h1>
+
+<div class="grid">
+  <div class="card">
+    <span class="card-label">V1</span>
+    <img src="logo-main.svg" alt="V1">
+    <div class="card-name">קלאסי</div>
+  </div>
+  <div class="card">
+    <span class="card-label">V2</span>
+    <img src="logo-v2-horizontal.svg" alt="V2">
+    <div class="card-name">קומפקטי</div>
+  </div>
+  <div class="card">
+    <span class="card-label">V3</span>
+    <img src="logo-v3-badge.svg" alt="V3" style="max-width:240px">
+    <div class="card-name">עגול — חותמת</div>
+  </div>
+  <div class="card">
+    <span class="card-label">V4</span>
+    <img src="logo-v4-minimal.svg" alt="V4">
+    <div class="card-name">מינימליסטי</div>
+  </div>
+</div>
+
+</body>
+</html>

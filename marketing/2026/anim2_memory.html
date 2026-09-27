@@ -1,0 +1,138 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;
+       background:#FFFFFF;color:#1E293B;overflow:hidden;position:relative}
+  .deco{position:absolute;pointer-events:none}
+  .wrap{position:relative;height:100%;padding:56px 64px;display:flex;flex-direction:column;z-index:2}
+  h1{font-family:'Secular One',sans-serif;font-size:96px;line-height:1.04;letter-spacing:-.01em}
+  h1 .hl{position:relative;display:inline-block;z-index:1}
+  h1 .hl::after{content:'';position:absolute;left:-6px;right:-6px;bottom:6px;height:24px;
+       background:#FDBA74;z-index:-1;border-radius:4px;transform:rotate(-1deg)}
+  .grow{flex:1}
+  .foot{display:flex;align-items:center;justify-content:space-between;z-index:3}
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Secular One',sans-serif;
+       font-size:34px;color:#1E293B}
+  .phone{font-family:'Secular One',sans-serif;font-size:38px;color:#1E293B;direction:ltr;
+       background:#FA8231;padding:10px 26px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  .tap{font-family:'Secular One',sans-serif;font-size:31px;color:#1E293B;
+       background:#FA8231;padding:12px 28px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  
+  .pop{opacity:0;transform:scale(.5) rotate(-8deg);transition:all .18s cubic-bezier(.34,1.6,.64,1)}
+  .pop.on{opacity:1;transform:none}
+  .slide{opacity:0;transform:translateX(60px) rotate(-3deg);transition:all .2s ease-out}
+  .slide.on{opacity:1;transform:none}
+  .rise{opacity:0;transform:translateY(26px);transition:all .2s ease-out}
+  .rise.on{opacity:1;transform:none}
+  .deco{opacity:0;transform:scale(.4);transition:all .22s cubic-bezier(.34,1.7,.64,1)}
+  .deco.on{opacity:1;transform:none}
+  .wobble.on{animation:none}
+  .card{position:relative;background:#FFFFFF;border:5px solid #1E293B;border-radius:12px;
+        padding:12px 22px;box-shadow:8px 9px 0 rgba(30,41,59,.16);display:flex;
+        align-items:center;gap:16px;font-size:33px;font-weight:800}
+  .card .n{width:48px;height:48px;flex:0 0 48px;border-radius:50%;background:#93C5FD;
+        border:4px solid #1E293B;display:flex;align-items:center;justify-content:center;
+        font-family:'Secular One';font-size:30px}
+  .card .eq{direction:ltr;flex:1;text-align:left;font-family:'Secular One'}
+  .card.bad{background:#FFF3E8;border-color:#FA8231;transform:rotate(-1.6deg) scale(1.03)}
+  .card.bad .n{background:#FA8231;color:#1E293B;border-color:#FA8231}
+  .card .x{color:#EA580C;font-size:46px;font-weight:900;opacity:0;transition:opacity .1s}
+  .card.bad .x{opacity:1}
+
+  .grid{display:grid;grid-template-columns:repeat(4,1fr);gap:16px;margin-top:30px}
+  .tile{position:relative;height:150px;opacity:0;transform:scale(.6);
+        transition:opacity .18s ease,transform .18s cubic-bezier(.34,1.6,.64,1)}
+  .tile.in{opacity:1;transform:none}
+  .tile .back,.tile .face{position:absolute;inset:0;border:5px solid #1E293B;border-radius:14px;
+        display:flex;align-items:center;justify-content:center;text-align:center;padding:10px;
+        box-shadow:6px 7px 0 rgba(30,41,59,.16);transition:opacity .12s}
+  .tile .back{background:#2563EB;background-image:radial-gradient(rgba(255,255,255,.5) 3px,transparent 3px);
+        background-size:22px 22px}
+  .tile .face{background:#FFFFFF;font-family:'Secular One';font-size:30px;opacity:0}
+  .tile.up .back{opacity:0}  .tile.up .face{opacity:1}
+  .tile.done .face{background:#FED7AA;transform:rotate(-2deg)}
+  
+</style></head><body>
+  <div class="deco" id="d0" style="bottom:-90px;left:-80px;"><svg viewBox="0 0 340 340" style="width:340px;height:340px">
+      <circle cx="170" cy="170" r="170" fill="#A7F3D0" opacity=".3"/></svg></div>
+  <div class="deco" id="d1" style="top:60px;left:60px;transform:rotate(-10deg)"><svg viewBox="0 0 60 60" style="width:66px;height:66px">
+    <path d="M30,6 L36,24 L55,25 L40,36 L46,54 L30,43 L14,54 L20,36 L5,25 L24,24 Z"
+      fill="none" stroke="#FA8231" stroke-width="4.5" stroke-linejoin="round"/></svg></div>
+  <div class="deco" id="d2" style="top:200px;left:-20px;"><svg viewBox="0 0 100 100" style="width:100px;height:100px">
+    <path d="M50,50 C50,42 58,40 62,46 C68,55 58,66 46,64 C30,61 24,44 34,30 C46,13 72,12 85,28"
+      fill="none" stroke="#3B82F6" stroke-width="7" stroke-linecap="round"/></svg></div>
+  <div class="deco" id="d3" style="bottom:330px;right:-10px;transform:rotate(8deg)"><svg viewBox="0 0 160 50" style="width:144px;height:45px">
+    <path d="M8,34 C34,10 44,44 68,22 C90,2 100,42 124,24 C140,12 148,30 154,26"
+      fill="none" stroke="#FA8231" stroke-width="6" stroke-linecap="round"/></svg></div>
+  <div class="deco" id="d4" style="bottom:170px;left:70px;transform:rotate(-7deg)"><svg viewBox="0 0 90 110" style="width:99.00000000000001px;height:121.00000000000001px">
+    <circle cx="45" cy="42" r="30" fill="#FED7AA" stroke="#1E293B" stroke-width="4.5"/>
+    <rect x="33" y="70" width="24" height="10" rx="3" fill="#F8FAFC" stroke="#1E293B" stroke-width="4"/>
+    <rect x="35" y="82" width="20" height="9" rx="3" fill="#F8FAFC" stroke="#1E293B" stroke-width="4"/>
+    <path d="M38,42 L45,30 L45,48 L52,36" fill="none" stroke="#1E293B" stroke-width="4"
+      stroke-linecap="round" stroke-linejoin="round"/></svg></div>
+  <div class="deco" id="d5" style="top:520px;left:20px;"><svg viewBox="0 0 80 80" style="width:64px;height:64px">
+    <line x1="40" y1="40" x2="70" y2="40"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="61.21320343559643" y2="61.21320343559643"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="40" y2="70"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="18.786796564403577" y2="61.21320343559643"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="10" y2="40.00000000000001"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="18.78679656440357" y2="18.786796564403577"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="39.99999999999999" y2="10"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="61.21320343559642" y2="18.78679656440357"
+        stroke="#2563EB" stroke-width="6" stroke-linecap="round" opacity=".9"/></svg></div>
+  <div class="wrap">
+    <div class="pop" id="k" style="align-self:flex-start;background:#10B981;color:#1E293B;
+         font-family:'Secular One';font-size:29px;padding:12px 28px;border:4px solid #1E293B;
+         border-radius:999px;transform-origin:right center;box-shadow:6px 6px 0 rgba(30,41,59,.2)">🧠 משחק זיכרון נוסחאות</div>
+    <h1 class="rise" id="h" style="margin-top:24px;font-size:82px">לא משננים.<br><span class="hl">משחקים.</span></h1>
+    <div class="grid" id="grid"><div class="tile" id="t0" data-p="0">
+     <div class="back"></div><div class="face">שטח מלבן</div></div><div class="tile" id="t1" data-p="2">
+     <div class="back"></div><div class="face">b·h ÷ 2</div></div><div class="tile" id="t2" data-p="1">
+     <div class="back"></div><div class="face">היקף עיגול</div></div><div class="tile" id="t3" data-p="3">
+     <div class="back"></div><div class="face">a³</div></div><div class="tile" id="t4" data-p="2">
+     <div class="back"></div><div class="face">שטח משולש</div></div><div class="tile" id="t5" data-p="0">
+     <div class="back"></div><div class="face">a × b</div></div><div class="tile" id="t6" data-p="3">
+     <div class="back"></div><div class="face">נפח קובייה</div></div><div class="tile" id="t7" data-p="1">
+     <div class="back"></div><div class="face">2πr</div></div></div>
+    <div class="pop" id="win" style="margin-top:26px;transform-origin:right center">
+      
+  <div style="position:relative;transform:rotate(-1.4deg);background:#FFFFFF;padding:22px 32px;
+       width:fit-content;align-self:flex-start;
+       border:5px solid #1E293B;border-radius:10px;box-shadow:10px 12px 0 rgba(30,41,59,.16)">
+    <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(6deg);
+  width:110px;height:34px;background:rgba(250,130,49,.30);border:2px solid rgba(30,41,59,.16)"></div><div style="font-family:'Secular One';font-size:40px">וזהו — הן פשוט נשארות בראש ✨</div>
+        <div style="font-size:29px;margin-top:6px;color:#64748B">
+        איזו נוסחה הכי קשה לילד שלכם? כתבו לנו ונבנה משחק סביבה 🎁</div></div></div>
+    <div class="grow"></div>
+  <div class="foot"><div class="brand"><svg width="52" height="39" viewBox="6 14 80 60" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#2563EB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/><path d="M14,30 Q30,25 45,33"/>
+    <path d="M76,30 Q60,25 45,33"/><path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/>
+    <circle cx="45" cy="40" r="15"/></g>
+  <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231"/></svg> מאה בקליק</div>
+    <div class="tap">לפרטים נוספים — לחצו על הקישור 👆</div></div>
+  </div>
+  <script>
+  const on=(id,v)=>document.getElementById(id).classList.toggle('on',v);
+  const T=[...document.querySelectorAll('.tile')];
+  // Each step reveals one matching pair, in grid-position terms.
+  const MATCH=[[0,5],[2,7],[1,4],[3,6]];
+  window.TOTAL=38;
+  window.setFrame=i=>{
+    ['d0','d1','d2','d3','d4','d5'].forEach((d,k)=>on(d,i>=2+k*2));
+    on('k',i>=1); on('h',i>=3);
+    T.forEach((t,k)=>t.classList.toggle('in', i>=6+k));
+    T.forEach(t=>{t.classList.remove('up','done')});
+    MATCH.forEach((m,k)=>{
+      const s=15+k*5;
+      if(i>=s+1) m.forEach(p=>T[p].classList.add('up'));
+      if(i>=s+3) m.forEach(p=>T[p].classList.add('done'));
+    });
+    on('win', i>=35);
+  };
+  window.setFrame(0);
+  </script></body></html>

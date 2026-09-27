@@ -1,0 +1,20 @@
+[Unit]
+Description=Send family lesson reminders (hourly)
+
+[Timer]
+# Hourly, because the reminder window is "between 2 and 24 hours before the
+# lesson" rather than a fixed hour of the day. A family booking a lesson
+# for tomorrow morning at 9pm tonight still gets reminded; a fixed daily
+# run would miss them or fire at a useless hour.
+#
+# The route is idempotent by database constraint — UNIQUE (booking_id,
+# kind) — so running it often costs nothing and a double fire sends once.
+OnCalendar=hourly
+# A reboot must not swallow a run. Safe for the same reason: a late fire
+# that finds the lesson inside the window sends once, and one that finds it
+# already past sends nothing.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

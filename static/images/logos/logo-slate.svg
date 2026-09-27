@@ -1,0 +1,40 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="6 14 80 60" width="80" height="60" role="img" aria-label="מאה בקליק">
+  <defs>
+    <style>
+      .ink    { stroke: #2563EB; fill: none; stroke-width: 3.4; stroke-linecap: round; stroke-linejoin: round; }
+      .spark  { stroke: #FA8231; fill: none; stroke-width: 3; stroke-linecap: round; }
+      .cursor { fill: #FA8231; }
+      @keyframes logo-click { 0%, 100% { opacity: 1; } 45% { opacity: 0.45; } 55% { opacity: 1; } }
+      @keyframes logo-ray   { 0% { opacity: 0.9; } 70%, 100% { opacity: 0.25; } }
+      .cursor { animation: logo-click 2.6s ease-in-out infinite; }
+      .r1 { animation: logo-ray 2.6s ease-out infinite; }
+      .r2 { animation: logo-ray 2.6s ease-out infinite 0.18s; }
+      .r3 { animation: logo-ray 2.6s ease-out infinite 0.36s; }
+      @media (prefers-reduced-motion: reduce) {
+        .cursor, .r1, .r2, .r3 { animation: none; }
+      }
+    </style>
+  </defs>
+
+  <!-- ── Open book ─────────────────────────────────────────── -->
+  <path class="ink" d="M14,30 L14,64"/>
+  <path class="ink" d="M76,30 L76,64"/>
+  <path class="ink" d="M14,30 Q30,25 45,33"/>
+  <path class="ink" d="M76,30 Q60,25 45,33"/>
+  <path class="ink" d="M14,64 Q30,58 45,67"/>
+  <path class="ink" d="M76,64 Q60,58 45,67"/>
+
+  <!-- ── Magnifier lens ────────────────────────────────────── -->
+  <circle cx="45" cy="40" r="15" stroke="#2563EB" stroke-width="3.4" fill="none"/>
+
+  <!-- ── Click cursor ──────────────────────────────────────── -->
+  <g class="cursor">
+    <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47"
+             stroke="#F8FAFC" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+
+  <!-- ── Click rays ────────────────────────────────────────── -->
+  <line class="spark r1" x1="64" y1="20" x2="60" y2="27"/>
+  <line class="spark r2" x1="73" y1="24" x2="66" y2="29"/>
+  <line class="spark r3" x1="77" y1="33" x2="70" y2="35"/>
+</svg>

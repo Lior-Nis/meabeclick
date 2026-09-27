@@ -1,0 +1,61 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;
+       background:#1E293B;color:#1E293B;overflow:hidden;position:relative}
+  .deco{position:absolute;pointer-events:none}
+  .wrap{position:relative;height:100%;padding:56px 64px;display:flex;flex-direction:column;z-index:2}
+  h1{font-family:'Secular One',sans-serif;font-size:96px;line-height:1.04;letter-spacing:-.01em}
+  h1 .hl{position:relative;display:inline-block;z-index:1}
+  h1 .hl::after{content:'';position:absolute;left:-6px;right:-6px;bottom:6px;height:24px;
+       background:#FDBA74;z-index:-1;border-radius:4px;transform:rotate(-1deg)}
+  .grow{flex:1}
+  .foot{display:flex;align-items:center;justify-content:space-between;z-index:3}
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Secular One',sans-serif;
+       font-size:34px;color:#1E293B}
+  .phone{font-family:'Secular One',sans-serif;font-size:38px;color:#1E293B;direction:ltr;
+       background:#FA8231;padding:10px 26px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  .tap{font-family:'Secular One',sans-serif;font-size:31px;color:#1E293B;
+       background:#FA8231;padding:12px 28px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  
+  .stage{position:relative;height:100%;display:flex;flex-direction:column;
+         align-items:center;justify-content:center;z-index:2;text-align:center}
+  .word{font-family:'Secular One',sans-serif;font-size:104px;line-height:1;margin-top:26px}
+  .tag{font-family:'Heebo',sans-serif;font-weight:700;font-size:34px;color:#64748B;margin-top:20px}
+  .rule{width:180px;height:6px;background:#FA8231;border-radius:999px;margin-top:28px}
+
+</style></head><body>
+  <div class="deco" style="top:-80px;left:-60px;"><svg viewBox="0 0 300 300" style="width:300px;height:300px">
+      <circle cx="150" cy="150" r="150" fill="#2563EB" opacity=".38"/></svg></div>
+  <div class="deco" style="bottom:-70px;right:-70px;"><svg viewBox="0 0 300 300" style="width:300px;height:300px">
+      <circle cx="150" cy="150" r="150" fill="#3B82F6" opacity=".18"/></svg></div>
+  <div class="deco" style="top:200px;right:110px;transform:rotate(-10deg)"><svg viewBox="0 0 60 60" style="width:60px;height:60px">
+    <path d="M30,6 L36,24 L55,25 L40,36 L46,54 L30,43 L14,54 L20,36 L5,25 L24,24 Z"
+      fill="none" stroke="#FA8231" stroke-width="4.5" stroke-linejoin="round"/></svg></div>
+  <div class="deco" style="bottom:150px;left:130px;"><svg viewBox="0 0 100 100" style="width:100px;height:100px">
+    <path d="M50,50 C50,42 58,40 62,46 C68,55 58,66 46,64 C30,61 24,44 34,30 C46,13 72,12 85,28"
+      fill="none" stroke="#93C5FD" stroke-width="7" stroke-linecap="round"/></svg></div>
+  <div class="stage">
+    
+<svg viewBox="6 14 80 60" style="width:360px;height:270px">
+  <g fill="none" stroke="#93C5FD" stroke-width="3.4" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/>
+    <path d="M14,30 Q30,25 45,33"/><path d="M76,30 Q60,25 45,33"/>
+    <path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/>
+    <circle cx="45" cy="40" r="15"/>
+  </g>
+  <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47"
+           fill="#FA8231" stroke="#1E293B" stroke-width="2" stroke-linejoin="round"/>
+  <g stroke="#FA8231" stroke-width="3" stroke-linecap="round">
+    <line x1="64" y1="20" x2="60" y2="27"/>
+    <line x1="73" y1="24" x2="66" y2="29"/>
+    <line x1="77" y1="33" x2="70" y2="35"/>
+  </g></svg>
+    <div class="word" style="color:#FFFFFF">מאה בקליק</div>
+    <div class="rule"></div>
+    <div class="tag" style="color:#9FB3D1">שיעורים פרטיים · מתמטיקה · פיזיקה · עברית</div>
+  </div></body></html>

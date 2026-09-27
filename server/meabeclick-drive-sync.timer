@@ -1,0 +1,13 @@
+[Unit]
+Description=Sync lessons with Google Drive (every 10 minutes)
+
+[Timer]
+# Every 10 minutes: the documented latency for a Drive edit to come back to
+# the site as a draft (spec D3). A pass that finds nothing to do costs one
+# metadata request per document, and overlapping passes stand down.
+OnCalendar=*:0/10
+Persistent=true
+RandomizedDelaySec=30
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,12 @@
+[Unit]
+Description=Run the lesson-report prompt hourly
+
+[Timer]
+OnCalendar=hourly
+# A laptop-style reboot or a host restart must not swallow the run: the
+# endpoint is idempotent, so a late fire is always safe.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

@@ -1,0 +1,13 @@
+[Unit]
+Description=מאה בקליק — keep each student's Google Drive folder in step with their lessons
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Same shape as meabeclick-remind-family.service: curl localhost so the
+# request never touches the public interface, and the dedicated file that
+# holds ONLY CRON_KEY rather than the app's full .env.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+ExecStart=/usr/bin/curl -sS --fail --max-time 300 \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/drive-sync

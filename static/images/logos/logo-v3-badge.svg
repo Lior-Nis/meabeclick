@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 320 320" width="320" height="320">
+  <defs>
+    <style>
+      .cursor3 { animation: cp3 2s ease-in-out infinite; }
+      .r3a { animation: rp3 2.2s ease-out infinite; }
+      .r3b { animation: rp3 2.2s ease-out infinite 0.55s; }
+      @keyframes cp3 { 0%,100%{opacity:1} 45%{opacity:0.35} 50%{opacity:1} }
+      @keyframes rp3 { 0%{opacity:0.6} 100%{opacity:0;stroke-dashoffset:-24} }
+    </style>
+    <pattern id="d3" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="0.9" fill="rgba(0,128,128,0.06)"/>
+    </pattern>
+  </defs>
+
+  <circle cx="160" cy="160" r="155" fill="#FEF9E7"/>
+  <circle cx="160" cy="160" r="155" fill="url(#d3)"/>
+  <circle cx="160" cy="160" r="152" fill="none" stroke="#008080" stroke-width="3.5"/>
+  <circle cx="160" cy="160" r="144" fill="none" stroke="#008080" stroke-width="1" opacity="0.3"/>
+
+  <!-- "1" -->
+  <line x1="80"  y1="88"  x2="80"  y2="220" stroke="#008080" stroke-width="9" stroke-linecap="round"/>
+  <line x1="73"  y1="88"  x2="87"  y2="88"  stroke="#008080" stroke-width="7" stroke-linecap="round"/>
+  <line x1="69"  y1="80"  x2="91"  y2="80"  stroke="#008080" stroke-width="5" stroke-linecap="round"/>
+  <!-- left "0" -->
+  <circle cx="137" cy="154" r="56" stroke="#008080" stroke-width="9" fill="none"/>
+  <!-- right "0" -->
+  <circle cx="221" cy="154" r="56" stroke="#008080" stroke-width="9" fill="none"/>
+  <!-- cursor -->
+  <g class="cursor3">
+    <polygon points="234,108 234,178 246,166 251,184 262,180 257,162 268,162"
+             fill="#FF7F50" stroke="#FEF9E7" stroke-width="2.5" stroke-linejoin="round"/>
+  </g>
+  <path class="r3a" d="M274,122 A24,24 0 0 1 274,186" stroke="#FF7F50" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="14 6"/>
+  <path class="r3b" d="M284,112 A36,36 0 0 1 284,196" stroke="#FF7F50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-dasharray="10 8"/>
+</svg>

@@ -1,0 +1,31 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 360 140" width="360" height="140">
+  <defs>
+    <style>
+      .cursor4 { animation: cp4 2s ease-in-out infinite; }
+      .r4a { animation: rp4 2s ease-out infinite; }
+      .r4b { animation: rp4 2s ease-out infinite 0.5s; }
+      .r4c { animation: rp4 2s ease-out infinite 1s; }
+      @keyframes cp4 { 0%,100%{opacity:1} 45%{opacity:0.3} 50%{opacity:1} }
+      @keyframes rp4 { 0%{opacity:0.6} 100%{opacity:0;stroke-dashoffset:-28} }
+    </style>
+  </defs>
+
+  <rect width="360" height="140" fill="#FEF9E7" rx="16"/>
+
+  <!-- "1" -->
+  <line x1="48"  y1="18"  x2="48"  y2="118" stroke="#008080" stroke-width="11" stroke-linecap="round"/>
+  <line x1="40"  y1="18"  x2="56"  y2="18"  stroke="#008080" stroke-width="8.5" stroke-linecap="round"/>
+  <line x1="36"  y1="9"   x2="60"  y2="9"   stroke="#008080" stroke-width="6"   stroke-linecap="round"/>
+  <!-- left "0" -->
+  <circle cx="122" cy="68" r="42" stroke="#008080" stroke-width="11" fill="none"/>
+  <!-- right "0" -->
+  <circle cx="224" cy="68" r="42" stroke="#008080" stroke-width="11" fill="none"/>
+  <!-- cursor -->
+  <g class="cursor4">
+    <polygon points="237,36 237,80 246,71 250,84 257,81 253,68 262,68"
+             fill="#FF7F50" stroke="#FEF9E7" stroke-width="2.2" stroke-linejoin="round"/>
+  </g>
+  <path class="r4a" d="M266,46 A20,20 0 0 1 266,86"  stroke="#FF7F50" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="14 5"/>
+  <path class="r4b" d="M275,37 A32,32 0 0 1 275,95"  stroke="#FF7F50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-dasharray="10 7"/>
+  <path class="r4c" d="M284,28 A44,44 0 0 1 284,104" stroke="#FF7F50" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-dasharray="7 9"/>
+</svg>

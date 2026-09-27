@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;background:#04091e;}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;align-items:center;
+  justify-content:center;gap:36px;padding:80px;position:relative;}
+.wrap::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,0.18) 1px,transparent 1px);
+  background-size:44px 44px;}
+/* big glow */
+.glow-ring{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:720px;height:720px;border-radius:50%;
+  border:1px solid rgba(232,164,39,0.08);pointer-events:none;}
+.glow-ring2{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:540px;height:540px;border-radius:50%;
+  border:1px solid rgba(232,164,39,0.12);pointer-events:none;}
+.glow-core{position:absolute;top:50%;left:50%;transform:translate(-50%,-50%);
+  width:600px;height:600px;
+  background:radial-gradient(ellipse,rgba(232,164,39,0.12) 0%,transparent 65%);}
+.urgency{position:relative;z-index:2;background:rgba(232,64,39,0.12);
+  border:1.5px solid rgba(232,64,39,0.4);color:#ff8a7a;
+  font-size:22px;font-weight:700;letter-spacing:.1em;
+  padding:10px 36px;border-radius:40px;}
+.title{position:relative;z-index:2;font-size:100px;font-weight:900;color:#f0e8d8;
+  line-height:.95;text-align:center;}
+.title span{color:#e8a427;}
+.sub{position:relative;z-index:2;font-size:30px;color:#7a8bbd;font-weight:300;
+  text-align:center;max-width:700px;line-height:1.5;}
+/* mini feature row */
+.feats{position:relative;z-index:2;display:flex;gap:20px;}
+.feat{background:rgba(12,22,60,0.75);border:1px solid rgba(232,164,39,0.12);
+  border-radius:14px;padding:16px 24px;text-align:center;}
+.feat .fi{font-size:32px;display:block;margin-bottom:6px;}
+.feat span{font-size:20px;font-weight:700;color:#f0e8d8;}
+.divider{width:200px;height:1.5px;
+  background:linear-gradient(90deg,transparent,#e8a427,transparent);
+  position:relative;z-index:2;}
+.big-cta{position:relative;z-index:2;background:#e8a427;color:#04091e;
+  font-family:'Heebo',sans-serif;font-size:44px;font-weight:900;
+  padding:28px 100px;border-radius:60px;
+  box-shadow:0 12px 48px rgba(232,164,39,0.35);
+  text-align:center;}
+.note{position:relative;z-index:2;font-size:22px;color:#4a5580;text-align:center;}
+.note span{color:#7a8bbd;}
+</style></head><body><div class="wrap">
+  <div class="glow-ring"></div><div class="glow-ring2"></div><div class="glow-core"></div>
+  <div class="urgency">⚠️ מקומות מוגבלים לסמסטר הקרוב</div>
+  <div class="title">הזמינו<br><span>שיעור ראשון</span><br>עכשיו</div>
+  <div class="sub">שיעור היכרות ראשון — ואתם כבר תרגישו את ההבדל</div>
+  <div class="feats">
+    <div class="feat"><span class="fi">🤖</span><span>בינה מלאכותית</span></div>
+    <div class="feat"><span class="fi">🎯</span><span>יחס אישי</span></div>
+    <div class="feat"><span class="fi">📈</span><span>תוצאות אמיתיות</span></div>
+    <div class="feat"><span class="fi">💳</span><span>₪120 לשיעור</span></div>
+  </div>
+  <div class="divider"></div>
+  <div class="big-cta">💬 לוואטסאפ — הזמינו עכשיו</div>
+  <div class="note">ניקול וליאור · <span>מזומן או ביט · גילאי יסודי עד תיכון</span></div>
+</div></body></html>

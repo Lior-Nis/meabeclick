@@ -1,0 +1,786 @@
+{
+  "id": "math-5u",
+  "version": 1,
+  "subject": "מתמטיקה",
+  "track": "5 יח\"ל",
+  "questionnaires": [
+    "35571",
+    "35572"
+  ],
+  "source": "docs/superpowers/research/2026-09-12-israeli-math-curriculum.md",
+  "reviewed": null,
+  "grades": [
+    "כיתה י",
+    "כיתה יא",
+    "כיתה יב"
+  ],
+  "topics": [
+    {
+      "key": "func",
+      "title": "פונקציות וקדם אנליזה",
+      "branches": [
+        {
+          "key": "func.basics",
+          "title": "פונקציה, גרף ותכונות",
+          "skills": [
+            {
+              "key": "func.basics.linquad",
+              "title": "פונקציה לינארית וריבועית – הצגה גרפית ואלגברית",
+              "gloss": "linear and quadratic functions, graphical and algebraic",
+              "requires": []
+            },
+            {
+              "key": "func.basics.graph",
+              "title": "גרף פונקציה: נקודות חיתוך, תחומי חיוביות ושליליות, עלייה וירידה וקיצון",
+              "gloss": "reading function properties without calculus",
+              "requires": [
+                "func.basics.linquad"
+              ]
+            },
+            {
+              "key": "func.basics.domain",
+              "title": "תחום הגדרה",
+              "gloss": "domain",
+              "requires": [
+                "func.basics.graph"
+              ]
+            },
+            {
+              "key": "func.basics.power",
+              "title": "פונקציית חזקה; פונקציה זוגית ואי-זוגית",
+              "gloss": "power functions, even/odd",
+              "requires": [
+                "func.basics.graph"
+              ]
+            },
+            {
+              "key": "func.basics.transform",
+              "title": "פעולות על פונקציות: הזזה, מתיחה, כיווץ, שיקוף וערך מוחלט",
+              "gloss": "transformations, absolute value of a function",
+              "requires": [
+                "func.basics.power"
+              ]
+            },
+            {
+              "key": "func.basics.polyshape",
+              "title": "חקירה איכותנית של פולינום כמכפלת גורמים; פתרון אי-שוויונות בדרך גרפית",
+              "gloss": "qualitative analysis of a factored polynomial; graphical inequalities",
+              "requires": [
+                "func.basics.power"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "func.root",
+          "title": "פונקציית שורש",
+          "skills": [
+            {
+              "key": "func.root.pre",
+              "title": "היכרות עם פונקציית שורש וקדם אנליזה שלה",
+              "gloss": "square-root function, pre-analysis",
+              "requires": [
+                "func.basics.domain",
+                "func.basics.transform"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "func.rational",
+          "title": "פונקציה רציונלית",
+          "skills": [
+            {
+              "key": "func.rational.pre",
+              "title": "קדם אנליזה של פונקציה רציונלית ואסימפטוטות",
+              "gloss": "pre-analysis of rational functions, asymptotes",
+              "requires": [
+                "func.basics.domain",
+                "func.basics.transform"
+              ]
+            },
+            {
+              "key": "func.rational.removable",
+              "title": "נקודת אי-רציפות סליקה",
+              "gloss": "removable discontinuity",
+              "requires": [
+                "func.rational.pre"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "func.explog",
+          "title": "מעריכית ולוגריתמית",
+          "skills": [
+            {
+              "key": "func.explog.algebra",
+              "title": "אלגברה של חזקות ולוגריתמים",
+              "gloss": "exp/log algebra",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "calc",
+      "title": "חשבון דיפרנציאלי",
+      "branches": [
+        {
+          "key": "calc.meaning",
+          "title": "הנגזרת ומשמעותה",
+          "skills": [
+            {
+              "key": "calc.meaning.rate",
+              "title": "הנגזרת כקצב שינוי; הגדרת הנגזרת בנקודה ומשמעותה הגאומטרית",
+              "gloss": "derivative as rate of change, definition, slope meaning",
+              "requires": [
+                "func.basics.graph"
+              ]
+            },
+            {
+              "key": "calc.meaning.tangent",
+              "title": "משוואת משיק בנקודה שעל גרף הפונקציה",
+              "gloss": "tangent line at a point on the graph",
+              "requires": [
+                "calc.rules.power"
+              ]
+            },
+            {
+              "key": "calc.meaning.graphs",
+              "title": "הקשר בין גרף הפונקציה לגרף הנגזרת",
+              "gloss": "graph of f vs graph of f’",
+              "requires": [
+                "calc.investigate.polynomial"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.rules",
+          "title": "כללי גזירה",
+          "skills": [
+            {
+              "key": "calc.rules.power",
+              "title": "נגזרת של חזקה, סכום והפרש, וכפל בקבוע",
+              "gloss": "basic differentiation rules",
+              "requires": [
+                "calc.meaning.rate"
+              ]
+            },
+            {
+              "key": "calc.rules.product",
+              "title": "נגזרת של מכפלת פונקציות והרכבת פונקציות",
+              "gloss": "product and chain rule",
+              "requires": [
+                "calc.rules.power"
+              ]
+            },
+            {
+              "key": "calc.rules.root",
+              "title": "נגזרת של פונקציית שורש ויישומיה",
+              "gloss": "derivative of root functions",
+              "requires": [
+                "calc.rules.product",
+                "func.root.pre"
+              ]
+            },
+            {
+              "key": "calc.rules.quotient",
+              "title": "נגזרת של מנת פונקציות ויישומיה",
+              "gloss": "quotient rule",
+              "requires": [
+                "calc.rules.product",
+                "func.rational.pre"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.investigate",
+          "title": "חקירת פונקציה",
+          "skills": [
+            {
+              "key": "calc.investigate.polynomial",
+              "title": "חקירת הפונקציה הפולינומיאלית",
+              "gloss": "polynomial investigation",
+              "requires": [
+                "calc.rules.power",
+                "func.basics.domain"
+              ]
+            },
+            {
+              "key": "calc.investigate.parameter",
+              "title": "שימוש בפרמטר בחקירת פונקציה",
+              "gloss": "parameters in investigation",
+              "requires": [
+                "calc.investigate.polynomial"
+              ]
+            },
+            {
+              "key": "calc.investigate.asymptotic",
+              "title": "התנהגות הפונקציה בסביבת נקודות אי-הגדרה ובקצוות תחום ההגדרה",
+              "gloss": "end behaviour, deeper rational/root investigation",
+              "requires": [
+                "func.rational.pre",
+                "calc.rules.root"
+              ]
+            },
+            {
+              "key": "calc.investigate.combined",
+              "title": "חקירת פונקציות המשלבות מנה, מכפלה, סכום, הפרש והרכבה",
+              "gloss": "combined-function investigation",
+              "requires": [
+                "calc.rules.quotient",
+                "calc.investigate.asymptotic"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.extrema",
+          "title": "בעיות קיצון",
+          "skills": [
+            {
+              "key": "calc.extrema.polynomial",
+              "title": "בעיות קיצון בפונקציית פולינום",
+              "gloss": "optimisation with polynomials",
+              "requires": [
+                "calc.investigate.polynomial"
+              ]
+            },
+            {
+              "key": "calc.extrema.root",
+              "title": "בעיות קיצון בפונקציית שורש",
+              "gloss": "optimisation with roots",
+              "requires": [
+                "calc.rules.root"
+              ]
+            },
+            {
+              "key": "calc.extrema.rational",
+              "title": "בעיות קיצון בפונקציה רציונלית",
+              "gloss": "rational optimisation",
+              "requires": [
+                "calc.rules.quotient"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.second",
+          "title": "נגזרת שנייה וקעירות",
+          "skills": [
+            {
+              "key": "calc.second.inflection",
+              "title": "השתנות קצב השינוי, נגזרת שנייה, קעירות ונקודות פיתול",
+              "gloss": "2nd derivative, concavity, inflection",
+              "requires": [
+                "calc.meaning.graphs"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.trig",
+          "title": "חקירת פונקציות טריגונומטריות",
+          "skills": [
+            {
+              "key": "calc.trig.investigate",
+              "title": "חקירת פונקציות טריגונומטריות: קדם אנליזה, נגזרת, משיק ובעיות קיצון",
+              "gloss": "trig calculus",
+              "requires": [
+                "trig.functions.identities",
+                "calc.rules.product"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "calc.explog",
+          "title": "גזירת מעריכית ולוגריתמית",
+          "skills": [
+            {
+              "key": "calc.explog.exponential",
+              "title": "נגזרת הפונקציה המעריכית (בסיס e), משיק וחקירה",
+              "gloss": "exponential calculus",
+              "requires": [
+                "func.explog.algebra",
+                "calc.rules.quotient"
+              ]
+            },
+            {
+              "key": "calc.explog.logarithmic",
+              "title": "נגזרת הפונקציה הלוגריתמית (בסיס e)",
+              "gloss": "logarithmic calculus",
+              "requires": [
+                "calc.explog.exponential"
+              ]
+            },
+            {
+              "key": "calc.explog.growth",
+              "title": "בעיות גדילה ודעיכה",
+              "gloss": "growth and decay",
+              "requires": [
+                "func.explog.algebra"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "integral",
+      "title": "חשבון אינטגרלי",
+      "branches": [
+        {
+          "key": "integral.basics",
+          "title": "פונקציה קדומה ואינטגרל",
+          "skills": [
+            {
+              "key": "integral.basics.antiderivative",
+              "title": "פונקציה קדומה ואינטגרל לא מסוים",
+              "gloss": "antiderivative",
+              "requires": [
+                "calc.rules.power"
+              ]
+            },
+            {
+              "key": "integral.basics.definite",
+              "title": "אינטגרל מסוים ושטחים בין גרפים",
+              "gloss": "definite integral, areas",
+              "requires": [
+                "integral.basics.antiderivative"
+              ]
+            },
+            {
+              "key": "integral.basics.explog",
+              "title": "אינטגרלים של פונקציות מעריכיות ולוגריתמיות",
+              "gloss": "exp/log integrals",
+              "requires": [
+                "integral.basics.definite",
+                "calc.explog.exponential",
+                "calc.explog.logarithmic"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "geo",
+      "title": "גיאומטריה של המישור",
+      "branches": [
+        {
+          "key": "geo.lines",
+          "title": "קווים מיוחדים ויחסים",
+          "skills": [
+            {
+              "key": "geo.lines.review",
+              "title": "חזרה והעמקה בנושאי משולשים ומרובעים",
+              "gloss": "triangle/quadrilateral facts from middle school",
+              "requires": []
+            },
+            {
+              "key": "geo.lines.midseg",
+              "title": "קטע אמצעים במשולש ובטרפז",
+              "gloss": "midsegments",
+              "requires": [
+                "geo.lines.review"
+              ]
+            },
+            {
+              "key": "geo.lines.loci",
+              "title": "מקומות גאומטריים: מעגל, אנך אמצעי, חוצה זווית וישרים מקבילים",
+              "gloss": "loci",
+              "requires": [
+                "geo.lines.review"
+              ]
+            },
+            {
+              "key": "geo.lines.concurrency",
+              "title": "קווים מיוחדים במשולש: מפגש התיכונים, חוצי הזוויות, האנכים האמצעיים והגבהים",
+              "gloss": "concurrency points",
+              "requires": [
+                "geo.lines.loci"
+              ]
+            },
+            {
+              "key": "geo.lines.thales",
+              "title": "פרופורציה; משפט תאלס ומשפט הפוך",
+              "gloss": "Thales (intercept theorem)",
+              "requires": [
+                "geo.lines.midseg"
+              ]
+            },
+            {
+              "key": "geo.lines.bisector",
+              "title": "משפט חוצה זווית פנימית במשולש ומשפט הפוך",
+              "gloss": "angle-bisector theorem",
+              "requires": [
+                "geo.lines.thales"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.similar",
+          "title": "חפיפה ודמיון",
+          "skills": [
+            {
+              "key": "geo.similar.congruence4",
+              "title": "משפט חפיפה רביעי (צ.צ.ז)",
+              "gloss": "4th congruence theorem",
+              "requires": [
+                "geo.lines.review"
+              ]
+            },
+            {
+              "key": "geo.similar.criteria",
+              "title": "דמיון משולשים: שלושת משפטי הדמיון",
+              "gloss": "similarity criteria",
+              "requires": [
+                "geo.lines.thales"
+              ]
+            },
+            {
+              "key": "geo.similar.ratios",
+              "title": "היחס במשולשים דומים: גבהים, תיכונים, חוצי זוויות, היקפים ושטחים",
+              "gloss": "ratios in similar triangles",
+              "requires": [
+                "geo.similar.criteria"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.circle",
+          "title": "מעגל",
+          "skills": [
+            {
+              "key": "geo.circle.angles",
+              "title": "מעגל: קשתות, מיתרים וזוויות במעגל",
+              "gloss": "chords, arcs, central/inscribed angles",
+              "requires": [
+                "geo.lines.loci"
+              ]
+            },
+            {
+              "key": "geo.circle.tangent",
+              "title": "משיק למעגל",
+              "gloss": "tangent theorems",
+              "requires": [
+                "geo.circle.angles"
+              ]
+            },
+            {
+              "key": "geo.circle.cyclic",
+              "title": "משולש חסום במעגל; מרובע חסום במעגל",
+              "gloss": "cyclic triangle/quadrilateral",
+              "requires": [
+                "geo.lines.concurrency",
+                "geo.circle.angles"
+              ]
+            },
+            {
+              "key": "geo.circle.incircle",
+              "title": "משולש חוסם מעגל; מרובע חוסם מעגל",
+              "gloss": "incircle / tangential quadrilateral",
+              "requires": [
+                "geo.lines.concurrency",
+                "geo.circle.tangent"
+              ]
+            },
+            {
+              "key": "geo.circle.power",
+              "title": "דמיון משולשים במעגל: מיתרים נחתכים, חותך ומשיק",
+              "gloss": "power-of-a-point results",
+              "requires": [
+                "geo.similar.criteria",
+                "geo.circle.angles"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.proof",
+          "title": "מיומנויות הוכחה",
+          "skills": [
+            {
+              "key": "geo.proof.technique",
+              "title": "מיומנויות הוכחה: משפט ומשפט הפוך, הוכחה בדרך השלילה, תנאי הכרחי ומספיק",
+              "gloss": "proof technique",
+              "requires": [
+                "geo.lines.review"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "trig",
+      "title": "טריגונומטריה",
+      "branches": [
+        {
+          "key": "trig.right",
+          "title": "משולש ישר זווית",
+          "skills": [
+            {
+              "key": "trig.right.ratios",
+              "title": "פונקציות טריגונומטריות של זווית חדה במשולש ישר זווית",
+              "gloss": "trig ratios in a right triangle",
+              "requires": [
+                "geo.similar.criteria"
+              ]
+            },
+            {
+              "key": "trig.right.applications",
+              "title": "צורות המתפרקות למשולשים ישרי זווית; חישובי שטחים; שיפוע ישר כטנגנס הזווית",
+              "gloss": "right-triangle applications",
+              "requires": [
+                "trig.right.ratios"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "trig.general",
+          "title": "משולש כללי",
+          "skills": [
+            {
+              "key": "trig.general.area",
+              "title": "שטח משולש לפי sinα; משפט הסינוסים",
+              "gloss": "triangle area formula, sine law",
+              "requires": [
+                "trig.right.ratios"
+              ]
+            },
+            {
+              "key": "trig.general.cosine",
+              "title": "משפט הקוסינוסים",
+              "gloss": "cosine law",
+              "requires": [
+                "trig.general.area"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "trig.functions",
+          "title": "פונקציות טריגונומטריות",
+          "skills": [
+            {
+              "key": "trig.functions.unitcircle",
+              "title": "מעגל היחידה: הגדרת הפונקציות, תכונות, גרפים וזהויות בסיסיות",
+              "gloss": "unit circle, trig function properties",
+              "requires": [
+                "trig.right.ratios"
+              ]
+            },
+            {
+              "key": "trig.functions.identities",
+              "title": "זהויות ומשוואות טריגונומטריות ויישומן בבעיות גאומטריות",
+              "gloss": "trig identities and equations",
+              "requires": [
+                "trig.functions.unitcircle"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "analytic",
+      "title": "גיאומטריה אנליטית",
+      "branches": [
+        {
+          "key": "analytic.line",
+          "title": "נקודות וישרים",
+          "skills": [
+            {
+              "key": "analytic.line.points",
+              "title": "נקודות, קטעים, אמצע קטע ומרחק בין נקודות",
+              "gloss": "points, segments, midpoint, distance",
+              "requires": []
+            },
+            {
+              "key": "analytic.line.equation",
+              "title": "ישרים: שיפוע, משוואת ישר, ישרים מקבילים ומאונכים",
+              "gloss": "line slope and equation, parallel/perpendicular",
+              "requires": [
+                "analytic.line.points"
+              ]
+            },
+            {
+              "key": "analytic.line.combined",
+              "title": "שילוב גאומטריה אנליטית וגאומטריה של המישור",
+              "gloss": "combining analytic and Euclidean geometry",
+              "requires": [
+                "analytic.line.equation",
+                "geo.lines.review"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "analytic.circle",
+          "title": "מעגל",
+          "skills": [
+            {
+              "key": "analytic.circle.equation",
+              "title": "משוואה קנונית של מעגל",
+              "gloss": "canonical circle equation",
+              "requires": [
+                "analytic.line.points"
+              ]
+            },
+            {
+              "key": "analytic.circle.tangent",
+              "title": "מצב הדדי בין ישר למעגל ומשיק למעגל בנקודה שעליו",
+              "gloss": "line-circle relations, tangent to a circle",
+              "requires": [
+                "analytic.circle.equation",
+                "geo.circle.tangent"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "analytic.more",
+          "title": "מרחקים ומקומות גאומטריים",
+          "skills": [
+            {
+              "key": "analytic.more.distance",
+              "title": "חלוקת קטע ביחס נתון; מרחק נקודה מישר; מרחק בין ישרים מקבילים",
+              "gloss": "segment division, point-line distance, distance between parallels",
+              "requires": [
+                "analytic.line.equation"
+              ]
+            },
+            {
+              "key": "analytic.more.loci",
+              "title": "מקומות גאומטריים: ישר או מעגל",
+              "gloss": "geometric loci (line or circle)",
+              "requires": [
+                "analytic.circle.equation"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "prob",
+      "title": "הסתברות",
+      "branches": [
+        {
+          "key": "prob.basics",
+          "title": "מרחב מדגם ומאורעות",
+          "skills": [
+            {
+              "key": "prob.basics.space",
+              "title": "הגדרת הסתברות כשכיחות יחסית; מרחב המדגם; מאורע ומאורע משלים",
+              "gloss": "probability as relative frequency; sample space; event; complement",
+              "requires": []
+            },
+            {
+              "key": "prob.basics.disjoint",
+              "title": "מאורעות זרים ואיחוד מאורעות זרים",
+              "gloss": "disjoint events, union",
+              "requires": [
+                "prob.basics.space"
+              ]
+            },
+            {
+              "key": "prob.basics.twostage",
+              "title": "מאורעות דו-שלביים; מרחב מדגם כזוגות סדורים",
+              "gloss": "two-stage events, sample space as ordered pairs",
+              "requires": [
+                "prob.basics.space"
+              ]
+            },
+            {
+              "key": "prob.basics.operations",
+              "title": "פעולות על מאורעות: איחוד, חיתוך ודיאגרמת ון",
+              "gloss": "operations on events, Venn diagrams",
+              "requires": [
+                "prob.basics.disjoint"
+              ]
+            },
+            {
+              "key": "prob.basics.area",
+              "title": "הסתברות כיחס שטחים (התפלגות אחידה)",
+              "gloss": "probability as area ratio (uniform distribution)",
+              "requires": [
+                "prob.basics.space"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "prob.conditional",
+          "title": "תלות והסתברות מותנית",
+          "skills": [
+            {
+              "key": "prob.conditional.independence",
+              "title": "חיתוך מאורעות בלתי תלויים ותלויים",
+              "gloss": "intersection of independent and dependent events",
+              "requires": [
+                "prob.basics.twostage"
+              ]
+            },
+            {
+              "key": "prob.conditional.given",
+              "title": "הסתברות מותנית P(A/B)",
+              "gloss": "conditional probability",
+              "requires": [
+                "prob.conditional.independence"
+              ]
+            },
+            {
+              "key": "prob.conditional.table",
+              "title": "טבלה דו-ממדית",
+              "gloss": "two-way table",
+              "requires": [
+                "prob.conditional.given"
+              ]
+            },
+            {
+              "key": "prob.conditional.tree",
+              "title": "עץ הסתברויות",
+              "gloss": "probability tree",
+              "requires": [
+                "prob.conditional.given"
+              ]
+            },
+            {
+              "key": "prob.conditional.bayes",
+              "title": "נוסחת ההסתברות השלמה ונוסחת בייס",
+              "gloss": "total probability and Bayes formula",
+              "requires": [
+                "prob.conditional.table",
+                "prob.conditional.tree"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "prob.binomial",
+          "title": "התפלגות בינומית",
+          "skills": [
+            {
+              "key": "prob.binomial.bernoulli",
+              "title": "מאורעות רב-שלביים ונוסחת ברנולי (התפלגות בינומית)",
+              "gloss": "multi-stage events, Bernoulli formula (binomial distribution)",
+              "requires": [
+                "prob.conditional.tree"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

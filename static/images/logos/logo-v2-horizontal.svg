@@ -1,0 +1,35 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 300 130" width="300" height="130">
+  <defs>
+    <style>
+      .cursor2 { animation: cp 2s ease-in-out infinite; }
+      .r2a { animation: rp2 2s ease-out infinite; }
+      .r2b { animation: rp2 2s ease-out infinite 0.5s; }
+      .r2c { animation: rp2 2s ease-out infinite 1s; }
+      @keyframes cp { 0%,100%{opacity:1} 45%{opacity:0.4} 50%{opacity:1} }
+      @keyframes rp2 { 0%{opacity:0.65} 100%{opacity:0;stroke-dashoffset:-30} }
+    </style>
+    <pattern id="d2" width="16" height="16" patternUnits="userSpaceOnUse">
+      <circle cx="8" cy="8" r="0.9" fill="rgba(0,128,128,0.06)"/>
+    </pattern>
+  </defs>
+
+  <rect width="300" height="130" fill="#FEF9E7" rx="18"/>
+  <rect width="300" height="130" fill="url(#d2)" rx="18"/>
+
+  <!-- "1" -->
+  <line x1="28" y1="22" x2="28" y2="100" stroke="#008080" stroke-width="10" stroke-linecap="round"/>
+  <line x1="21" y1="22" x2="35" y2="22"  stroke="#008080" stroke-width="8"  stroke-linecap="round"/>
+  <line x1="17" y1="14" x2="39" y2="14"  stroke="#008080" stroke-width="5.5" stroke-linecap="round"/>
+  <!-- left "0" -->
+  <circle cx="83" cy="61" r="34" stroke="#008080" stroke-width="10" fill="none"/>
+  <!-- right "0" -->
+  <circle cx="173" cy="61" r="34" stroke="#008080" stroke-width="10" fill="none"/>
+  <!-- cursor -->
+  <g class="cursor2">
+    <polygon points="184,34 184,72 192,65 195,76 202,73 199,62 207,62"
+             fill="#FF7F50" stroke="#FEF9E7" stroke-width="2" stroke-linejoin="round"/>
+  </g>
+  <path class="r2a" d="M210,44 A18,18 0 0 1 210,78" stroke="#FF7F50" stroke-width="2.5" fill="none" stroke-linecap="round" stroke-dasharray="14 5"/>
+  <path class="r2b" d="M218,36 A28,28 0 0 1 218,86" stroke="#FF7F50" stroke-width="1.8" fill="none" stroke-linecap="round" stroke-dasharray="10 7"/>
+  <path class="r2c" d="M226,28 A38,38 0 0 1 226,94" stroke="#FF7F50" stroke-width="1.2" fill="none" stroke-linecap="round" stroke-dasharray="7 9"/>
+</svg>

@@ -1,0 +1,12 @@
+import puppeteer from '../2025-v2/node_modules/puppeteer/lib/esm/puppeteer/puppeteer.js';
+import { resolve } from 'node:path';
+const [file, out, f] = process.argv.slice(2);
+const b = await puppeteer.launch({ args:['--no-sandbox'] });
+const p = await b.newPage();
+await p.setViewport({ width:1080, height:1080, deviceScaleFactor:1 });
+await p.goto('file://'+resolve(file), { waitUntil:'networkidle0' });
+await new Promise(r=>setTimeout(r,700));
+await p.evaluate(n=>window.setFrame(n), Number(f));
+await new Promise(r=>setTimeout(r,400));
+await p.screenshot({ path: out });
+await b.close(); console.log('ok', out);

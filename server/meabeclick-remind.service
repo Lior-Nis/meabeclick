@@ -1,0 +1,18 @@
+[Unit]
+Description=מאה בקליק — WhatsApp reminder to update the calendar before booking opens
+After=network-online.target
+
+[Service]
+Type=oneshot
+# The app listens on 3000 inside the compose network and is published on
+# 127.0.0.1 — see docker-compose.yml. Curling localhost keeps this request
+# off the public interface entirely.
+#
+# A dedicated file holding ONLY CRON_KEY, not the app's full .env — see
+# meabeclick-report-prompt.service's comment on this same line for why.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+# /api/remind is a GET, not a POST — leave off -X so curl's default verb
+# stands; changing this route's method is not part of this task.
+ExecStart=/usr/bin/curl -sS --fail --max-time 60 \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/remind

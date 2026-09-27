@@ -1,0 +1,134 @@
+/* ============================================================
+   מאה בקליק — shared design tokens
+   Extracted from pages/styles.css (the design language that already
+   powers the biggest page) with the handful of values that drifted
+   across booking.html / login.html / portal.html / games/game.css
+   folded back in. See the Task 16/17 report for the consolidation
+   decisions made here.
+   ============================================================ */
+
+:root {
+  color-scheme: light;
+
+  /* Backgrounds */
+  --bg-base: #f8fafc;
+  --bg-surface: #eff6ff;
+  --bg-card: #ffffff;
+  --bg-card-solid: #f8fafc;
+
+  /* Primary accent — soft blue (headings, links, brand marks) */
+  --accent: #2563eb;
+  --accent-soft: #3b82f6;
+  /* One step darker, for SMALL text sitting on --accent-dim or another
+     tinted fill: --accent itself lands at 4.44:1 there, just under AA. */
+  --accent-deep: #1d4ed8;
+  --accent-dim: rgba(37, 99, 235, 0.08);
+  --accent-glow: rgba(37, 99, 235, 0.18);
+
+  /* Secondary accent — peach-orange. FILLS ONLY: a button ground under
+     --btn-text (5.78:1). As text, a border or a focus ring on a light
+     ground it measures 2.5:1 and fails AA — use --accent2-strong there. */
+  --accent2: #fa8231;
+  --accent2-dim: rgba(250, 130, 49, 0.1);
+  --accent2-glow: rgba(250, 130, 49, 0.25);
+  /* The peach as TEXT, BORDER or FOCUS RING. Same hue family, deep enough
+     for 4.5:1 on white, the page background, the blue surface and the
+     peach wash (--accent2-dim) over either — 4.76:1 on the darkest of
+     those, the wash over the blue surface. Checked by
+     tests/unit/tokens-contrast.test.mjs. Same discipline as
+     --accent3-strong and --accent-deep below. */
+  --accent2-strong: #b83d0b;
+
+  /* Tertiary accent — mint (progress, success, "done" states).
+     Fails contrast as small text on light bg — use for fills/borders only. */
+  --accent3: #10b981;
+  --accent3-dim: rgba(16, 185, 129, 0.1);
+  --accent3-glow: rgba(16, 185, 129, 0.22);
+  /* Darker mint for "done" text/badges — booking.html's completed step dot,
+     styles.css's homework-done badge and game.css's --mint-t all agreed on
+     this exact value independently; it gets its own token instead of the
+     three call sites repeating the literal. */
+  --accent3-strong: #047857;
+
+  /* Button text on peach — dark slate; white on #FA8231 is only 2.5:1 */
+  --btn-text: #1e293b;
+
+  /* Text */
+  --text-primary: #1e293b;
+  --text-muted: #64748b;
+  --text-faint: #94a3b8;
+  /* Muted text ON A TINTED SURFACE. --text-muted clears 4.5:1 on white
+     (4.76) but only reaches 4.37 on --bg-surface, so body copy inside a
+     blue-tinted panel needs this instead. Same discipline as
+     --accent3-strong above: the weaker value keeps its name for the case it
+     is correct in, and the stronger one gets its own token rather than
+     every call site repeating a literal. */
+  --text-muted-strong: #475569;
+
+  /* Destructive / error — booking.html and login.html each hardcoded this
+     red inline; consolidated into one token. */
+  --danger: #dc2626;
+
+  /* Borders — see report: styles.css alone used two tiers (#CBD5E1 for
+     emphasis, #E2E8F0 for card outlines); booking/login/portal/game.css
+     each only ever had the lighter #E2E8F0. The lighter value keeps the
+     unqualified --border name since 4 of 5 stylesheets already meant that
+     when they wrote it; the emphasis tier moves to --border-strong. This
+     is a rename only — every rule that used the darker tier now says
+     --border-strong explicitly, so index.html renders pixel-identical. */
+  --border: #e2e8f0;
+  --border-strong: #cbd5e1;
+
+  /* Shadows */
+  --shadow: rgba(30, 41, 59, 0.06);
+  --shadow-md: rgba(30, 41, 59, 0.12);
+  --shadow-accent: rgba(37, 99, 235, 0.18);
+
+  /* Nav */
+  --nav-bg: rgba(248, 250, 252, 0.92);
+
+  /* Pricing featured (peach) */
+  --pricing-featured-bg: rgba(250, 130, 49, 0.07);
+  --pricing-featured-border: rgba(250, 130, 49, 0.4);
+
+  /* Radii */
+  --r-sm: 10px;
+  --r-md: 16px;
+  --r-lg: 22px;
+  --r-xl: 32px;
+}
+
+/* ── Reset & base ──────────────────────────────────────────── */
+*,
+*::before,
+*::after {
+  box-sizing: border-box;
+  margin: 0;
+  padding: 0;
+}
+
+html {
+  scroll-behavior: smooth;
+}
+
+body {
+  direction: rtl;
+  font-family: 'Heebo', sans-serif;
+  background: var(--bg-base);
+  color: var(--text-primary);
+  min-height: 100vh;
+}
+
+img {
+  display: block;
+  max-width: 100%;
+}
+
+a {
+  color: var(--accent);
+  text-decoration: none;
+}
+
+ul {
+  list-style: none;
+}

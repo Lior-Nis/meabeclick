@@ -1,0 +1,53 @@
+<svg xmlns="http://www.w3.org/2000/svg" viewBox="0 0 400 160" width="400" height="160">
+  <defs>
+    <style>
+      .cursor-arrow { animation: clickPulse 2.2s ease-in-out infinite; }
+      .ripple-a { animation: rippleOut 2.2s ease-out infinite; }
+      .ripple-b { animation: rippleOut 2.2s ease-out infinite 0.55s; }
+      .ripple-c { animation: rippleOut 2.2s ease-out infinite 1.1s; }
+      @keyframes clickPulse {
+        0%, 100% { opacity: 1; }
+        40% { opacity: 0.5; }
+        45% { opacity: 1; }
+      }
+      @keyframes rippleOut {
+        0%   { stroke-dashoffset: 0; opacity: 0.7; }
+        100% { stroke-dashoffset: -40; opacity: 0; }
+      }
+    </style>
+    <pattern id="dots" width="18" height="18" patternUnits="userSpaceOnUse">
+      <circle cx="9" cy="9" r="1" fill="rgba(0,128,128,0.07)"/>
+    </pattern>
+  </defs>
+
+  <rect width="400" height="160" fill="#FEF9E7" rx="20"/>
+  <rect width="400" height="160" fill="url(#dots)" rx="20"/>
+
+  <!-- "1" with serif cap -->
+  <line x1="52"  y1="28"  x2="52"  y2="128" stroke="#008080" stroke-width="12" stroke-linecap="round"/>
+  <line x1="44"  y1="28"  x2="60"  y2="28"  stroke="#008080" stroke-width="9"  stroke-linecap="round"/>
+  <line x1="40"  y1="19"  x2="64"  y2="19"  stroke="#008080" stroke-width="6"  stroke-linecap="round"/>
+
+  <!-- left "0" -->
+  <circle cx="125" cy="78" r="42" stroke="#008080" stroke-width="12" fill="none"/>
+
+  <!-- right "0" -->
+  <circle cx="232" cy="78" r="42" stroke="#008080" stroke-width="12" fill="none"/>
+
+  <!-- Coral cursor arrow -->
+  <g class="cursor-arrow">
+    <polygon
+      points="247,44  247,88  256,79  260,92  268,89  264,76  274,76"
+      fill="#FF7F50"
+      stroke="#FEF9E7"
+      stroke-width="2.5"
+      stroke-linejoin="round"
+    />
+  </g>
+
+  <!-- Click ripple arcs -->
+  <path class="ripple-a" d="M 278,56 A 24,24 0 0 1 278,96"  stroke="#FF7F50" stroke-width="3"   fill="none" stroke-linecap="round" stroke-dasharray="18 6"/>
+  <path class="ripple-b" d="M 287,47 A 36,36 0 0 1 287,105" stroke="#FF7F50" stroke-width="2.2" fill="none" stroke-linecap="round" stroke-dasharray="14 8"/>
+  <path class="ripple-c" d="M 297,38 A 50,50 0 0 1 297,114" stroke="#FF7F50" stroke-width="1.5" fill="none" stroke-linecap="round" stroke-dasharray="10 10"/>
+
+</svg>

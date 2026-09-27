@@ -1,0 +1,22 @@
+[Unit]
+Description=מאה בקליק — email the tutor about lessons awaiting a report
+After=network-online.target
+
+[Service]
+Type=oneshot
+# The app listens on 3000 inside the compose network and is published on
+# 127.0.0.1 — see docker-compose.yml. Curling localhost keeps this request
+# off the public interface entirely.
+#
+# Points at a dedicated file holding ONLY CRON_KEY, not the app's full
+# .env: this unit needs one variable, and `systemctl --user show` prints
+# every name EnvironmentFile loads — pulling in ADMIN_PASSWORD,
+# SESSION_SECRET and the Gmail credentials for the sake of one value would
+# put all of them somewhere a `systemctl show` can print them. systemd's
+# env-file parser also differs from dotenv's, so a value docker accepts can
+# make systemd silently skip a line — including this one — which reads here
+# as a 401 with no obvious cause.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+ExecStart=/usr/bin/curl -sS --fail --max-time 60 -X POST \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/reports/prompt

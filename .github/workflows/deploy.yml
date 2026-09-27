@@ -1,0 +1,241 @@
+name: Deploy to VPS
+
+# Runs the VPS's own deploy step over SSH — the SSH key used here is scoped
+# to the meabeclick user (not root) and forced to run exactly this command
+# server-side (see meabeclick's ~/.ssh/authorized_keys), so a leaked key
+# can only ever trigger a redeploy of this repo, nothing else.
+#
+# CI builds and tests the image here, pushes it to GHCR, and only then
+# tells the VPS to deploy — the VPS no longer builds from git itself. This
+# means a broken build/test fails in CI, not on the box serving real
+# bookings.
+on:
+  push:
+    branches: [main]
+  # Pull requests run the same gates — tests, type-check, AND a real image
+  # build — but never push an image or deploy. Without this the checks only
+  # ever ran after merge, so "no checks reported" was the honest state of
+  # every PR and each one had to be verified by hand. Building the image here
+  # is deliberate: a Dockerfile or .dockerignore fault (a runtime bind mount
+  # left in the build context, say) fails no test and no type-check, and
+  # would otherwise surface as a broken deploy.
+  pull_request:
+    branches: [main]
+  workflow_dispatch: {}
+
+env:
+  # GHCR requires an all-lowercase image path; github.repository can have
+  # uppercase (this repo is Lior-Nis/meabeclick), so lowercase it below
+  # rather than hardcoding it here.
+  REGISTRY: ghcr.io
+
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    permissions:
+      contents: read
+      packages: write
+    outputs:
+      image: ${{ steps.image.outputs.name }}
+    steps:
+      - uses: actions/checkout@v4
+
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+          cache: npm
+
+      - name: Install dependencies
+        run: npm ci
+
+      # tests/characterization/harness.mjs spawns build/index.js (the
+      # adapter-node production build) for every characterization test, so
+      # the build must exist before npm test runs. Through Task 23 the
+      # suite could also spawn server/app.mjs (the pre-migration Express
+      # app) via a TARGET env var, needing no build step for that side;
+      # Task 24 deleted server/app.mjs once SvelteKit was cut over, so
+      # build/index.js is the only target left and this step is no longer
+      # optional.
+      - name: Build
+        run: npm run build
+
+      # Must be green BEFORE the image is built — a broken build must fail
+      # here, not on the VPS serving users. svelte-check is the
+      # sveltekit-side type/template check.
+      - name: Run tests
+        run: npm test
+
+      # Runs svelte-check and enforces a ceiling on WARNINGS as well as
+      # errors. `npm run check` alone ignored warnings, so the count drifted
+      # and each new one joined a pile nobody read — a pile that turned out
+      # to hold a real bug (see the script's header, and #79).
+      - name: Type-check
+        run: node scripts/check-warnings.mjs
+
+      - name: Compute lowercase image name
+        id: image
+        run: echo "name=${REGISTRY}/$(echo '${{ github.repository }}' | tr '[:upper:]' '[:lower:]')" >> "$GITHUB_OUTPUT"
+
+      - name: Log in to GHCR
+        if: github.event_name != 'pull_request'
+        uses: docker/login-action@v3
+        with:
+          registry: ${{ env.REGISTRY }}
+          username: ${{ github.actor }}
+          password: ${{ secrets.GITHUB_TOKEN }}
+
+      - uses: docker/setup-buildx-action@v3
+
+      - name: Build and push image
+        uses: docker/build-push-action@v6
+        with:
+          context: .
+          # Built on every event, pushed only when something is being
+          # released. A pull_request token is read-only for packages, and a
+          # tag per PR would fill the registry with images nothing deploys.
+          push: ${{ github.event_name != 'pull_request' }}
+          tags: |
+            ${{ steps.image.outputs.name }}:${{ github.sha }}
+            ${{ steps.image.outputs.name }}:latest
+          cache-from: type=gha
+          cache-to: type=gha,mode=max
+
+  deploy:
+    needs: build
+    # Never on a pull request: this job triggers a real production deploy.
+    if: github.event_name != 'pull_request'
+    runs-on: ubuntu-latest
+    # One deploy touches the box at a time.
+    #
+    # Not a nicety. The forced command is `git pull && export
+    # APP_TAG=$(git rev-parse HEAD) && docker compose pull && up`, and two of
+    # those interleaving read each other's state: deploy A pulls commit X,
+    # deploy B pulls commit Y, and A then resolves APP_TAG to Y — shipping an
+    # image that does not match the checkout A was deploying. Two `docker
+    # compose up` runs racing on one project is its own hazard.
+    #
+    # This is also the only difference between the deploys that have failed
+    # and the ones that have not: #27 and #28 merged forty seconds apart,
+    # their deploys overlapped, and both timed out; every deploy that ran
+    # alone has succeeded.
+    #
+    # cancel-in-progress stays false so a queued deploy waits rather than
+    # being dropped — the newest queued run wins, which is what you want.
+    concurrency:
+      group: vps-deploy
+      cancel-in-progress: false
+    permissions:
+      # Only to read main's current tip for the superseded check below.
+      contents: read
+    steps:
+      - name: Deploy over SSH
+        env:
+          GH_TOKEN: ${{ github.token }}
+        run: |
+          set -euo pipefail
+          mkdir -p ~/.ssh
+          chmod 700 ~/.ssh
+          printf '%s\n' "${{ secrets.DEPLOY_SSH_KEY }}" > ~/.ssh/deploy_key
+          chmod 600 ~/.ssh/deploy_key
+          echo "76.13.59.4 ssh-ed25519 AAAAC3NzaC1lZDI1NTE5AAAAIMbxyAgHjitpKzLCMUz3H0k4nnJ8o2XYJb7t2MEEDfJR" > ~/.ssh/known_hosts
+
+          # Is this run still the tip of main?
+          #
+          # The forced command derives APP_TAG from the box's HEAD after
+          # `git pull` — whatever main points at by the time it runs, not the
+          # commit that triggered this run. So when two PRs merge close
+          # together, the earlier run's deploy pulls the LATER commit and asks
+          # GHCR for an image that is still being built.
+          #
+          # That is not hypothetical: on 2026-09-18, #71 and #72 merged
+          # moments apart, and #71's deploy failed five times over three
+          # minutes on `failed to resolve reference ...:de1fff95...` — #72's
+          # image, not yet pushed. It then reported the VPS firewall as the
+          # likely cause, which was wrong and would have cost someone an
+          # afternoon. Production was fine throughout: #72's own run deployed.
+          #
+          # The concurrency group above serialises deploys; it cannot stop
+          # main moving between merge and deploy. So skip rather than fail:
+          # the newer commit's run is queued behind us and will deploy it.
+          # No actions/checkout in this job, so ask the API rather than a
+          # local repo. An empty answer (API hiccup) falls through to the
+          # deploy — skipping on an unknown is how you skip a real one.
+          tip=$(gh api "repos/${{ github.repository }}/commits/main" --jq .sha 2>/dev/null || true)
+          if [ -n "$tip" ] && [ "$tip" != "${{ github.sha }}" ]; then
+            echo "::notice::Superseded — main is now $tip, this run is for ${{ github.sha }}."
+            echo "::notice::Skipping; the run for $tip deploys both."
+            exit 0
+          fi
+          # The actual command run here doesn't matter — the server-side
+          # forced command overrides whatever we pass. It reads, as of
+          # 2026-09-20 (confirmed against the running container, which is
+          # a GHCR image tagged with a full commit SHA):
+          #
+          #   cd /home/meabeclick/mea-beclick && git pull --ff-only
+          #     && export APP_TAG=$(git rev-parse HEAD)
+          #     && docker compose pull app && docker compose up -d --no-build
+          #
+          # The two manual VPS steps this comment used to say were undone —
+          # `docker login ghcr.io` as meabeclick, and replacing the old
+          # build-from-source forced command — are both done. server/README.md
+          # has the detail.
+          #
+          # Note what that forced command derives APP_TAG from: the box's own
+          # HEAD after `git pull`, not the commit this workflow run is for.
+          # That is the race the "superseded" check above exists for.
+          attempt=0
+          while true; do
+            # Capture rather than stream, so the failure can be classified.
+            # Still shown in full either way.
+            if out=$(ssh -i ~/.ssh/deploy_key -o StrictHostKeyChecking=yes -o ConnectTimeout=20 meabeclick@76.13.59.4 deploy 2>&1); then
+              echo "$out"
+              break
+            fi
+            echo "$out"
+
+            # An image GHCR does not have is not a connectivity problem, and
+            # retrying cannot conjure it. It means the box's HEAD is a commit
+            # whose image has not been published — i.e. main moved on and the
+            # superseded check above raced us. Say so instead of sending
+            # someone to the firewall, and let the newer run deploy.
+            if printf '%s' "$out" | grep -q 'failed to resolve reference'; then
+              echo "::error::The box resolved APP_TAG to a commit whose image is not in GHCR yet." >&2
+              echo "::error::main moved ahead mid-deploy; the run for that newer commit will deploy it." >&2
+              exit 1
+            fi
+
+            # A diverged checkout is not transient either, and this one
+            # cost seven minutes and a firewall hunt on 2026-09-22 before
+            # anyone read past the retry message. `main` had been rewritten
+            # by `git filter-repo` to purge student records from history, so
+            # every commit hash changed and the box's `git pull --ff-only`
+            # aborted — correctly. Retrying a rewrite is retrying a fact.
+            #
+            # The box needs one manual reset; after that it fast-forwards
+            # normally again. Print the command rather than describing the
+            # situation, because the person reading this at the time is
+            # looking for something to run.
+            if printf '%s' "$out" | grep -q 'Not possible to fast-forward'; then
+              echo "::error::The box's checkout has diverged from main — history was rewritten, so it cannot fast-forward." >&2
+              echo "::error::Run once on the VPS, as meabeclick:" >&2
+              echo "::error::  cd /home/meabeclick/mea-beclick && git fetch origin && git reset --hard origin/main" >&2
+              echo "::error::Then re-run this job. Nothing is wrong with the network." >&2
+              exit 1
+            fi
+
+            attempt=$((attempt + 1))
+            if [ "$attempt" -ge 5 ]; then
+              # Two non-transient causes are classified above. Anything
+              # reaching here really did fail to connect five times, so the
+              # firewall is a fair first guess — but say it is a guess.
+              echo "::error::Deploy failed after 5 attempts over ~3 minutes, with no recognised cause in the output." >&2
+              echo "::error::If every attempt timed out before sshd answered, check the VPS's edge/cloud firewall, not just ufw." >&2
+              exit 1
+            fi
+            # Five attempts across ~3 minutes rather than three across ~70
+            # seconds. The observed failures were TCP connect timeouts with
+            # nothing reaching sshd at all, so the fix for a transient one is
+            # a wider window, not a shorter timeout.
+            echo "SSH attempt $attempt failed, retrying in 30s..."
+            sleep 30
+          done

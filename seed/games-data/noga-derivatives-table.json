@@ -1,0 +1,13 @@
+{
+  "title": "טבלת נגזרות",
+  "subject": "מתמטיקה · נגזרות",
+  "columns": ["הפונקציה f(x)", "הנגזרת f'(x)"],
+  "rows": [
+    { "label": "חזקה",   "cells": ["x³",     { "answer": "3x²" }] },
+    { "label": "קבוע",   "cells": ["9",      { "answer": "0" }] },
+    { "label": "קווית",  "cells": ["4x",     { "answer": "4" }] },
+    { "label": "שורש",   "cells": [{ "answer": "√x" }, "1/(2√x)"] },
+    { "label": "סינוס",  "cells": ["sin x",  { "answer": "cos x" }] },
+    { "label": "מעריכית","cells": ["eˣ",     { "answer": "eˣ" }] }
+  ]
+}

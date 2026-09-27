@@ -1,0 +1,115 @@
+<!DOCTYPE html>
+<html lang="he" dir="rtl"><head><meta charset="UTF-8">
+<link href="https://fonts.googleapis.com/css2?family=Secular+One&family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet">
+<style>
+  *{box-sizing:border-box;margin:0;padding:0}
+  body{width:1080px;height:1080px;direction:rtl;font-family:'Heebo',sans-serif;
+       background:#F8FAFC;color:#1E293B;overflow:hidden;position:relative}
+  .deco{position:absolute;pointer-events:none}
+  .wrap{position:relative;height:100%;padding:56px 64px;display:flex;flex-direction:column;z-index:2}
+  h1{font-family:'Secular One',sans-serif;font-size:96px;line-height:1.04;letter-spacing:-.01em}
+  h1 .hl{position:relative;display:inline-block;z-index:1}
+  h1 .hl::after{content:'';position:absolute;left:-6px;right:-6px;bottom:6px;height:24px;
+       background:#FDBA74;z-index:-1;border-radius:4px;transform:rotate(-1deg)}
+  .grow{flex:1}
+  .foot{display:flex;align-items:center;justify-content:space-between;z-index:3}
+  .brand{display:flex;align-items:center;gap:12px;font-family:'Secular One',sans-serif;
+       font-size:34px;color:#1E293B}
+  .phone{font-family:'Secular One',sans-serif;font-size:38px;color:#1E293B;direction:ltr;
+       background:#FA8231;padding:10px 26px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  .tap{font-family:'Secular One',sans-serif;font-size:31px;color:#1E293B;
+       background:#FA8231;padding:12px 28px;border:4px solid #1E293B;border-radius:999px;
+       box-shadow:6px 6px 0 rgba(30,41,59,.2)}
+  
+  .pop{opacity:0;transform:scale(.5) rotate(-8deg);transition:all .18s cubic-bezier(.34,1.6,.64,1)}
+  .pop.on{opacity:1;transform:none}
+  .slide{opacity:0;transform:translateX(60px) rotate(-3deg);transition:all .2s ease-out}
+  .slide.on{opacity:1;transform:none}
+  .rise{opacity:0;transform:translateY(26px);transition:all .2s ease-out}
+  .rise.on{opacity:1;transform:none}
+  .deco{opacity:0;transform:scale(.4);transition:all .22s cubic-bezier(.34,1.7,.64,1)}
+  .deco.on{opacity:1;transform:none}
+  .wobble.on{animation:none}
+  .card{position:relative;background:#FFFFFF;border:5px solid #1E293B;border-radius:12px;
+        padding:12px 22px;box-shadow:8px 9px 0 rgba(30,41,59,.16);display:flex;
+        align-items:center;gap:16px;font-size:33px;font-weight:800}
+  .card .n{width:48px;height:48px;flex:0 0 48px;border-radius:50%;background:#93C5FD;
+        border:4px solid #1E293B;display:flex;align-items:center;justify-content:center;
+        font-family:'Secular One';font-size:30px}
+  .card .eq{direction:ltr;flex:1;text-align:left;font-family:'Secular One'}
+  .card.bad{background:#FFF3E8;border-color:#FA8231;transform:rotate(-1.6deg) scale(1.03)}
+  .card.bad .n{background:#FA8231;color:#1E293B;border-color:#FA8231}
+  .card .x{color:#EA580C;font-size:46px;font-weight:900;opacity:0;transition:opacity .1s}
+  .card.bad .x{opacity:1}
+
+</style></head><body>
+  <div class="deco" id="d0" style="top:-70px;left:-70px;"><svg viewBox="0 0 320 320" style="width:320px;height:320px">
+      <circle cx="160" cy="160" r="160" fill="#BFDBFE" opacity=".85"/></svg></div>
+  <div class="deco" id="d1" style="top:40px;left:250px;transform:rotate(-12deg)"><svg viewBox="0 0 60 60" style="width:60px;height:60px">
+    <path d="M30,6 L36,24 L55,25 L40,36 L46,54 L30,43 L14,54 L20,36 L5,25 L24,24 Z"
+      fill="none" stroke="#FA8231" stroke-width="4.5" stroke-linejoin="round"/></svg></div>
+  <div class="deco" id="d2" style="top:430px;left:45px;"><svg viewBox="0 0 100 100" style="width:90px;height:90px">
+    <path d="M50,50 C50,42 58,40 62,46 C68,55 58,66 46,64 C30,61 24,44 34,30 C46,13 72,12 85,28"
+      fill="none" stroke="#FA8231" stroke-width="7" stroke-linecap="round"/></svg></div>
+  <div class="deco" id="d3" style="bottom:250px;left:40px;transform:rotate(6deg)"><svg viewBox="0 0 160 50" style="width:144px;height:45px">
+    <path d="M8,34 C34,10 44,44 68,22 C90,2 100,42 124,24 C140,12 148,30 154,26"
+      fill="none" stroke="#10B981" stroke-width="6" stroke-linecap="round"/></svg></div>
+  <div class="deco" id="d4" style="top:210px;left:35px;transform:rotate(-14deg)"><svg viewBox="0 0 40 130" style="width:34px;height:110.5px">
+    <rect x="10" y="22" width="20" height="82" fill="#FDBA74" stroke="#1E293B" stroke-width="4"/>
+    <path d="M10,22 L20,4 L30,22 Z" fill="#F8FAFC" stroke="#1E293B" stroke-width="4" stroke-linejoin="round"/>
+    <path d="M15,12 L20,4 L25,12 Z" fill="#1E293B"/>
+    <rect x="10" y="104" width="20" height="18" rx="3" fill="#FA8231" stroke="#1E293B" stroke-width="4"/></svg></div>
+  <div class="deco" id="d5" style="top:640px;right:-20px;"><svg viewBox="0 0 80 80" style="width:72px;height:72px">
+    <line x1="40" y1="40" x2="70" y2="40"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="61.21320343559643" y2="61.21320343559643"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="40" y2="70"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="18.786796564403577" y2="61.21320343559643"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="10" y2="40.00000000000001"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="18.78679656440357" y2="18.786796564403577"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="39.99999999999999" y2="10"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/><line x1="40" y1="40" x2="61.21320343559642" y2="18.78679656440357"
+        stroke="#FA8231" stroke-width="6" stroke-linecap="round" opacity=".9"/></svg></div>
+  <div class="wrap">
+    <div class="pop" id="k" style="align-self:flex-start;background:#FA8231;font-family:'Secular One';
+         font-size:29px;padding:12px 28px;border:4px solid #1E293B;border-radius:999px;
+         transform-origin:right center;box-shadow:6px 6px 0 rgba(30,41,59,.2)">🔍 ציד טעויות — משחק אמיתי מהאתר</div>
+    <h1 class="rise" id="h" style="margin-top:16px;font-size:66px">מי מוצא<br><span class="hl">את הטעות?</span></h1>
+    <div class="rise" id="q" style="font-size:28px;color:#64748B;margin-top:10px">
+      גזרו: f(x) = 3x⁴ · יש בדיוק שגיאה אחת</div>
+    <div style="display:flex;flex-direction:column;gap:10px;margin-top:16px">
+      <div class="card slide" id="s0"><span class="n">1</span><span class="eq">f(x) = 3x⁴</span><span class="x">✗</span></div>
+      <div class="card slide" id="s1"><span class="n">2</span><span class="eq">f'(x) = 3 · 4x³</span><span class="x">✗</span></div>
+      <div class="card slide" id="s2"><span class="n">3</span><span class="eq">f'(x) = 12x³</span><span class="x">✗</span></div>
+      <div class="card slide" id="s3"><span class="n">4</span><span class="eq">f'(x) = 12x⁴</span><span class="x">✗</span></div>
+    </div>
+    <div class="pop" id="rev" style="margin-top:14px;transform-origin:right center">
+      
+  <div style="position:relative;transform:rotate(-1.4deg);background:#FFFFFF;padding:16px 26px;
+       width:fit-content;align-self:flex-start;
+       border:5px solid #1E293B;border-radius:10px;box-shadow:10px 12px 0 rgba(30,41,59,.16)">
+    <div style="position:absolute;top:-16px;left:50%;transform:translateX(-50%) rotate(5deg);
+  width:110px;height:34px;background:rgba(250,130,49,.30);border:2px solid rgba(30,41,59,.16)"></div><div style="font-size:26px;line-height:1.4;font-weight:700">
+        <b style="color:#EA580C">שורה 4:</b> אחרי גזירה החזקה יורדת ל־3 ונשארת שם.</div></div></div>
+    <div class="grow"></div>
+  <div class="foot"><div class="brand"><svg width="52" height="39" viewBox="6 14 80 60" xmlns="http://www.w3.org/2000/svg">
+  <g fill="none" stroke="#2563EB" stroke-width="5" stroke-linecap="round" stroke-linejoin="round">
+    <path d="M14,30 L14,64"/><path d="M76,30 L76,64"/><path d="M14,30 Q30,25 45,33"/>
+    <path d="M76,30 Q60,25 45,33"/><path d="M14,64 Q30,58 45,67"/><path d="M76,64 Q60,58 45,67"/>
+    <circle cx="45" cy="40" r="15"/></g>
+  <polygon points="44,32 44,56 50,50 54,60 60,57 56,47 64,47" fill="#FA8231"/></svg> מאה בקליק</div>
+    <div class="tap">לפרטים נוספים — לחצו על הקישור 👆</div></div>
+  </div>
+  <script>
+  const on=(id,v)=>document.getElementById(id).classList.toggle('on',v);
+  window.TOTAL=34;
+  window.setFrame=i=>{
+    ['d0','d1','d2','d3','d4','d5'].forEach((d,k)=>on(d,i>=2+k*2));
+    on('k',i>=1); on('h',i>=3); on('q',i>=6);
+    for(let k=0;k<4;k++) on('s'+k, i>=9+k*3);
+    const bad=document.getElementById('s3');
+    bad.classList.toggle('bad', i>=24);
+    on('rev', i>=28);
+  };
+  window.setFrame(0);
+  </script></body></html>

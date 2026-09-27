@@ -1,0 +1,15 @@
+{
+  "title": "מיון פונקציות",
+  "subject": "מתמטיקה · פונקציות",
+  "categories": ["קווית", "ריבועית", "מעריכית"],
+  "items": [
+    { "text": "y = 3x + 2",     "category": "קווית" },
+    { "text": "y = x² − 4x + 1","category": "ריבועית" },
+    { "text": "y = 2ˣ",         "category": "מעריכית" },
+    { "text": "y = −5x",        "category": "קווית" },
+    { "text": "y = (x − 3)²",   "category": "ריבועית" },
+    { "text": "y = 0.5ˣ",       "category": "מעריכית" },
+    { "text": "y = 7 − x",      "category": "קווית" },
+    { "text": "y = −2x² + 8",   "category": "ריבועית" }
+  ]
+}

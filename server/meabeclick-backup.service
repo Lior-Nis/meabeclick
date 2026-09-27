@@ -1,0 +1,14 @@
+# User-level unit — installs with NO sudo, the same as any other
+# `systemctl --user` timer/service pair on this box:
+#   cp server/meabeclick-backup.service server/meabeclick-backup.timer \
+#     ~/.config/systemd/user/
+#   systemctl --user daemon-reload
+#   systemctl --user enable --now meabeclick-backup.timer
+
+[Unit]
+Description=מאה בקליק — daily SQLite backup
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/mea-beclick
+ExecStart=/bin/bash server/backup-db.sh

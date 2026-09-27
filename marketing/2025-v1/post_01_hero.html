@@ -1,0 +1,58 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;
+  background:#04091e;display:flex;align-items:center;justify-content:center;}
+.wrap{width:100%;height:100%;position:relative;display:flex;flex-direction:column;
+  align-items:center;justify-content:center;gap:44px;padding:80px;}
+.wrap::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,0.2) 1px,transparent 1px);
+  background-size:44px 44px;}
+.wrap::after{content:'';position:absolute;top:-60px;left:50%;transform:translateX(-50%);
+  width:800px;height:600px;
+  background:radial-gradient(ellipse,rgba(232,164,39,0.14) 0%,transparent 65%);}
+.corner{position:absolute;width:64px;height:64px;}
+.tl{top:44px;right:44px;border-top:2px solid rgba(232,164,39,0.6);border-right:2px solid rgba(232,164,39,0.6);}
+.tr{top:44px;left:44px;border-top:2px solid rgba(232,164,39,0.6);border-left:2px solid rgba(232,164,39,0.6);}
+.bl{bottom:44px;right:44px;border-bottom:2px solid rgba(232,164,39,0.6);border-right:2px solid rgba(232,164,39,0.6);}
+.br{bottom:44px;left:44px;border-bottom:2px solid rgba(232,164,39,0.6);border-left:2px solid rgba(232,164,39,0.6);}
+.tag{position:relative;z-index:2;border:1.5px solid rgba(232,164,39,0.45);
+  color:#e8a427;font-size:22px;font-weight:700;letter-spacing:.14em;
+  padding:10px 36px;border-radius:40px;background:rgba(232,164,39,0.08);}
+.names{position:relative;z-index:2;display:flex;gap:32px;align-items:center;}
+.name-pill{background:rgba(232,164,39,0.1);border:1.5px solid rgba(232,164,39,0.3);
+  color:#f0e8d8;font-size:32px;font-weight:700;padding:12px 36px;border-radius:12px;}
+.name-sep{color:#4a5580;font-size:28px;}
+.title{position:relative;z-index:2;font-size:128px;font-weight:900;color:#f0e8d8;
+  line-height:.95;text-align:center;}
+.title span{color:#e8a427;}
+.sub{position:relative;z-index:2;font-size:30px;color:#7a8bbd;font-weight:300;
+  text-align:center;line-height:1.5;}
+.divider{width:180px;height:1.5px;background:linear-gradient(90deg,transparent,#e8a427,transparent);
+  position:relative;z-index:2;}
+.subjects{position:relative;z-index:2;display:flex;gap:20px;flex-wrap:wrap;justify-content:center;}
+.subj{background:rgba(232,164,39,0.07);border:1px solid rgba(232,164,39,0.2);
+  color:#f0e8d8;font-size:24px;font-weight:600;padding:10px 22px;border-radius:30px;}
+.cta{position:relative;z-index:2;background:#e8a427;color:#04091e;
+  font-family:'Heebo',sans-serif;font-size:30px;font-weight:900;
+  padding:20px 72px;border-radius:50px;}
+</style></head><body><div class="wrap">
+  <div class="corner tl"></div><div class="corner tr"></div>
+  <div class="corner bl"></div><div class="corner br"></div>
+  <div class="tag">✦ שיעורים פרטיים ✦</div>
+  <div class="names">
+    <div class="name-pill">👩‍🏫 ניקול</div>
+    <div class="name-sep">&</div>
+    <div class="name-pill">👨‍🏫 ליאור</div>
+  </div>
+  <div class="title">בואו<br><span>נלמד</span><br>ביחד</div>
+  <div class="sub">יסודי · חטיבה · תיכון<br>פנים אל פנים ואונליין</div>
+  <div class="divider"></div>
+  <div class="subjects">
+    <div class="subj">📖 עברית</div><div class="subj">📐 מתמטיקה</div>
+    <div class="subj">🔭 פיזיקה</div><div class="subj">🌍 אנגלית</div>
+    <div class="subj">💻 מחשבים</div>
+  </div>
+  <div class="cta">📲 הזמינו שיעור בוואטסאפ</div>
+</div></body></html>

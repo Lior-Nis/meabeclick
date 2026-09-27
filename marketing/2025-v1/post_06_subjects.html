@@ -1,0 +1,77 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@400;700;800;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;background:#04091e;}
+.wrap{width:100%;height:100%;display:flex;flex-direction:column;padding:72px;gap:36px;position:relative;}
+.wrap::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,0.15) 1px,transparent 1px);
+  background-size:44px 44px;pointer-events:none;}
+.top{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:flex-end;}
+.top-left .label{font-size:20px;font-weight:700;color:#e8a427;letter-spacing:.12em;margin-bottom:8px;}
+.top-left h1{font-size:80px;font-weight:900;color:#f0e8d8;line-height:1;}
+.top-left h1 span{color:#e8a427;}
+.top-right{font-size:22px;color:#4a5580;text-align:left;}
+.subjects-grid{position:relative;z-index:2;display:grid;grid-template-columns:1fr 1fr;gap:20px;flex:1;}
+.subj-card{background:rgba(12,22,60,0.75);border:1px solid rgba(232,164,39,0.12);
+  border-radius:20px;padding:32px;display:flex;gap:20px;align-items:flex-start;
+  transition:border-color .2s;}
+.subj-card.wide{grid-column:1/-1;}
+.subj-icon{font-size:52px;flex-shrink:0;}
+.subj-content h3{font-size:30px;font-weight:800;color:#f0e8d8;margin-bottom:8px;}
+.subj-content p{font-size:19px;color:#7a8bbd;line-height:1.5;}
+.subj-badge{display:inline-block;background:rgba(232,164,39,0.1);
+  border:1px solid rgba(232,164,39,0.25);color:#e8a427;
+  font-size:16px;font-weight:700;padding:4px 14px;border-radius:20px;margin-top:8px;}
+.bottom{position:relative;z-index:2;display:flex;justify-content:space-between;align-items:center;
+  border-top:1px solid rgba(232,164,39,0.12);padding-top:24px;}
+.b-text{font-size:22px;color:#4a5580;}
+.cta{background:#e8a427;color:#04091e;font-family:'Heebo',sans-serif;
+  font-size:24px;font-weight:900;padding:14px 44px;border-radius:40px;}
+</style></head><body><div class="wrap">
+  <div class="top">
+    <div class="top-left">
+      <div class="label">✦ מה אנחנו מלמדים</div>
+      <h1>חמישה<br><span>מקצועות.</span><br>מורה אחד.</h1>
+    </div>
+    <div class="top-right">ניקול וליאור<br>שיעורים פרטיים</div>
+  </div>
+  <div class="subjects-grid">
+    <div class="subj-card">
+      <div class="subj-icon">📐</div>
+      <div class="subj-content">
+        <h3>מתמטיקה</h3>
+        <p>מחשבון ועד בגרות — כל רמה, כל שאלה</p>
+        <div class="subj-badge">ניקול + ליאור</div>
+      </div>
+    </div>
+    <div class="subj-card">
+      <div class="subj-icon">🔭</div>
+      <div class="subj-content">
+        <h3>פיזיקה</h3>
+        <p>מכניקה, חשמל, אופטיקה — עם הבנה אמיתית</p>
+        <div class="subj-badge">ניקול</div>
+      </div>
+    </div>
+    <div class="subj-card">
+      <div class="subj-icon">💻</div>
+      <div class="subj-content">
+        <h3>מחשבים ותכנות</h3>
+        <p>Python, אלגוריתמים ומדעי המחשב לבגרות</p>
+        <div class="subj-badge">ליאור</div>
+      </div>
+    </div>
+    <div class="subj-card">
+      <div class="subj-icon">🌍</div>
+      <div class="subj-content">
+        <h3>אנגלית ועברית</h3>
+        <p>הבעה בכתב ובעל פה, דקדוק, הבנת הנקרא</p>
+        <div class="subj-badge">ניקול + ליאור</div>
+      </div>
+    </div>
+  </div>
+  <div class="bottom">
+    <div class="b-text">יסודי · חטיבה · תיכון</div>
+    <div class="cta">💬 הזמינו שיעור ניסיון</div>
+  </div>
+</div></body></html>

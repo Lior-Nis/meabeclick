@@ -1,0 +1,60 @@
+<!DOCTYPE html><html lang="he" dir="rtl"><head><meta charset="UTF-8"/>
+<link href="https://fonts.googleapis.com/css2?family=Heebo:wght@300;400;700;900&display=swap" rel="stylesheet"/>
+<style>
+*{margin:0;padding:0;box-sizing:border-box;}
+body{width:1080px;height:1080px;overflow:hidden;font-family:'Heebo',sans-serif;background:#04091e;}
+.wrap{width:100%;height:100%;display:flex;gap:0;}
+/* Left column */
+.left{width:400px;flex-shrink:0;
+  background:linear-gradient(180deg,rgba(232,164,39,0.12) 0%,rgba(232,164,39,0.04) 100%);
+  border-left:1px solid rgba(232,164,39,0.2);
+  display:flex;flex-direction:column;justify-content:center;padding:64px 48px;gap:32px;
+  position:relative;}
+.left::before{content:'';position:absolute;inset:0;
+  background-image:radial-gradient(rgba(255,255,255,0.12) 1px,transparent 1px);
+  background-size:40px 40px;}
+.l-tag{position:relative;z-index:2;font-size:20px;font-weight:700;
+  color:#e8a427;letter-spacing:.1em;text-transform:uppercase;}
+.l-title{position:relative;z-index:2;font-size:72px;font-weight:900;
+  color:#f0e8d8;line-height:1.05;}
+.l-title span{color:#e8a427;}
+.l-sub{position:relative;z-index:2;font-size:22px;color:#7a8bbd;
+  font-weight:300;line-height:1.6;}
+/* Right column */
+.right{flex:1;display:flex;flex-direction:column;justify-content:center;padding:64px 52px;gap:24px;}
+.r-title{font-size:22px;font-weight:700;color:#e8a427;letter-spacing:.08em;margin-bottom:4px;}
+.item{background:rgba(12,22,60,0.75);border:1px solid rgba(255,255,255,0.07);
+  border-radius:16px;padding:24px;display:flex;gap:20px;align-items:flex-start;}
+.item-icon{font-size:36px;flex-shrink:0;margin-top:2px;}
+.item h4{font-size:24px;font-weight:800;color:#f0e8d8;margin-bottom:6px;}
+.item p{font-size:18px;color:#7a8bbd;line-height:1.5;}
+.cta{background:#e8a427;color:#04091e;font-family:'Heebo',sans-serif;
+  font-size:24px;font-weight:900;padding:16px;border-radius:14px;
+  text-align:center;margin-top:8px;}
+</style></head><body><div class="wrap">
+  <div class="left">
+    <div class="l-tag">לכם ההורים</div>
+    <div class="l-title">שקט<br>נפשי<br><span>מובטח</span></div>
+    <div class="l-sub">אתם תמיד יודעים מה קורה — בזמן אמת, בלי להתרוצץ</div>
+  </div>
+  <div class="right">
+    <div class="r-title">מה אנחנו מספקים להורים:</div>
+    <div class="item">
+      <div class="item-icon">📋</div>
+      <div><h4>סיכום אחרי כל שיעור</h4><p>מה נלמד, מה עבד, מה צריך לחזור עליו</p></div>
+    </div>
+    <div class="item">
+      <div class="item-icon">📈</div>
+      <div><h4>מעקב התקדמות שוטף</h4><p>ציר זמן של התפתחות הילד לאורך כל התקופה</p></div>
+    </div>
+    <div class="item">
+      <div class="item-icon">💳</div>
+      <div><h4>שקיפות תשלומים</h4><p>כל שיעור ותשלום מתועד — אין הפתעות</p></div>
+    </div>
+    <div class="item">
+      <div class="item-icon">📅</div>
+      <div><h4>תזמון אוטומטי</h4><p>תזכורות לפני כל שיעור, ביטול קל דרך וואטסאפ</p></div>
+    </div>
+    <div class="cta">💬 דברו איתנו בוואטסאפ</div>
+  </div>
+</div></body></html>

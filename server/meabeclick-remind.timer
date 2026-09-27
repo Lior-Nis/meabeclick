@@ -1,0 +1,14 @@
+[Unit]
+Description=Run the Saturday booking-window reminder
+
+[Timer]
+# The booking window opens Saturday at 20:00 Israel time; the reminder
+# goes out a few hours before it.
+OnCalendar=Sat 17:00
+# A laptop-style reboot or a host restart must not swallow the run: the
+# endpoint is idempotent, so a late fire is always safe.
+Persistent=true
+RandomizedDelaySec=120
+
+[Install]
+WantedBy=timers.target

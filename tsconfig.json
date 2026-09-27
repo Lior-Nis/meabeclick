@@ -1,0 +1,22 @@
+{
+  "extends": "./.svelte-kit/tsconfig.json",
+  // allowImportingTsExtensions: server modules under src/lib/server/ are
+  // imported with an explicit ".ts" extension (e.g. db.ts importing
+  // "./singleton.ts") because tests/unit/*.test.mjs run those modules
+  // directly under `node --test`, and Node's ESM loader requires the
+  // explicit extension to resolve the file. Do not remove this flag or
+  // "clean up" those extensions to be bare specifiers — it will break the
+  // unit tests. Ratified as ruling P9, task 7.
+  "compilerOptions": {
+    "allowJs": true,
+    "checkJs": true,
+    "esModuleInterop": true,
+    "forceConsistentCasingInFileNames": true,
+    "resolveJsonModule": true,
+    "skipLibCheck": true,
+    "sourceMap": true,
+    "strict": true,
+    "moduleResolution": "bundler",
+    "allowImportingTsExtensions": true
+  }
+}

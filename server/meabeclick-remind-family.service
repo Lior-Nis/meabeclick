@@ -1,0 +1,13 @@
+[Unit]
+Description=מאה בקליק — reminder to the FAMILY before a booked lesson
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Same shape as meabeclick-remind.service: curl localhost so the request
+# never touches the public interface, and a dedicated file holding ONLY
+# CRON_KEY rather than the app's full .env.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+ExecStart=/usr/bin/curl -sS --fail --max-time 120 \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/remind-family

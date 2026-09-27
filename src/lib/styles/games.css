@@ -1,0 +1,163 @@
+/* ============================================================
+   Shared visual language for every /app/play/[template] game.
+   Ported from games/game.css, re-based onto tokens.css's tokens
+   (--brand -> --accent, --card -> --bg-card, --mint -> --accent3, etc. —
+   see the Task 16/17 tokens.css consolidation) instead of redefining a
+   second, drifting copy of the same palette.
+   Imported once, as a plain global stylesheet, by GameShell.svelte — NOT
+   as component-scoped styles. These classes are shared across 12
+   independent Svelte components; scoping them to GameShell would mean
+   none of the 12 templates' `class:` bindings on their OWN elements could
+   ever match a rule defined only in GameShell's scope. Only tokens.css
+   itself (imported the same way, once, from the root layout) is a closer
+   precedent than any per-component <style> block.
+
+   Only --danger-dim is new here (tokens.css has --danger but never needed
+   a light "error" fill until these game boards). Every other value reuses
+   an existing token.
+   ============================================================ */
+:root {
+  --danger-dim: #fef2f2;
+}
+
+.subject {
+  color: var(--text-muted);
+  font-size: 0.92rem;
+  margin-top: 0.15rem;
+}
+
+.best-note {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.85rem;
+  margin-top: -0.2rem;
+  margin-bottom: 0.6rem;
+}
+.best-note strong { color: var(--accent2-strong); }
+
+.stats {
+  display: flex;
+  gap: 0.6rem;
+  justify-content: center;
+  margin: 1rem 0 0.6rem;
+  flex-wrap: wrap;
+}
+.stat {
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-sm);
+  padding: 0.45rem 0.9rem;
+  min-width: 84px;
+  text-align: center;
+}
+.stat-val { font-size: 1.15rem; font-weight: 800; color: var(--accent); line-height: 1.2; }
+.stat-val.clock { color: var(--accent2-strong); }
+.stat-val.clock.low { color: var(--danger); animation: game-pulse 1s infinite; }
+@keyframes game-pulse { 0%, 100% { opacity: 1; } 50% { opacity: 0.45; } }
+.stat-lbl { font-size: 0.72rem; color: var(--text-muted); }
+
+.progress-outer {
+  height: 9px;
+  background: var(--border);
+  border-radius: 5px;
+  overflow: hidden;
+  margin-bottom: 1.2rem;
+}
+.progress-inner {
+  height: 100%;
+  border-radius: 5px;
+  background: linear-gradient(90deg, var(--accent), var(--accent3));
+  transition: width 0.4s ease;
+}
+
+.prompt {
+  background: var(--text-primary);
+  color: #fff;
+  border-radius: var(--r-md);
+  padding: 1rem 1.2rem;
+  text-align: center;
+  font-weight: 700;
+  font-size: clamp(0.98rem, 2.8vw, 1.15rem);
+  margin-bottom: 1rem;
+}
+
+.hint {
+  text-align: center;
+  color: var(--text-muted);
+  font-size: 0.86rem;
+  margin: 0.2rem 0 0.9rem;
+}
+
+/* Generic option/choice button, used by quiz/sort/speed-drill/two-truths. */
+.opt {
+  display: block;
+  width: 100%;
+  background: var(--bg-card);
+  border: 2px solid var(--border);
+  border-radius: 14px;
+  padding: 0.85rem 1rem;
+  min-height: 48px;
+  font-family: inherit;
+  font-size: 1rem;
+  font-weight: 600;
+  color: var(--text-primary);
+  text-align: right;
+  cursor: pointer;
+  margin-bottom: 0.6rem;
+  transition: border-color 0.18s, background 0.18s;
+}
+.opt:hover:not(:disabled) { border-color: var(--accent); background: var(--accent-dim); }
+.opt:disabled { cursor: default; }
+.opt.correct { border-color: var(--accent3); background: var(--accent3-dim); color: var(--accent3-strong); }
+.opt.wrong { border-color: var(--danger); background: var(--danger-dim); color: var(--danger); animation: game-shake 0.4s; }
+.opt:focus-visible { outline: 3px solid var(--accent2-strong); outline-offset: 3px; }
+@keyframes game-shake {
+  0%, 100% { transform: translateX(0); }
+  25% { transform: translateX(-6px); }
+  75% { transform: translateX(6px); }
+}
+
+/* Explanation shown after answering. Rendered with {#if}, not a .show
+   class toggle — see the report's scoped-CSS inventory. */
+.why {
+  margin-top: 0.4rem;
+  background: var(--accent-dim);
+  border-right: 5px solid var(--accent);
+  border-radius: 0 12px 12px 0;
+  padding: 0.75rem 1rem;
+  font-size: 0.92rem;
+  line-height: 1.6;
+}
+
+.btn {
+  display: inline-block;
+  margin-top: 1rem;
+  background: var(--accent2);
+  color: var(--btn-text);
+  font-family: inherit;
+  font-weight: 800;
+  font-size: 1rem;
+  border: none;
+  border-radius: 999px;
+  padding: 0.75rem 2rem;
+  min-height: 44px;
+  cursor: pointer;
+}
+.btn:hover { opacity: 0.9; }
+.btn.ghost { background: var(--accent2-dim); color: var(--accent2-strong); border: 1.5px solid var(--accent2-strong); }
+
+/* Finish screen, owned by GameShell. */
+#done {
+  text-align: center;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-xl);
+  padding: 2rem 1.2rem;
+  margin-top: 1rem;
+}
+.stars { font-size: 2.4rem; letter-spacing: 0.2rem; }
+.done-title { font-size: 1.4rem; font-weight: 900; margin: 0.5rem 0; }
+.done-line { color: var(--text-muted); }
+
+.msg { text-align: center; padding: 3rem 1rem; color: var(--text-muted); line-height: 1.8; }
+.msg code { background: var(--accent-dim); color: var(--accent); padding: 0.15rem 0.45rem; border-radius: 6px; font-size: 0.9rem; }
