@@ -9,7 +9,7 @@
  * serverless function's limit.
  */
 
-import { israelDay } from '../../dates.ts';
+import { israelDay, israelToday } from '../../dates.ts';
 import { PLANS } from '../../plans.ts';
 import { TUTOR_PHONE } from '../../contact.ts';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -502,7 +502,7 @@ export async function sendWhatsApp(text: string): Promise<void> {
   }
 }
 
-const today   = (): string => new Date().toISOString().slice(0, 10);
+const today   = (): string => israelToday();
 /**
  * A lesson slug, guaranteed to be a legal path segment.
  *

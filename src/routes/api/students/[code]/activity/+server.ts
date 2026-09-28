@@ -8,7 +8,7 @@ import {
   lessonsForStudent, HOMEWORK_GRADES, type HomeworkGrade,
 } from '$server/lessons.ts';
 import type { TutorHomework } from '$lib/tutor-homework.ts';
-import { lessonWhen } from '$lib/dates.ts';
+import { israelDay, lessonWhen } from '$lib/dates.ts';
 import type { RequestHandler } from './$types';
 
 function studentOr404(code: string) {
@@ -34,7 +34,7 @@ function view(code: string) {
        homework before it goes out, and PATCH/DELETE check ownership through
        this same read — without it she could not delete a held task. */
     homework: homeworkForStudent(student.id, { includeHeld: true }).map((h): TutorHomework => ({
-      id: String(h.id), task: h.task, date: h.due_at ?? h.assigned_at.slice(0, 10),
+      id: String(h.id), task: h.task, date: h.due_at ?? israelDay(h.assigned_at),
       submitted: h.submitted, graded: h.graded, grade: h.grade ?? null,
       submittedBy: h.submitted_by ?? null, gradedBy: h.graded_by ?? null,
       /* Set while the family cannot see it yet: goes out when the lesson

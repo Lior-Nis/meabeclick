@@ -64,6 +64,6 @@ test('the parent page renders the derived percent, not the object', () => {
   const src = read('src/routes/app/parent/+page.svelte');
   assert.doesNotMatch(src, /CURRENT\.progress \|\| 0/,
     'rendering the object itself is what produced "[object Object]%"');
-  assert.match(src, /progress\?\.percent/,
+  assert.match(src, /progress\??\.percent/,
     'percent is the only field derived from done/total, so it is the one to show');
 });

@@ -32,6 +32,8 @@
   import { appendMessage, removeMessage } from '$lib/chat-log.js';
   import MathText from '$lib/math/MathText.svelte';
   import { toHref } from '$lib/urls.ts';
+  import { israelToday } from '$lib/dates.ts';
+  import { firstName } from '$lib/names.ts';
   import type { PageData } from './$types';
 
   let { data }: { data: PageData } = $props();
@@ -178,7 +180,7 @@
 
   /** Still open means not handed in. A graded task is finished either way. */
   const hwOpen = $derived((DATA?.homework ?? []).filter(h => !h.submitted && !h.graded).length);
-  const today = new Date().toISOString().slice(0, 10);
+  const today = israelToday();
 
 
   function hwStatus(h: HwItem): { cls: string; label: string } {
@@ -372,7 +374,7 @@
   <header class="app-bar">
     <span class="who">
       <span class="who-avatar">{DATA?.emoji || '🎓'}</span>
-      <span class="who-name">{DATA ? `היי ${DATA.name}!` : 'הדף שלי'}</span>
+      <span class="who-name">{DATA ? `היי ${firstName(DATA.name)}!` : 'הדף שלי'}</span>
     </span>
     <button class="sign-out" onclick={signOut}>יציאה</button>
   </header>

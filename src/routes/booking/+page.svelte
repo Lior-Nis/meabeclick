@@ -483,7 +483,7 @@
     <BrandMark height={30} href={null} label={null} />
     <span>מאה בקליק</span>
   </a>
-  <a class="back" href="/">חזרה לאתר →</a>
+  <a class="back" href="/">→ חזרה לאתר</a>
 </header>
 
 <main>

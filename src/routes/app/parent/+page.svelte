@@ -33,6 +33,7 @@
   import { homeworkState, HOMEWORK_STATE_LABEL, type FamilyHomework } from '$lib/family-homework.ts';
   import { GRADE_LABEL } from '$lib/homework-grade.ts';
   import type { FamilyLesson } from '$lib/family-lesson.ts';
+  import { page } from '$app/state';
   import type { PageData } from './$types';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import { contactTutor, tutorNames } from '$lib/tutors.ts';
@@ -483,7 +484,7 @@
           <div class="share-link" dir="ltr">{share.link}</div>
 
           <div class="share-code">
-            <div class="share-code-label">אין וואטסאפ? הקלידו את הקוד הזה ב-<span dir="ltr">/portal</span></div>
+            <div class="share-code-label">אין וואטסאפ? נכנסים ל-<span dir="ltr">{page.url.host}/portal</span> ומקלידים את הקוד:</div>
             <div class="share-code-value" dir="ltr">{share.joinCode}</div>
             <div class="share-code-note">תקף לשבוע, לשימוש חד-פעמי.</div>
           </div>
@@ -532,7 +533,6 @@
         <div class="next-lesson-box">
           <div class="nl-icon"><Icon name="calendar" size={22} /></div>
           <div>
-            <div class="nl-label">שיעור הבא</div>
             <div class="nl-date">{formatDateHe(CURRENT.nextLesson.date)}</div>
             <div class="nl-meta">{CURRENT.nextLesson.time ? 'שעה ' + CURRENT.nextLesson.time : ''} {CURRENT.nextLesson.type ? '· ' + CURRENT.nextLesson.type : ''}</div>
             <!-- The one way to reach the tutor about THIS lesson — prefilled,
@@ -541,7 +541,7 @@
           </div>
         </div>
       {:else}
-        <div class="no-upcoming">אין שיעור קבוע — ניצור קשר לתאום 🗓️</div>
+        <div class="no-upcoming">אין שיעור קבוע — ניצור קשר לתיאום 🗓️</div>
       {/if}
     </div>
 
@@ -616,9 +616,13 @@
           <!-- `percent`, not the object. This rendered "[object Object]%"
                to parents after #93 turned progress into ProgressFacts and
                this page kept treating it as an integer. -->
-          <span class="po-pct">{CURRENT.progress?.percent ?? 0}%</span>
+          {#if CURRENT.progress?.total}<span class="po-pct">{CURRENT.progress.percent}%</span>{/if}
         </div>
-        <div class="bar-bg"><div class="bar-fill" style="width:{CURRENT.progress?.percent ?? 0}%"></div></div>
+        <!-- Nothing counted yet: no bar. A 0% bar beside «עוד אין מה למדוד»
+             reads as a verdict. -->
+        {#if CURRENT.progress?.total}
+          <div class="bar-bg"><div class="bar-fill" style="width:{CURRENT.progress.percent}%"></div></div>
+        {/if}
         <!-- The skills behind the number, by name: what was covered and what
              was understood (PRODUCT.md, "Progress parents can see"). Server
              computed — see seenIn() in src/lib/server/progress.ts. -->
@@ -797,7 +801,6 @@
   .nl-icon { font-size: 2.2rem; flex-shrink: 0; }
   /* text-transform: uppercase does nothing to Hebrew but announce an
      LTR template; the tracking only loosens the join between letters. */
-  .nl-label { font-size: 0.75rem; font-weight: 700; color: var(--accent-deep); margin-bottom: 4px; }
   .nl-date { font-size: 1.45rem; font-weight: 900; color: var(--text-primary); }
   .nl-meta { font-size: 0.85rem; color: var(--text-muted-strong); margin-top: 2px; }
   .no-upcoming { color: var(--text-muted); font-size: 0.9rem; text-align: center; padding: 20px; background: var(--bg-surface); border: 1px dashed var(--border); border-radius: var(--r-md); }
