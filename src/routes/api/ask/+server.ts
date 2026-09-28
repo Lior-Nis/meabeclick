@@ -24,6 +24,7 @@ import { portalDir } from '$server/paths.ts';
 import { readJson } from '$server/http.ts';
 import { resolveFamilyAccess, studentInScope } from '$server/family.ts';
 import { askAgent, type HistoryTurn } from '$server/ask.ts';
+import { firstName } from '$lib/names.ts';
 import { LessonGenerationError, engineHasCredentials } from '$server/lesson/engine.ts';
 import { singleton } from '$server/singleton.ts';
 import type { RequestHandler } from './$types';
@@ -112,7 +113,9 @@ export const POST: RequestHandler = async ({ request, locals }) => {
   try {
     const answer = await askAgent(
       {
-        name: student.name, level: student.level,
+        /* The first name only: the privacy page promises AI tools never get
+           the family name, and a helper needs no more to address a child. */
+        name: firstName(String(student.name ?? '')), level: student.level,
         subject: student.subject, tutor: student.tutor, recentLessons,
       },
       question,

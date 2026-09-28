@@ -294,13 +294,13 @@
       return { text: 'נראה שהחיבור לדף פג. רעננו את העמוד ונסו שוב, או פנו למורה:', retry: false };
     }
     if (status === 503 || status === 502) {
-      return { text: 'העוזר לא זמין כרגע — זו תקלה אצלנו, לא אצלכם. המורה יכולה לעזור עכשיו:', retry: true };
+      return { text: 'העוזר לא זמין כרגע — זו תקלה אצלנו, לא אצלכם. אפשר לשאול את המורה עכשיו:', retry: true };
     }
     if (status === null) {
       // fetch itself rejected: no network, or the request was cut off.
       return { text: 'אין חיבור לרשת כרגע 📡 בדקו את החיבור ונסו שוב:', retry: true };
     }
-    return { text: 'לא הצלחתי לענות כרגע 😕 אפשר לשלוח את השאלה ישירות למורה:', retry: true };
+    return { text: 'העוזר לא הצליח לענות כרגע 😕 אפשר לשלוח את השאלה ישירות למורה:', retry: true };
   }
 
   async function ask(text?: string) {
@@ -521,7 +521,7 @@
       {/if}
 
       {#if activeView === 'ask'}
-        <div class="hint">שאלו כל שאלה על החומר — אני אנסה לעזור.<br>אם עדיין לא ברור, אפשר לשלוח את השאלה ישירות למורה בוואטסאפ 👇</div>
+        <div class="hint">שאלו כל שאלה על החומר, ועוזר אוטומטי (בינה מלאכותית) ינסה לעזור. הוא לא המורה, והוא יכול לטעות.<br>אם עדיין לא ברור, אפשר לשלוח את השאלה ישירות למורה בוואטסאפ 👇</div>
         <div id="chat" bind:this={chatEl}>
           {#each chat as m}
             <!-- MathText lays out formulas and leaves prose alone. It
@@ -543,6 +543,7 @@
         </div>
         <div class="ask-row">
           <input
+            aria-label="השאלה שלכם לעוזר"
             placeholder="מה לא הבנתם?"
             autocomplete="off"
             bind:value={question}
