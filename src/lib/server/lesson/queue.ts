@@ -9,6 +9,7 @@
  * serverless function's limit.
  */
 
+import { israelDay } from '../../dates.ts';
 import { PLANS } from '../../plans.ts';
 import { TUTOR_PHONE } from '../../contact.ts';
 import { readFile, writeFile, mkdir } from 'node:fs/promises';
@@ -270,6 +271,7 @@ async function run(slug: string, booking: Booking, opts: TriggerOpts): Promise<v
      its slides render; `problem` is what records the missing delivery. */
   const onPortal = await appendToPortal(opts.enrolledCode ?? null, plan, published, target, {
     bookingId: opts.bookingId ?? null, heldUntil: heldUntilFor(booking.end, booking.start),
+    lessonDate: booking.start ? israelDay(booking.start) : null,
   });
   if (!onPortal) {
     console.error(
@@ -396,7 +398,7 @@ export async function appendToPortal(
   code: string | null, plan: LessonPlan, published: Published,
   target: TargetSkill | null = null,
   /** Booking-time homework is held for its lesson (migration 018). */
-  hold: { bookingId: number | null; heldUntil: string | null } = { bookingId: null, heldUntil: null },
+  hold: { bookingId: number | null; heldUntil: string | null; lessonDate?: string | null } = { bookingId: null, heldUntil: null },
 ): Promise<boolean> {
   const student = code ? getStudentByCode(code) : null;
   if (!student) return false;
@@ -456,7 +458,10 @@ export async function appendToPortal(
   }
 
   data.lessons = [
-    { date: today(), topic: plan.title, summary: plan.gradeContext, slug: published.slug },
+    /* The LESSON's date, and no summary: generation runs at booking time,
+       and gradeContext is a note for the tutor. The family's page shows
+       this as coming until the date passes (FamilyLesson.upcoming). */
+    { date: hold.lessonDate ?? today(), topic: plan.title, slug: published.slug },
     ...(data.lessons ?? []),
   ].slice(0, 20);
   data.updated = today();

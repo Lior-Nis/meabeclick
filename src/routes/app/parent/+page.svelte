@@ -32,6 +32,7 @@
   import type { ProgressFacts } from '$lib/progress-facts.ts';
   import { homeworkState, HOMEWORK_STATE_LABEL, type FamilyHomework } from '$lib/family-homework.ts';
   import { GRADE_LABEL } from '$lib/homework-grade.ts';
+  import type { FamilyLesson } from '$lib/family-lesson.ts';
   import type { PageData } from './$types';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import { contactTutor, tutorNames } from '$lib/tutors.ts';
@@ -58,7 +59,7 @@
     return `${d} ${MONTHS_HE[m - 1]} ${y} (${DAYS_HE[date.getDay()]})`;
   }
 
-  interface Session { date: string; type: string; notes: string; amount: number; paid: boolean }
+  interface Session { date: string; type: string; notes: string; amount: number; paid: boolean; slidesUrl?: string | null }
   type Hw = FamilyHomework & { date?: string | null; url?: string | null };
   interface Balance {
     owedAgorot: number; paidAgorot: number;
@@ -72,7 +73,7 @@
     style?: string; progress?: ProgressFacts; progressNote?: string; balance?: Balance | null;
     charges?: Charge[];
     nextLesson?: { date?: string; time?: string; type?: string } | null;
-    lessons?: Array<{ date: string; topic?: string; summary?: string }>;
+    lessons?: FamilyLesson[];
     homework?: FamilyHomework[];
   }
   interface Dashboard extends PortalData {
@@ -83,10 +84,12 @@
   function toDashboardShape(d: PortalData): Dashboard {
     return {
       ...d,
-      sessions: (d.lessons ?? []).map(l => ({
+      /* Only lessons that have happened: one booked for next week is not a
+         lesson done (FamilyLesson.upcoming). */
+      sessions: (d.lessons ?? []).filter(l => !l.upcoming).map(l => ({
         date: l.date, type: 'שיעור',
         notes: [l.topic, l.summary].filter(Boolean).join(' — '),
-        amount: 0, paid: false,
+        amount: 0, paid: false, slidesUrl: l.slidesUrl,
       })),
       homework: (d.homework ?? []).map(h => ({ ...h, date: h.assigned ?? h.due })),
     };
@@ -454,6 +457,11 @@
           <span class="sec-title">כניסה ל{CURRENT.name}</span>
         </div>
 
+        <!-- The parent's own way to the child's board — the slides, the
+             games — without making a link first. A family session may open
+             it, and it offers the way back. -->
+        <a class="board-link" href="/app/student?s={currentId}">לפתוח עכשיו את הלוח של {CURRENT.name} ←</a>
+
         {#if !shareOpen}
           <p class="share-intro">
             שלחו ל{CURRENT.name} קישור אישי — לוח משלו/ה עם שיעורי הבית והמשחקים,
@@ -550,7 +558,10 @@
                 <tr>
                   <td>{formatDateHe(sess.date)}</td>
                   <td><span class="pill">{sess.type || 'שיעור'}</span></td>
-                  <td><div class="lesson-topic">{sess.notes || '—'}</div></td>
+                  <td>
+                    <div class="lesson-topic">{sess.notes || '—'}</div>
+                    {#if sess.slidesUrl}<a class="lesson-slides" href={toHref(sess.slidesUrl)} target="_blank" rel="noopener">המצגת</a>{/if}
+                  </td>
                 </tr>
               {/each}
             {/if}
@@ -923,6 +934,8 @@
   .dayone-title { font-weight: 800; font-size: 1.02rem; color: var(--text-primary); }
   .dayone-sub { font-size: 0.89rem; color: var(--text-muted-strong); line-height: 1.65; margin-top: 0.25rem; }
 
+  .board-link { display: inline-block; min-height: 44px; line-height: 44px; font-weight: 700; color: var(--accent); text-decoration: none; }
+  .lesson-slides { font-size: .82rem; color: var(--accent); font-weight: 600; }
   .share-intro { font-size: 0.9rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 0.8rem; }
   .share-open {
     background: var(--accent); color: #fff; border: 0; border-radius: 12px;
