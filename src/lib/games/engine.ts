@@ -102,6 +102,27 @@ export function verdict(ok: boolean, detail: { answer?: string; note?: string } 
   return parts.join(' ');
 }
 
+/**
+ * Where a key moves a marker on a number line from `lo` to `hi`: an arrow
+ * one step, a Page key ten, Home and End to the ends. The line runs left to
+ * right even on a right-to-left page, so → is larger. An unplaced marker
+ * starts in the middle. null: not a key the line uses.
+ */
+export function nudge(value: number | null, key: string, lo: number, hi: number, step: number): number | null {
+  const from = value ?? (lo + hi) / 2;
+  const moves: Record<string, number> = {
+    ArrowRight: step, ArrowUp: step, ArrowLeft: -step, ArrowDown: -step,
+    PageUp: 10 * step, PageDown: -10 * step,
+  };
+  let to: number;
+  if (key === 'Home') to = lo;
+  else if (key === 'End') to = hi;
+  else if (key in moves) to = value === null ? from : from + moves[key];
+  else return null;
+  /* toFixed: 0.2 + 0.1 is 0.30000000000000004, and a child hears the value. */
+  return +Math.min(hi, Math.max(lo, to)).toFixed(10);
+}
+
 export function fmt(totalSeconds: number): string {
   return `${Math.floor(totalSeconds / 60)}:${String(totalSeconds % 60).padStart(2, '0')}`;
 }

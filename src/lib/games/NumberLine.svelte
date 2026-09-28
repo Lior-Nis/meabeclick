@@ -14,7 +14,7 @@
    * `:global(...)`, same reasoning as Labelling.svelte.
    */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, offersHints, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, nudge, offersHints, type GameEngineContext, type GameData } from './engine.ts';
   import RoundHint from './RoundHint.svelte';
 
   type Round = { target: number; label?: string; tolerance?: number; why?: string; hint?: string };
@@ -110,6 +110,22 @@
     svg.addEventListener('pointermove', (e) => { if (e.buttons === 1) place(e); });
   });
 
+  /* The keyboard's way onto the line: arrows move the marker, Enter checks.
+     A step of the round's tolerance keeps every target reachable. */
+  function onLineKey(e: KeyboardEvent) {
+    if (answered) return;
+    if (e.key === 'Enter') {
+      if (guess !== null) { e.preventDefault(); check(); }
+      return;
+    }
+    const r = rounds[idx];
+    const to = nudge(guess, e.key, lo, hi, r.tolerance ?? (hi - lo) * 0.03);
+    if (to === null) return;
+    e.preventDefault();
+    guess = to;
+    redraw();
+  }
+
   function check() {
     if (guess === null) return;
     answered = true;
@@ -155,10 +171,22 @@
     <div class="target-val">{rounds[idx].label ?? String(rounds[idx].target)}</div>
   </div>
   <div class="line-box">
-    <!-- eslint-disable-next-line svelte/no-at-html-tags -->
-    <div bind:this={lineEl}>{@html markup}</div>
+    <div
+      class="line"
+      role="slider"
+      tabindex="0"
+      aria-label="המיקום שסימנתם על הציר"
+      aria-valuemin={lo}
+      aria-valuemax={hi}
+      aria-valuenow={guess ?? undefined}
+      aria-valuetext={guess === null ? 'עוד לא סימנתם' : String(guess)}
+      onkeydown={onLineKey}
+    >
+      <!-- eslint-disable-next-line svelte/no-at-html-tags -->
+      <div bind:this={lineEl}>{@html markup}</div>
+    </div>
   </div>
-  <div class="hint">לחצו או גררו על הציר, ואז אשרו</div>
+  <div class="hint">לחצו או גררו על הציר (או הזיזו בחיצים), ואז אשרו</div>
   <div style="text-align:center">
     {#if !answered}
       <button class="btn" onclick={check} disabled={guess === null}>בדיקה ✓</button>
@@ -184,5 +212,6 @@
     border-radius: 16px; padding: 2.4rem 1rem 1.2rem;
     margin-bottom: 1rem; touch-action: none;
   }
+  .line:focus-visible { outline: 3px solid var(--accent2-strong); outline-offset: 6px; border-radius: 8px; }
   :global(.line-box svg) { display: block; width: 100%; height: auto; overflow: visible; cursor: pointer; }
 </style>
