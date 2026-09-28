@@ -47,8 +47,8 @@ test('tasks are linked to the covered skill they name; anything else is dropped'
     { task: 'כפלו 2/3·3/4', why: '', skillKey: 'frac.mul' },
   ] });
   assert.deepEqual(H.parseTaughtHomework(raw, SKILLS), [
-    { task: 'חברו 1/2+1/3 — מכנה משותף', nodeId: 11 },
-    { task: 'כפלו 2/3·3/4', nodeId: 12 },
+    { task: 'חברו 1/2+1/3 — מכנה משותף', nodeId: 11, answer: null },
+    { task: 'כפלו 2/3·3/4', nodeId: 12, answer: null },
   ]);
 });
 
@@ -78,7 +78,7 @@ JSON
   const saved = process.env.CODEX_BIN;
   process.env.CODEX_BIN = script;
   try {
-    assert.deepEqual(await H.generateTaughtHomework(CTX), [{ task: 'חברו 1/4+1/4 — חימום', nodeId: 11 }]);
+    assert.deepEqual(await H.generateTaughtHomework(CTX), [{ task: 'חברו 1/4+1/4 — חימום', nodeId: 11, answer: null }]);
     assert.match(await readFile(join(dir, 'prompt.txt'), 'utf8'), /חיבור שברים/, 'prompt went over stdin');
   } finally {
     if (saved === undefined) delete process.env.CODEX_BIN; else process.env.CODEX_BIN = saved;

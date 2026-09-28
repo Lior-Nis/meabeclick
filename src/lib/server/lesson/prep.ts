@@ -54,6 +54,9 @@ export interface WorkedExample {
 export interface HomeworkItem {
   task: string;
   why: string;
+  /** The answer key, for the tutor only (migration 022). Asked for, but a
+   *  lesson without one still publishes: it is a help, not the lesson. */
+  answer?: string;
 }
 
 export interface MemoryGame {
@@ -248,8 +251,8 @@ const LESSON_SCHEMA = {
       items: {
         type: 'object',
         additionalProperties: false,
-        required: ['task', 'why'],
-        properties: { task: { type: 'string' }, why: { type: 'string' } },
+        required: ['task', 'why', 'answer'],
+        properties: { task: { type: 'string' }, why: { type: 'string' }, answer: { type: 'string' } },
       },
     },
     games: {
@@ -487,7 +490,7 @@ function buildSystem({ subject, level, durationMin }: { subject: string; level: 
     '- בשדה gradeContext כתוב/כתבי במשפט אחד באיזו כיתה נלמד הנושא ומה נדרש לדעת לפניו.',
     `- שקפים: ${slideTarget(durationMin)}, כל אחד 3-5 נקודות קצרות. בלי פסקאות ארוכות.`,
     '- דוגמאות: 2-3 תרגילים פתורים, כל אחד עם שלבים ברורים.',
-    '- שיעורי בית: 3-4 משימות, ולכל אחת הסבר קצר למה היא חשובה.',
+    '- שיעורי בית: 3-4 משימות, ולכל אחת הסבר קצר למה היא חשובה, ו-answer: תשובון למורה בלבד — התשובה הסופית לכל סעיף, ופתרון קצר כשהוא עוזר לבדוק. לא בתוך המשימה: התלמיד/ה לא רואה אותו.',
     '- אל תמציא/י עובדות. אם משהו לא בטוח — השמט/י אותו.',
     '',
     ...gameSelectionLines(),
