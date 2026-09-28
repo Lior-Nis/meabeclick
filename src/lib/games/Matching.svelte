@@ -116,7 +116,9 @@
   <div class="progress-outer"><div class="progress-inner" style="width: {(solved / pairs.length) * 100}%"></div></div>
 
   <div class="prompt">חברו כל מונח להגדרה שלו 🔗</div>
-  <div class="hint">לוחצים על מונח מימין, ואז על ההגדרה המתאימה משמאל</div>
+  <!-- No sides: the columns follow the page direction, and "right/left" was
+       the opposite of what the child saw. -->
+  <div class="hint">לוחצים על מונח, ואז על ההגדרה המתאימה לו</div>
   <!-- Help on demand, not a penalty. Asking for a hint is a legitimate way
        to learn, so the button says nothing discouraging and the count is
        not shown to the child during play — it reaches the tutor, who is

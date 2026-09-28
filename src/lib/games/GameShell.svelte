@@ -28,9 +28,9 @@
    * that payload must carry the request's signature (`t`) for
    * /api/game-result to accept it.
    */
-  import { setContext, type Snippet } from 'svelte';
+  import { onMount, setContext, type Snippet } from 'svelte';
   import '$lib/styles/games.css';
-  import { fmt, shuffle, starsFor, clampStars, reportResult, GAME_CONTEXT_KEY, type FinishInput } from './engine.ts';
+  import { fmt, shuffle, starsFor, clampStars, reportResult, flushQueuedResults, GAME_CONTEXT_KEY, type FinishInput, type SaveResult } from './engine.ts';
 
   let {
     title,
@@ -60,6 +60,20 @@
    *  `extraLine`) — never from tutor- or student-authored free text — so
    *  rendering it with `{@html}` below carries no injection risk. */
   let doneLineHtml = $state('');
+  /** What happened to the result — said on the finish screen, because «סיימת!»
+   *  over a result that was never saved is the silent loss the pre-launch
+   *  review found. */
+  let saving = $state(false);
+  let saved = $state<SaveResult | null>(null);
+
+  /* Anything an earlier game could not send goes now, and again whenever the
+     connection comes back. */
+  onMount(() => {
+    flushQueuedResults();
+    const retry = () => { flushQueuedResults(); };
+    addEventListener('online', retry);
+    return () => removeEventListener('online', retry);
+  });
 
   function startTimer() {
     if (timerId) return; // idempotent: a template calling it twice must not open two intervals
@@ -85,6 +99,7 @@
     doneLineHtml = line + (input.extraLine ? `<br>${input.extraLine}` : '');
     done = true;
 
+    saving = true;
     reportResult({
       dataId,
       student,
@@ -100,7 +115,7 @@
          there and went unused". The suggestion engine relies on telling
          those apart. */
       ...(typeof input.hints === 'number' ? { hints: input.hints } : {}),
-    });
+    }).then(r => { saved = r; }).finally(() => { saving = false; });
   }
 
   setContext(GAME_CONTEXT_KEY, {
@@ -119,6 +134,10 @@
 
 <div class="wrap">
   <div class="page-brand"><BrandMark height={26} /></div>
+  <!-- The way back. The logo and the error page went to the marketing
+       homepage; /app/student sends a signed-in child to their own board and
+       anyone else to the sign-in page. -->
+  <a class="back" href="/app/student" data-sveltekit-reload>→ חזרה לדף שלי</a>
 
   <header>
     <h1>{title}</h1>
@@ -137,13 +156,21 @@
       <div class="done-title">סיימת! 🎉</div>
       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
       <div class="done-line">{@html doneLineHtml}</div>
-      <button class="btn" onclick={() => location.reload()}>שחקו שוב 🔄</button>
+      <div class="save-line" role="status">
+        {#if saving}שומרים את התוצאה…{:else if saved === 'saved'}✓ נשמר{:else if saved === 'queued'}אין חיבור כרגע — התוצאה תישמר כשהחיבור יחזור{/if}
+      </div>
+      <!-- Waits for the save: a reload mid-request could cancel it. -->
+      <button class="btn" onclick={() => location.reload()} disabled={saving}>שחקו שוב 🔄</button>
+      <a class="back" href="/app/student" data-sveltekit-reload>→ חזרה לדף שלי</a>
     </div>
   {/if}
 </div>
 
 <style>
-  .wrap { max-width: 760px; margin: 0 auto; }
+  /* 16px sides: games ran edge to edge on a phone. */
+  .wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; }
+  .back { display: inline-block; min-height: 44px; line-height: 44px; color: var(--accent); font-weight: 700; text-decoration: none; }
+  .save-line { min-height: 1.4em; margin: 0.4rem 0 0.8rem; color: var(--text-muted); font-size: 0.9rem; }
   .page-brand { display: flex; justify-content: center; padding: 1rem 0 0.9rem; }
   header { text-align: center; margin-bottom: 0.5rem; }
   h1 { font-size: clamp(1.25rem, 4vw, 1.8rem); font-weight: 900; }

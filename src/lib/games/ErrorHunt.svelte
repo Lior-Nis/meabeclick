@@ -109,7 +109,9 @@
     display: flex; align-items: center; justify-content: center;
     font-size: 0.8rem; font-weight: 800;
   }
-  .step-txt { flex: 1; direction: ltr; text-align: left; font-weight: 600; }
+  /* Each step takes the direction of its own text: a formula reads LTR, a
+     Hebrew sentence RTL. Forcing LTR reversed every Hebrew step. */
+  .step-txt { flex: 1; unicode-bidi: plaintext; text-align: start; font-weight: 600; }
   .step.found { border-color: var(--accent3); background: var(--accent3-dim); }
   .step.found .step-num { background: var(--accent3); color: #fff; }
   .step.missed { border-color: var(--danger); background: var(--danger-dim); }

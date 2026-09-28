@@ -116,19 +116,80 @@ export function clampStars(stars: number): number {
   return Math.max(0, Math.min(3, Math.round(stars)));
 }
 
+export type SaveResult = 'saved' | 'queued' | 'rejected';
+
+type Deps = { fetch?: typeof fetch; storage?: Pick<Storage, 'getItem' | 'setItem' | 'removeItem'> | null };
+
+/** Results that could not be sent yet, kept on the device. */
+const QUEUE_KEY = 'mea-beclick:pending-results';
+const QUEUE_MAX = 20;
+
+function defaultStorage(): Deps['storage'] {
+  try { return typeof localStorage === 'undefined' ? null : localStorage; } catch { return null; }
+}
+
+function readQueue(storage: Deps['storage']): Record<string, unknown>[] {
+  try { return JSON.parse(storage?.getItem(QUEUE_KEY) ?? '[]'); } catch { return []; }
+}
+function writeQueue(storage: Deps['storage'], q: Record<string, unknown>[]): void {
+  try {
+    if (q.length) storage?.setItem(QUEUE_KEY, JSON.stringify(q.slice(-QUEUE_MAX)));
+    else storage?.removeItem(QUEUE_KEY);
+  } catch { /* storage full or blocked: nothing more to do */ }
+}
+
+/** One POST: 'saved', 'rejected' for a refusal that will not change on a
+ *  retry (a 4xx — an unsigned demo link, say), or null to try again later. */
+async function post(payload: Record<string, unknown>, f: typeof fetch): Promise<'saved' | 'rejected' | null> {
+  try {
+    const r = await f('/api/game-result', {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(payload),
+      /* A tap on «שחקו שוב» or leaving the page must not cancel it. */
+      keepalive: true,
+    });
+    if (r.ok) return 'saved';
+    return r.status >= 400 && r.status < 500 ? 'rejected' : null;
+  } catch {
+    return null; // offline
+  }
+}
+
 /**
- * Fire-and-forget: a storage hiccup must never make a finished game look
- * broken to the student. `t` (the signature minted by src/lib/server/
- * urls.ts's gameUrl()) travels in the payload so /api/game-result can
- * verify this result actually belongs to a legitimately issued assignment
- * — games/game.js's version predates that check and never sent it.
+ * Sends a finished game's result, and says what happened.
+ *
+ * It used to be fire-and-forget: the response was ignored, «שחקו שוב»
+ * reloaded at once and could cancel it, and an offline child saw «סיימת!»
+ * while nothing was saved (pre-launch review, 2026-09-28). Now a result
+ * that could not be sent is kept on the device and sent by
+ * flushQueuedResults() — on the next game, or when the connection returns.
+ * `t` (gameUrl's signature) travels in the payload, as before.
  */
-export function reportResult(payload: Record<string, unknown>): void {
-  fetch('/api/game-result', {
-    method: 'POST',
-    headers: { 'Content-Type': 'application/json' },
-    body: JSON.stringify(payload),
-  }).catch(() => {});
+export async function reportResult(payload: Record<string, unknown>, deps: Deps = {}): Promise<SaveResult> {
+  const f = deps.fetch ?? fetch;
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  const r = await post(payload, f);
+  if (r) return r;
+  writeQueue(storage, [...readQueue(storage), payload]);
+  return 'queued';
+}
+
+/** Sends what was kept on the device. Returns how many were saved. */
+export async function flushQueuedResults(deps: Deps = {}): Promise<number> {
+  const f = deps.fetch ?? fetch;
+  const storage = deps.storage === undefined ? defaultStorage() : deps.storage;
+  const queue = readQueue(storage);
+  if (!queue.length) return 0;
+  const keep: Record<string, unknown>[] = [];
+  let saved = 0;
+  for (const p of queue) {
+    const r = await post(p, f);
+    if (r === 'saved') saved++;
+    else if (r === null) keep.push(p); // still offline: keep; refused: drop
+  }
+  writeQueue(storage, keep);
+  return saved;
 }
 
 /**

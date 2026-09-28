@@ -42,6 +42,12 @@
   const xOf = (v: number) => PAD + ((v - lo) * (W - 2 * PAD)) / (hi - lo);
   const vOf = (x: number) => lo + ((x - PAD) * (hi - lo)) / (W - 2 * PAD);
 
+  /** A number inside a Hebrew sentence, kept left-to-right: without the
+   *  isolate, "-1.5" is laid out as "1.5-" in a right-to-left paragraph. */
+  const LRI = String.fromCodePoint(0x2066); // LEFT-TO-RIGHT ISOLATE
+  const PDI = String.fromCodePoint(0x2069); // POP DIRECTIONAL ISOLATE
+  const isolate = (n: number | string): string => `${LRI}${n}${PDI}`;
+
   function isOk(): boolean {
     if (guess === null) return false;
     const r = rounds[idx];
@@ -61,7 +67,7 @@
       );
       if (major) {
         ticks.push(
-          `<text x="${x.toFixed(1)}" y="${H / 2 + 24}" font-size="10" fill="#64748B" text-anchor="middle" font-family="Heebo,sans-serif">${+v.toFixed(2)}</text>`,
+          `<text x="${x.toFixed(1)}" y="${H / 2 + 24}" font-size="10" fill="#64748B" text-anchor="middle" direction="ltr" font-family="Heebo,sans-serif">${+v.toFixed(2)}</text>`,
         );
       }
     }
@@ -75,7 +81,7 @@
 
     const truth = showAnswer
       ? `<circle cx="${xOf(r.target).toFixed(1)}" cy="${H / 2}" r="6" fill="none" stroke="#10B981" stroke-width="2.5"/>
-         <text x="${xOf(r.target).toFixed(1)}" y="${H / 2 - 26}" font-size="11" fill="#047857" text-anchor="middle" font-weight="700" font-family="Heebo,sans-serif">${r.label ?? r.target}</text>`
+         <text x="${xOf(r.target).toFixed(1)}" y="${H / 2 - 26}" font-size="11" fill="#047857" text-anchor="middle" direction="ltr" font-weight="700" font-family="Heebo,sans-serif">${r.label ?? r.target}</text>`
       : '';
 
     markup = `<svg viewBox="0 0 ${W} ${H}" xmlns="http://www.w3.org/2000/svg">
@@ -112,7 +118,7 @@
     if (ok) score++;
     else missed.push(r.label ?? String(r.target));
     redraw(true);
-    whyText = ok ? `מדויק! ${r.why || ''}` : `כמעט — סימנתם ${guess.toFixed(2)} והמספר נמצא ב-${r.target}. ${r.why || ''}`;
+    whyText = ok ? `מדויק! ${r.why || ''}` : `כמעט — סימנתם ${isolate(guess.toFixed(2))} והמספר נמצא ב-${isolate(r.target)}. ${r.why || ''}`;
   }
 
   function next() {

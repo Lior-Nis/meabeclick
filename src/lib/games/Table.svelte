@@ -9,7 +9,7 @@
 
   const isBlank = (c: Cell): c is Blank => typeof c === 'object' && c !== null && 'answer' in c;
 
-  type BlankState = { row: number; col: number; answer: string; where: string; value: string; state: 'idle' | 'right' | 'wrong' };
+  type BlankState = { row: number; col: number; answer: string; where: string; value: string; state: 'idle' | 'right' | 'wrong'; revealed?: boolean };
 
   let { data }: { data: GameData } = $props();
   const engine = getContext<GameEngineContext>(GAME_CONTEXT_KEY);
@@ -23,6 +23,9 @@
   let revealed = $state(false);
   const elapsed = $derived(engine.secs());
   const score = $derived(blanks.filter((b) => b.state === 'right').length);
+  /* Answered by the child, not filled in by the game: a revealed table used
+     to finish with every cell "right", three stars and 100% for the tutor. */
+  const earned = $derived(blanks.filter((b) => b.state === 'right' && !b.revealed).length);
   const filled = $derived(blanks.filter((b) => b.value.trim()).length);
   const allSolved = $derived(blanks.length > 0 && score === blanks.length);
 
@@ -48,7 +51,10 @@
     checked = true;
 
     if (score === blanks.length) {
-      engine.finish({ template: 'table', score, total: blanks.length, missed: [] });
+      engine.finish({
+        template: 'table', score: earned, total: blanks.length,
+        missed: blanks.filter((b) => b.revealed).map((b) => b.where),
+      });
       return;
     }
 
@@ -57,7 +63,7 @@
 
     // A second failed pass is where a student gets stuck, so open the answers.
     if (tries >= 3) {
-      blanks.forEach((b) => { if (b.state !== 'right') b.value = b.answer; });
+      blanks.forEach((b) => { if (b.state !== 'right') { b.value = b.answer; b.revealed = true; } });
       whyHtml = 'הנה התשובות — קראו אותן ולחצו בדיקה כדי לסיים.';
       revealed = true;
     }
