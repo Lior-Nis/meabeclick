@@ -422,7 +422,7 @@
     <div class="container section-center">
       <div class="section-label">תעריף</div>
       <h2 class="section-title">מחירים לשיעור</h2>
-      <p class="section-sub">תשלום בסוף כל שיעור — במזומן או בביט</p>
+      <p class="section-sub">תשלום בסוף כל שיעור — ב-PayBox, בביט או במזומן</p>
       <div class="pricing-grid">
 
         {#each PLANS as plan, i (plan.minutes)}
@@ -542,7 +542,7 @@
           </div>
           <div class="faq-answer">
             <div class="faq-answer-inner">
-              התשלום מתבצע בסוף כל שיעור, ניתן לשלם במזומן או בביט.
+              התשלום מתבצע בסוף כל שיעור, ב-PayBox (בקישור שנשלח אליכם), בביט או במזומן.
             </div>
           </div>
         </div>

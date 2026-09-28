@@ -22,7 +22,7 @@
  * booking is never lost because mail was down.
  */
 import nodemailer from 'nodemailer';
-import { TUTOR_PHONE } from '../contact.ts';
+import { PAYBOX_LINK, TUTOR_PHONE } from '../contact.ts';
 import { planLabel } from '../plans.ts';
 import { contactTutor } from '../tutors.ts';
 
@@ -269,6 +269,14 @@ export async function sendBookingEmail(
  * with the link rather than burying it under the booking details — a parent
  * who reads only the first screenful still ends up inside the product.
  */
+/** How to pay, where a family meets money: after each lesson, in PayBox. */
+const PAY_LINE = 'התשלום אחרי כל שיעור, בקופת ה-PayBox שלנו:';
+const payBlock = (): string => `
+    <p style="margin-top:18px;font-size:14px;color:#334155;line-height:1.8">
+      ${esc(PAY_LINE)}<br>
+      <a href="${esc(PAYBOX_LINK)}" style="color:#2563EB;font-weight:700">💳 לתשלום ב-PayBox</a>
+    </p>`;
+
 export async function sendFamilyBookingEmail(
   b: BookingEmailInput,
   enrolled: EnrolledForEmail,
@@ -300,6 +308,9 @@ export async function sendFamilyBookingEmail(
     enrolled.portalLink,
     '',
     'שמרו את הקישור. הוא נשאר תקף, ואפשר תמיד לבקש חדש מדף הכניסה.',
+    '',
+    PAY_LINE,
+    PAYBOX_LINK,
     contactLine,
   ].join('\n');
 
@@ -318,6 +329,7 @@ export async function sendFamilyBookingEmail(
       שמרו את הקישור הזה. אם יתיישן, אפשר לבקש חדש בכל רגע מדף הכניסה —
       בלי סיסמאות ובלי לחכות לתשובה.
     </p>
+    ${payBlock()}
     <p style="margin-top:10px;font-size:14px;color:#64748B">
       ${esc(contactLine)}
     </p>`);
@@ -535,6 +547,9 @@ export async function sendLessonReportedEmail(r: {
     '',
     'הכל מחכה בדף האישי:',
     r.link,
+    '',
+    PAY_LINE,
+    PAYBOX_LINK,
   ].join('\n');
 
   const html = shell(`
@@ -544,7 +559,8 @@ export async function sendLessonReportedEmail(r: {
     ${list}
     <p style="margin-top:20px">
       <a href="${esc(r.link)}" style="background:#2563EB;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">לדף האישי</a>
-    </p>`);
+    </p>
+    ${payBlock()}`);
 
   await tx.sendMail({
     from: process.env.GMAIL_USER,
