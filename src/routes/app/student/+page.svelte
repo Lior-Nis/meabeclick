@@ -31,6 +31,7 @@
   import type { ProgressFacts } from '$lib/progress-facts.ts';
   import { appendMessage, removeMessage } from '$lib/chat-log.js';
   import MathText from '$lib/math/MathText.svelte';
+  import FormulaText from '$lib/components/FormulaText.svelte';
   import { toHref } from '$lib/urls.ts';
   import { israelToday } from '$lib/dates.ts';
   import { firstName } from '$lib/names.ts';
@@ -477,7 +478,7 @@
             <div class="card">
               <div class="row">
                 <div style="flex:1">
-                  <div class="card-title"><Icon name={homeworkState(h) === 'open' ? 'homework' : 'done'} label={HOMEWORK_STATE_LABEL[homeworkState(h)]} /> {h.task}</div>
+                  <div class="card-title"><Icon name={homeworkState(h) === 'open' ? 'homework' : 'done'} label={HOMEWORK_STATE_LABEL[homeworkState(h)]} /> <FormulaText text={h.task} /></div>
                   {#if h.skill}<div class="card-meta">מתרגלים: {h.skill}</div>{/if}
                   <div class="card-meta">{h.due ? 'להגשה עד ' + fmtDate(h.due) : ''}</div>
                   {#if h.url}

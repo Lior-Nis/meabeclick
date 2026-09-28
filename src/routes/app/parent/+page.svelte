@@ -36,6 +36,7 @@
   import { page } from '$app/state';
   import type { PageData } from './$types';
   import { PAYBOX_LINK, TUTOR_PHONE } from '$lib/contact.ts';
+  import FormulaText from '$lib/components/FormulaText.svelte';
   import { contactTutor, tutorNames } from '$lib/tutors.ts';
 
   const noStudentsWhatsAppHref =
@@ -592,7 +593,7 @@
             <div class="hw-item">
               <div class="hw-status-icon"><Icon name={state === 'open' ? 'homework' : 'done'} label={HOMEWORK_STATE_LABEL[state]} /></div>
               <div class="hw-content">
-                <div class="hw-task" class:done={state !== 'open'}>{h.task}</div>
+                <div class="hw-task" class:done={state !== 'open'}><FormulaText text={h.task} /></div>
                 {#if h.skill}<div class="hw-meta">מתרגלים: {h.skill}</div>{/if}
                 <div class="hw-meta">ניתן: {formatDateHe(h.date)}</div>
                 {#if h.url}

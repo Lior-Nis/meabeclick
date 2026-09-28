@@ -1151,7 +1151,7 @@
                     <div class="hw-item">
                       <div class="hw-check" class:done={hw.submitted} onclick={() => toggleHw(s.code, hw.id)} role="checkbox" aria-checked={hw.submitted} tabindex="0" onkeydown={(e) => e.key === 'Enter' && toggleHw(s.code, hw.id)}>{hw.submitted ? '✓' : ''}</div>
                       <div class="hw-text">
-                        <div class="hw-task" class:done-text={hw.submitted || hw.graded}>{hw.task}</div>
+                        <div class="hw-task" class:done-text={hw.submitted || hw.graded}><FormulaText text={hw.task} /></div>
                         <div class="hw-date">{formatDate(hw.date)}</div>
                         {#if hw.answer}
                           <!-- The generator's answer key: hers, closed by default so it is not

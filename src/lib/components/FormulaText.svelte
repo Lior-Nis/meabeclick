@@ -10,3 +10,9 @@
 </script>
 
 {#each runs as r}{#if r.ltr}<bdi dir="ltr">{r.text}</bdi>{:else}{r.text}{/if}{/each}
+
+<style>
+  /* One formula, one line: "-2(x" at the end of a line and "+ 5)" at the
+     start of the next reads as two things. Formulas here are short. */
+  bdi { white-space: nowrap; }
+</style>
