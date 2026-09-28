@@ -29,6 +29,7 @@ import { portalDir } from '../paths.ts';
 import { contentPath } from '../content.ts';
 import { assertPathSegment } from '../urls.ts';
 import { singleton } from '../singleton.ts';
+import { autopilotCovers } from '../../subjects.ts';
 import { transliterate } from '../enroll.ts';
 import {
   LessonGenerationError, engineHasCredentials, type LessonFailureKind,
@@ -108,6 +109,13 @@ export interface TriggerResult {
  * the background and is never awaited by the request.
  */
 export function triggerForBooking(booking: Booking, opts: TriggerOpts = {}): TriggerResult {
+  /* Not a skip: nothing went wrong. Only maths is prepared automatically,
+     so for any other subject nothing is recorded — no failed lesson on the
+     dashboard, no WhatsApp alarm, and no row in `lessons` to break the
+     gate's run of clean generations. The tutor's booking email says the
+     lesson is hers to prepare. */
+  if (!autopilotCovers(booking.subject)) return { skipped: 'not maths' };
+
   const slug = `${slugify(booking.name)}-${slugify(booking.subject)}-${Date.now().toString(36)}`;
 
   // Structural pre-flight only — "has anyone configured credentials", not

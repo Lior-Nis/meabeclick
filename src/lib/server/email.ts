@@ -25,6 +25,7 @@ import nodemailer from 'nodemailer';
 import { PAYBOX_LINK, TUTOR_PHONE } from '../contact.ts';
 import { planLabel } from '../plans.ts';
 import { contactTutor } from '../tutors.ts';
+import { autopilotCovers } from '../subjects.ts';
 
 const TZ = 'Asia/Jerusalem';
 
@@ -226,9 +227,14 @@ export async function sendBookingEmail(
       : '↩️ תלמיד/ה קיים/ת')
     : '';
 
+  /* Only maths is prepared automatically; any other lesson is the tutor's
+     to prepare, and nothing else will tell her so. */
+  const manual = autopilotCovers(b.subject) ? '' : '✋ לא מתמטיקה — השיעור לא מוכן אוטומטית. ההכנה ידנית.';
+
   const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n')
     + (enrolled ? `\n\n${status}\nהדף שלהם: ${enrolled.portalLink}` : '')
-    + `\n\n${inCalendar ? '✅ נוסף ליומן אוטומטית' : '⚠️ לא נוסף ליומן — יש להוסיף ידנית'}`;
+    + `\n\n${inCalendar ? '✅ נוסף ליומן אוטומטית' : '⚠️ לא נוסף ליומן — יש להוסיף ידנית'}`
+    + (manual ? `\n${manual}` : '');
 
   const html = shell(`
     <h2 style="color:#2563EB;margin:0 0 4px">📚 הזמנת שיעור חדשה</h2>
@@ -239,6 +245,7 @@ export async function sendBookingEmail(
               color:${inCalendar ? '#047857' : '#DC2626'};font-weight:700">
       ${inCalendar ? '✅ נוסף ליומן אוטומטית' : '⚠️ לא נוסף ליומן — יש להוסיף ידנית'}
     </p>
+    ${manual ? `<p style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#FFFBEB;color:#B45309;font-weight:700">${esc(manual)}</p>` : ''}
     ${enrolled ? `
     <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#EFF6FF;border:1px solid #BFDBFE">
       <div style="font-weight:800;margin-bottom:6px">${esc(status)}</div>

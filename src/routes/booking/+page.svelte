@@ -3,6 +3,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import { PLANS, planFor, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
+  import { SUBJECTS } from '$lib/subjects.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
   import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
@@ -810,11 +811,7 @@
             aria-invalid={!!errors.subject} aria-describedby={errors.subject ? 'err-subject' : undefined}
           >
             <option value="">בחרו מקצוע...</option>
-            <option>מתמטיקה</option>
-            <option>פיזיקה</option>
-            <option>עברית</option>
-            <option>תכנות</option>
-            <option>אחר</option>
+            {#each SUBJECTS as s}<option>{s}</option>{/each}
           </select>
           {#if errors.subject}<p class="field-error" id="err-subject">{errors.subject}</p>{/if}
 
