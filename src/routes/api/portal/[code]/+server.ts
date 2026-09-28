@@ -182,6 +182,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
         gradedBy: h.graded_by ?? null,
         template: h.template ?? undefined,
         dataId: h.data_id ?? undefined,
+        skill: h.skill ?? null,
       }));
     }
 

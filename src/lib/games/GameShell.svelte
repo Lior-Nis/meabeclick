@@ -36,6 +36,7 @@
     title,
     subject,
     best,
+    skill = null,
     dataId,
     student,
     t,
@@ -44,6 +45,8 @@
     title: string;
     subject: string;
     best: number | null;
+    /** The plan skill this game practises, by name — see practiceGoal(). */
+    skill?: string | null;
     dataId: string;
     student: string;
     t: string;
@@ -156,6 +159,7 @@
   <header>
     <h1>{title}</h1>
     <div class="subject">{subject}</div>
+    {#if skill}<div class="goal">מה מתרגלים: {skill}</div>{/if}
   </header>
 
   {#if best !== null}
@@ -196,4 +200,6 @@
   .page-brand { display: flex; justify-content: center; padding: 1rem 0 0.9rem; }
   header { text-align: center; margin-bottom: 0.5rem; }
   h1 { font-size: clamp(1.25rem, 4vw, 1.8rem); font-weight: 900; }
+  /* A radius that survives wrapping: skill names run long. */
+  .goal { display: inline-block; margin-top: 0.4rem; padding: 0.25rem 0.8rem; border-radius: 12px; line-height: 1.5; background: var(--accent-dim); color: var(--accent); font-size: 0.85rem; font-weight: 700; }
 </style>

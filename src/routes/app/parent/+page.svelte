@@ -593,6 +593,7 @@
               <div class="hw-status-icon"><Icon name={state === 'open' ? 'homework' : 'done'} label={HOMEWORK_STATE_LABEL[state]} /></div>
               <div class="hw-content">
                 <div class="hw-task" class:done={state !== 'open'}>{h.task}</div>
+                {#if h.skill}<div class="hw-meta">מתרגלים: {h.skill}</div>{/if}
                 <div class="hw-meta">ניתן: {formatDateHe(h.date)}</div>
                 {#if h.url}
                   <a class="hw-play" href={toHref(h.url)} target="_blank" rel="noopener"><Icon name="games" size={17} /> שחקו</a>

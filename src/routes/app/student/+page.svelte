@@ -478,6 +478,7 @@
               <div class="row">
                 <div style="flex:1">
                   <div class="card-title"><Icon name={homeworkState(h) === 'open' ? 'homework' : 'done'} label={HOMEWORK_STATE_LABEL[homeworkState(h)]} /> {h.task}</div>
+                  {#if h.skill}<div class="card-meta">מתרגלים: {h.skill}</div>{/if}
                   <div class="card-meta">{h.due ? 'להגשה עד ' + fmtDate(h.due) : ''}</div>
                   {#if h.url}
                     <!-- Only a task that really is a game gets a game link.
