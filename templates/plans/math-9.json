@@ -1,0 +1,195 @@
+{
+  "id": "math-9",
+  "version": 1,
+  "subject": "מתמטיקה",
+  "track": "חטיבת ביניים — כיתה ט",
+  "source": "docs/superpowers/research/2026-09-12-israeli-math-curriculum.md#5-middle-school-foundations-brief",
+  "reviewed": null,
+  "grades": [
+    "כיתה ט"
+  ],
+  "topics": [
+    {
+      "key": "alg",
+      "title": "התחום האלגברי",
+      "branches": [
+        {
+          "key": "alg.expr",
+          "title": "ביטויים ופירוק לגורמים",
+          "skills": [
+            {
+              "key": "alg.expr.distrib",
+              "title": "חוק הפילוג המורחב",
+              "gloss": "the extended distributive law",
+              "requires": []
+            },
+            {
+              "key": "alg.expr.shortmul",
+              "title": "נוסחאות הכפל המקוצר",
+              "gloss": "special products",
+              "requires": [
+                "alg.expr.distrib"
+              ]
+            },
+            {
+              "key": "alg.expr.factor",
+              "title": "פירוק לגורמים: גורם משותף, כפל מקוצר וטרינום",
+              "gloss": "factoring: common factor, special products, trinomials",
+              "requires": [
+                "alg.expr.shortmul"
+              ]
+            },
+            {
+              "key": "alg.expr.powers",
+              "title": "חוקי חזקות וחוקי שורשים",
+              "gloss": "laws of exponents and of roots",
+              "requires": []
+            }
+          ]
+        },
+        {
+          "key": "alg.eq",
+          "title": "משוואות",
+          "skills": [
+            {
+              "key": "alg.eq.quadfactor",
+              "title": "משוואה ריבועית בפירוק לגורמים",
+              "gloss": "quadratic equations by factoring",
+              "requires": [
+                "alg.expr.factor"
+              ]
+            },
+            {
+              "key": "alg.eq.quadformula",
+              "title": "נוסחת השורשים",
+              "gloss": "the quadratic formula",
+              "requires": [
+                "alg.eq.quadfactor"
+              ]
+            },
+            {
+              "key": "alg.eq.rational",
+              "title": "שברים אלגבריים ומשוואות עם שברים; תחום הצבה",
+              "gloss": "algebraic fractions and rational equations; the domain",
+              "requires": [
+                "alg.expr.factor"
+              ]
+            },
+            {
+              "key": "alg.eq.system",
+              "title": "מערכת משוואות",
+              "gloss": "systems of equations",
+              "requires": []
+            },
+            {
+              "key": "alg.eq.word",
+              "title": "שאלות מילוליות",
+              "gloss": "word problems",
+              "requires": [
+                "alg.eq.quadformula"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "func",
+      "title": "פונקציות",
+      "branches": [
+        {
+          "key": "func.quad",
+          "title": "הפונקציה הריבועית",
+          "skills": [
+            {
+              "key": "func.quad.graph",
+              "title": "פונקציה ריבועית: y=ax², הזזות, הצגה קודקודית והצגת מכפלה, סקיצה",
+              "gloss": "the quadratic function: y=ax², shifts, vertex and factored forms, sketching",
+              "requires": [
+                "alg.eq.quadfactor"
+              ]
+            },
+            {
+              "key": "func.quad.props",
+              "title": "תכונות של פונקציה: תחומי עלייה, ירידה, חיוביות ושליליות",
+              "gloss": "function properties: increasing, decreasing, positive, negative",
+              "requires": [
+                "func.quad.graph"
+              ]
+            },
+            {
+              "key": "func.quad.ineq",
+              "title": "אי שוויונות ריבועיים",
+              "gloss": "quadratic inequalities",
+              "requires": [
+                "func.quad.props"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "geo",
+      "title": "התחום הגאומטרי",
+      "branches": [
+        {
+          "key": "geo.quads",
+          "title": "מרובעים",
+          "skills": [
+            {
+              "key": "geo.quads.special",
+              "title": "דלתון, מקבילית, מלבן וטרפז: תכונות והוכחות",
+              "gloss": "kite, parallelogram, rectangle, trapezium: properties and proofs",
+              "requires": []
+            }
+          ]
+        },
+        {
+          "key": "geo.tri",
+          "title": "משולשים",
+          "skills": [
+            {
+              "key": "geo.tri.sides",
+              "title": "יחסי צלעות וזוויות במשולש",
+              "gloss": "side–angle relationships in a triangle",
+              "requires": []
+            },
+            {
+              "key": "geo.tri.306090",
+              "title": "משולש 30-60-90 והתיכון ליתר",
+              "gloss": "the 30-60-90 triangle and the median to the hypotenuse",
+              "requires": [
+                "geo.tri.sides"
+              ]
+            },
+            {
+              "key": "geo.tri.similarity",
+              "title": "דמיון משולשים",
+              "gloss": "similar triangles",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "data",
+      "title": "תחום אי הוודאות",
+      "branches": [
+        {
+          "key": "data.prob",
+          "title": "הסתברות",
+          "skills": [
+            {
+              "key": "data.prob.basic",
+              "title": "הסתברות: חישוב במרחב מדגם סופי",
+              "gloss": "probability in a finite sample space",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
