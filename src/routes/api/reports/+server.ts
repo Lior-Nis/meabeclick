@@ -13,6 +13,7 @@ import { fileReport, reportForBooking, bookingForReport } from '$server/reports/
 import { planForEnrollment, planData, nodeInPlan, lastLessonAt } from '$server/plans/store.ts';
 import { buildTree } from '$server/plans/view.ts';
 import { afterReport } from '$server/reports/after.ts';
+import { emailFamilyAfterReport } from '$server/notices.ts';
 import { sendWhatsApp } from '$server/lesson/queue.ts';
 import type { RequestHandler } from './$types';
 
@@ -86,7 +87,11 @@ export const POST: RequestHandler = async (event) => {
      it may run an agent for minutes, and the lesson's held homework goes
      out on its own a day after the lesson if this never finishes. */
   afterReport({ bookingId: booking.id, note, nodeIds: entries.map(e => e.nodeId) }, { notify: sendWhatsApp })
-    .catch(err => console.error('[reports] after-report failed:', (err as Error).message));
+    .catch(err => console.error('[reports] after-report failed:', (err as Error).message))
+    /* Then the family's "lesson reported" email — after, so the homework it
+       lists is the homework they can now see. Once per lesson. */
+    .then(() => emailFamilyAfterReport(booking.id))
+    .catch(err => console.error('[reports] family email failed:', (err as Error).message));
 
   const report = reportForBooking(booking.id);
   if (!plan) return json({ report, plan: null, tree: [], events: [] });
