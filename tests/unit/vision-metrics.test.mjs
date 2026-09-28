@@ -117,3 +117,21 @@ test('an empty window reports null shares, not zero', () => {
   assert.equal(empty.activeStudents, 0);
   assert.deepEqual(empty.coverage, { runs: 0, taught: 0 });
 });
+
+test('a lesson copied from the library is not an engine run: not counted, never breaks the streak', () => {
+  const w = new DatabaseSync(process.env.DB_PATH);
+  // Newer than every run above: a clean copy and a failed one.
+  w.prepare(`INSERT INTO lessons (slug, student, at, status) VALUES (?, 'x', ?, ?)`).run('c1', daysAgo(0.2), 'ready');
+  w.prepare(`INSERT INTO lessons (slug, student, at, status) VALUES (?, 'x', ?, ?)`).run('c2', daysAgo(0.1), 'failed');
+  const use = w.prepare(`INSERT INTO library_uses (lesson_slug, master_slug, template_id, skill_key, at) VALUES (?, 'lib-m', 'math-8', 'alg.eq.word', ?)`);
+  use.run('c1', daysAgo(0.2));
+  use.run('c2', daysAgo(0.1));
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    assert.deepEqual(later.gate, { streak: 2, target: 10 }, 'the failed copy did not break it, the clean one did not extend it');
+    assert.equal(later.autogen.units, 5);
+    assert.deepEqual(later.library, { copies: 2 });
+  } finally {
+    w.exec(`DELETE FROM lessons WHERE slug IN ('c1','c2'); DELETE FROM library_uses`);
+  }
+});
