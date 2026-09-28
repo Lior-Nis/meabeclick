@@ -31,6 +31,7 @@
   import { formatAgorot } from '$lib/plans.ts';
   import type { ProgressFacts } from '$lib/progress-facts.ts';
   import { homeworkState, HOMEWORK_STATE_LABEL, type FamilyHomework } from '$lib/family-homework.ts';
+  import { GRADE_LABEL } from '$lib/homework-grade.ts';
   import type { PageData } from './$types';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import { contactTutor, tutorNames } from '$lib/tutors.ts';
@@ -583,7 +584,7 @@
                   <a class="hw-play" href={toHref(h.url)} target="_blank" rel="noopener"><Icon name="games" size={17} /> שחקו</a>
                 {/if}
               </div>
-              <span class="hw-badge" class:done={state !== 'open'} class:open={state === 'open'}>{HOMEWORK_STATE_LABEL[state]}</span>
+              <span class="hw-badge" class:done={state !== 'open'} class:open={state === 'open'}>{state === 'graded' && h.grade ? GRADE_LABEL[h.grade] : HOMEWORK_STATE_LABEL[state]}</span>
             </div>
           {/each}
         {/if}

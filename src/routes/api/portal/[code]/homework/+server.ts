@@ -22,6 +22,8 @@ import { resolveFamilyAccess, studentInScope } from '$server/family.ts';
 import { getStudentByCode } from '$server/entities.ts';
 import { homeworkForStudent, setHomeworkSubmitted } from '$server/lessons.ts';
 import { progressFor } from '$server/progress.ts';
+import { noticeHomeworkSubmitted } from '$server/notices.ts';
+import { sendWhatsApp } from '$server/lesson/queue.ts';
 import type { RequestHandler } from './$types';
 
 const CODE_FORMAT = /^[a-z0-9-]+$/;
@@ -60,14 +62,23 @@ export const PATCH: RequestHandler = async ({ params, request, locals }) => {
      be checked rather than inferred from the path — otherwise one child's
      path submits another child's homework. */
   const rows = homeworkForStudent(student.id);
-  if (!rows.some(h => h.id === id)) {
+  const row = rows.find(h => h.id === id);
+  if (!row) {
     return json({ error: 'לא נמצא' }, { status: 404 });
   }
 
   /* Reversible: a child who taps it by accident must be able to take it
      back. A submission is a claim, not a judgement, so undoing one loses
      nothing. */
-  setHomeworkSubmitted(id, body.submitted !== false, by);
+  const nowSubmitted = body.submitted !== false;
+  setHomeworkSubmitted(id, nowSubmitted, by);
+
+  /* The tutor hears it — once, on the change, and not awaited: a WhatsApp
+     that is slow or down must not hold the child's tap. */
+  noticeHomeworkSubmitted(
+    { studentName: student.name, task: row.task, wasSubmitted: row.submitted, nowSubmitted, by },
+    sendWhatsApp,
+  ).catch(err => console.error('[homework] tutor notice failed:', (err as Error).message));
 
   /* Progress comes back too, because it is derived from exactly what just
      changed. Without it the page shows two numbers about the same child

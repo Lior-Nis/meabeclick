@@ -1,4 +1,5 @@
 <script lang="ts">
+  import { GRADE_LABEL } from '$lib/homework-grade.ts';
   import { homeworkState, HOMEWORK_STATE_LABEL } from '$lib/family-homework.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import Icon from '$lib/icons/Icon.svelte';
@@ -178,18 +179,13 @@
   const hwOpen = $derived((DATA?.homework ?? []).filter(h => !h.submitted && !h.graded).length);
   const today = new Date().toISOString().slice(0, 10);
 
-  const GRADE_LABEL: Record<string, string> = {
-    ok: 'נבדק — יפה מאוד',
-    partial: 'נבדק — חלקית',
-    redo: 'נבדק — כדאי לחזור על זה',
-  };
 
   function hwStatus(h: HwItem): { cls: string; label: string } {
     /* Three states, not two, and the middle one is the point: a child who
        did the work gets to see that it counted before anyone has marked it.
        Status is never colour alone — every one of these carries its own
        words. */
-    if (h.graded) return { cls: `graded ${h.grade ?? ''}`, label: GRADE_LABEL[h.grade ?? ''] ?? 'נבדק' };
+    if (h.graded) return { cls: `graded ${h.grade ?? ''}`, label: h.grade ? GRADE_LABEL[h.grade] : 'נבדק' };
     if (h.submitted) return { cls: 'submitted', label: 'הוגש — ממתין לבדיקה' };
     if (h.due && h.due < today) return { cls: 'late', label: 'באיחור' };
     return { cls: 'open', label: 'פתוח' };

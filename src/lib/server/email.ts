@@ -504,3 +504,54 @@ export async function sendLessonReminderEmail(r: {
   });
   return true;
 }
+
+/**
+ * After the tutor reports a lesson: its homework, and the way to the page.
+ *
+ * Deliberately NOT the report note — that is written for the tutor and may
+ * say things meant for her alone. Families see the tasks, which are already
+ * on their page, and a link to it.
+ */
+export async function sendLessonReportedEmail(r: {
+  to: string;
+  studentName: string;
+  lessonStart: string;
+  tasks: string[];
+  link: string;
+}): Promise<boolean> {
+  if (!r.to) return false;
+  const tx = transport();
+  if (!tx) return false;
+
+  const when = whenLabel(r.lessonStart);
+  const list = r.tasks.length
+    ? `<ul style="margin:8px 0 0;padding-inline-start:20px">${r.tasks.map(t => `<li>${esc(t)}</li>`).join('')}</ul>`
+    : '<p style="margin:8px 0 0">הפעם אין שיעורי בית חדשים.</p>';
+
+  const text = [
+    `השיעור של ${r.studentName} (${when}) סוכם.`,
+    '',
+    ...(r.tasks.length ? ['שיעורי הבית:', ...r.tasks.map(t => `• ${t}`)] : ['הפעם אין שיעורי בית חדשים.']),
+    '',
+    'הכל מחכה בדף האישי:',
+    r.link,
+  ].join('\n');
+
+  const html = shell(`
+    <h2 style="color:#2563EB;margin:0 0 4px">📚 השיעור של ${esc(r.studentName)} סוכם</h2>
+    <p style="color:#64748B;margin:0 0 16px">${esc(when)} · מאה בקליק</p>
+    <p style="margin:0;font-weight:700">שיעורי הבית:</p>
+    ${list}
+    <p style="margin-top:20px">
+      <a href="${esc(r.link)}" style="background:#2563EB;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">לדף האישי</a>
+    </p>`);
+
+  await tx.sendMail({
+    from: process.env.GMAIL_USER,
+    to: r.to,
+    subject: `📚 השיעור של ${r.studentName} סוכם — שיעורי הבית מחכים`,
+    text,
+    html,
+  });
+  return true;
+}

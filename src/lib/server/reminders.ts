@@ -29,7 +29,8 @@
  */
 import { handle } from './db.ts';
 
-export type ReminderKind = 'before-lesson';
+/** 'after-report' is the family's "lesson reported" email (notices.ts). */
+export type ReminderKind = 'before-lesson' | 'after-report';
 export type ReminderStatus = 'pending' | 'sent' | 'failed';
 
 export type ReminderRow = {

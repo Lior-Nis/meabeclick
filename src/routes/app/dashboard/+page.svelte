@@ -5,6 +5,7 @@
   import LearningPlanTree from '$lib/components/LearningPlanTree.svelte';
   import { tutorNames } from '$lib/tutors.ts';
   import type { TutorHomework } from '$lib/tutor-homework.ts';
+  import { GRADES, GRADE_BUTTON, GRADE_LABEL, type HomeworkGrade } from '$lib/homework-grade.ts';
   import { israelDay } from '$lib/dates.ts';
   /**
    * Port of pages/app/dashboard.html. Auth is handled entirely by
@@ -370,6 +371,16 @@
       await refreshActivity(code);
     } catch { toast('לא ניתן לעדכן את שיעורי הבית', { kind: 'error' }); }
   }
+  /** Stage two: she judged it. `null` takes a grade back — a slip of the
+   *  finger must be as cheap to undo as the checkbox is. */
+  async function gradeHw(code: string, hwId: string, grade: HomeworkGrade | null) {
+    try {
+      const r = await fetch(`/api/students/${code}/activity`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', id: Number(hwId), grade }) });
+      if (!r.ok) throw new Error();
+      await refreshActivity(code);
+    } catch { toast('לא ניתן לשמור את הבדיקה', { kind: 'error' }); }
+  }
+
   async function deleteHw(code: string, hwId: string) {
     try {
       const r = await fetch(`/api/students/${code}/activity?id=${encodeURIComponent(hwId)}`, { method: 'DELETE' });
@@ -465,6 +476,9 @@
   // Depend on the real roster now that the student cards render from it —
   // declared here (rather than up near the other derived values) because
   // `realStudents` doesn't exist yet at that point in the script.
+  /** Handed in, not yet judged — across every student, for the header. */
+  const awaitingReview = $derived(realStudents.reduce(
+    (n, st) => n + extrasFor(st.code).homework.filter(h => h.submitted && !h.graded).length, 0));
   const totalSessions = $derived(realStudents.reduce((n, s) => n + extrasFor(s.code).sessions.length, 0));
   const nextLessonsCount = $derived(realStudents.filter(s => {
     const nl = extrasFor(s.code).nextLesson;
@@ -943,6 +957,11 @@
       <div class="s-value gold">{nextLessonsCount}</div>
       <div class="s-sub">מתוכננים</div>
     </div>
+    <div class="stat-card">
+      <div class="s-label">שיעורי בית</div>
+      <div class="s-value">{awaitingReview}</div>
+      <div class="s-sub">{awaitingReview ? 'ממתינות לבדיקה — בלשונית שיעורי בית' : 'אין עבודות ממתינות לבדיקה'}</div>
+    </div>
   </div>
 
   <div class="sec-header">
@@ -1130,6 +1149,17 @@
                       <div class="hw-text">
                         <div class="hw-task" class:done-text={hw.submitted || hw.graded}>{hw.task}</div>
                         <div class="hw-date">{formatDate(hw.date)}</div>
+                        {#if hw.submitted && !hw.graded}
+                          <!-- Handed in and waiting for her: the child sees
+                               «הוגש — ממתין לבדיקה» until one of these. -->
+                          <div class="hw-grade" role="group" aria-label="בדיקת שיעורי הבית">
+                            {#each GRADES as g (g)}
+                              <button class="btn btn-sm hw-grade-btn" onclick={() => gradeHw(s.code, hw.id, g)}>{GRADE_BUTTON[g]}</button>
+                            {/each}
+                          </div>
+                        {:else if hw.graded && hw.grade}
+                          <div class="hw-graded">{GRADE_LABEL[hw.grade]} · <button class="link-btn" onclick={() => gradeHw(s.code, hw.id, null)}>ביטול</button></div>
+                        {/if}
                         {#if hw.heldUntil}
                           <!-- Held, not missing: the lesson report replaces it with
                                homework from what was taught, or it goes out by itself. -->
@@ -1633,6 +1663,10 @@
   .hw-task { font-size: .9rem; color: var(--text-primary); }
   .hw-task.done-text { text-decoration: line-through; color: var(--text-muted); }
   .hw-date { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
+  .hw-grade { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
+  .hw-grade-btn { min-height: 36px; }
+  .hw-graded { font-size: .8rem; color: var(--accent3-strong); margin-top: 4px; font-weight: 600; }
+  .link-btn { background: none; border: none; padding: 0; color: var(--accent); cursor: pointer; font: inherit; text-decoration: underline; }
   .hw-held { font-size: .75rem; color: var(--accent); margin-top: 2px; font-weight: 600; }
 
   /* Progress bar */
