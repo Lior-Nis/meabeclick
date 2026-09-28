@@ -58,6 +58,7 @@ export const STORAGE: Record<string, TableFact> = {
   teachers:      { status: 'live', note: 'Who teaches. One row in practice.' },
   enrollments:   { status: 'live', note: 'A student in a subject. UNIQUE per (student, subject).' },
   bookings_v2:   { status: 'live', note: 'A booked hour, keyed on student_id.' },
+  library_items: { status: 'live', note: 'Which master lesson is the prepared material for a skill of a plan template (migration 023).' },
   pending_bookings: { status: 'live', note: 'A booking with a known family\'s email, held until that family confirms it (migration 021).' },
   payments:      { status: 'live', note: 'Charges in integer agorot. Manual marking, no auto-billing.' },
   homework:      { status: 'live', note: 'One store for both sides since #86; `done` derives from results_v2.' },
