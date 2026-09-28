@@ -50,6 +50,16 @@
       found++;
       node.setAttribute('data-target', t.id);
       node.addEventListener('click', () => selectTarget(node, t));
+      /* Reachable by keyboard too. Named by number: its label is the answer. */
+      node.setAttribute('tabindex', '0');
+      node.setAttribute('role', 'button');
+      node.setAttribute('aria-label', `חלק ${found}`);
+      node.addEventListener('keydown', (e) => {
+        const key = (e as KeyboardEvent).key;
+        if (key !== 'Enter' && key !== ' ') return;
+        e.preventDefault();
+        selectTarget(node, t);
+      });
     }
     if (!found) {
       noMatch = true;
@@ -144,6 +154,7 @@
   :global(.diagram [data-target]:hover) { filter: brightness(0.92); }
   :global(.diagram [data-target].active) { stroke: #2563eb; stroke-width: 4; }
   :global(.diagram [data-target].solved) { stroke: #10b981; stroke-width: 4; }
+  :global(.diagram [data-target]:focus-visible) { outline: 3px solid #b45309; outline-offset: 2px; }
 
   .labels { display: flex; flex-wrap: wrap; gap: 8px; justify-content: center; }
   .label {
