@@ -59,6 +59,7 @@
     title={data.title}
     subject={data.subject}
     best={data.best}
+    skill={data.skill}
     dataId={data.dataId}
     student={data.student}
     t={data.t ?? ''}

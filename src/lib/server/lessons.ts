@@ -216,6 +216,10 @@ export function homeworkForStudent(
   opts: { includeHeld?: boolean; now?: string } = {},
 ): (HomeworkRow & {
   submitted: boolean; graded: boolean;
+  /** The skill it practises, by name: the task's own skill, else its
+   *  game's (game_skills). Null when neither is linked, or when the tutor
+   *  hid that skill from the plan. */
+  skill: string | null;
 })[] {
   const rows = handle().prepare(`
     SELECT h.*,
@@ -224,12 +228,19 @@ export function homeworkForStudent(
               WHERE r.student_id = h.student_id
                 AND h.data_id IS NOT NULL
                 AND r.data_id = h.data_id
-           )) AS submitted_flag
+           )) AS submitted_flag,
+           (SELECT pn.title FROM plan_nodes pn
+             WHERE pn.visibility != 'hidden'
+               AND pn.id = COALESCE(h.node_id, (
+                 SELECT gs.node_id FROM game_skills gs
+                  WHERE gs.student_id = h.student_id AND gs.data_id = h.data_id
+               ))
+           ) AS skill
     FROM homework h
     WHERE h.student_id = ?
       AND (? OR h.held_until IS NULL OR h.held_until <= ?)
     ORDER BY h.assigned_at DESC
-  `).all(studentId, opts.includeHeld ? 1 : 0, opts.now ?? new Date().toISOString()) as (HomeworkRow & { submitted_flag: number })[];
+  `).all(studentId, opts.includeHeld ? 1 : 0, opts.now ?? new Date().toISOString()) as (HomeworkRow & { submitted_flag: number; skill: string | null })[];
 
   return rows.map(({ submitted_flag, ...row }) => ({
     ...row,

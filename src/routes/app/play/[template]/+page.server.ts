@@ -23,6 +23,7 @@ import { verifyGameSignature } from '$server/urls.ts';
 import { getBest } from '$server/db.ts';
 import { resolveStudent, studentRefById, getBest as getBestById } from '$server/results.ts';
 import { isKnownTemplate } from '$server/lesson/registry.ts';
+import { practiceGoal } from '$server/lesson/targeting.ts';
 import type { GameData } from '$lib/games/engine.ts';
 import type { PageServerLoad } from './$types';
 
@@ -64,6 +65,8 @@ export const load: PageServerLoad = async ({ params, url }) => {
     title: gameData.title || '',
     subject: [gameData.subject, displayName].filter(Boolean).join(' · '),
     best: studentId === null ? getBest(student, dataId) : getBestById(studentId, dataId),
+    /* What this game practises, when it was made for a skill of this child's plan. */
+    skill: studentId === null ? null : practiceGoal(studentId, dataId),
     gameData,
   };
 };

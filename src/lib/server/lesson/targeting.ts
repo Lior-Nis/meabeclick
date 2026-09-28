@@ -74,6 +74,18 @@ export function linkGameToSkill(studentId: number, dataId: string, nodeId: numbe
   `).run(studentId, dataId, nodeId, new Date().toISOString());
 }
 
+/** What a game practises, by name, for the page that plays it: the linked
+ *  skill's title. Null when the game is not linked for this student, or the
+ *  tutor hid that skill from the plan. */
+export function practiceGoal(studentId: number, dataId: string): string | null {
+  const row = handle().prepare(`
+    SELECT pn.title FROM game_skills gs
+      JOIN plan_nodes pn ON pn.id = gs.node_id
+     WHERE gs.student_id = ? AND gs.data_id = ? AND pn.visibility != 'hidden'
+  `).get(studentId, dataId) as { title: string } | undefined;
+  return row?.title ?? null;
+}
+
 /** The skill a game practises for one student, or null when it is not
  *  linked — which means its plays are not evidence about anything. */
 export function skillForGame(studentId: number, dataId: string): number | null {
