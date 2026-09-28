@@ -352,6 +352,55 @@ export async function sendFamilyBookingEmail(
 }
 
 /**
+ * A booking made with this family's address by someone not signed in as
+ * them. Nothing is enrolled until they confirm (pending-bookings.ts), and
+ * the link opens a page with a button — never a confirmation by itself,
+ * because mail scanners open links.
+ */
+export async function sendConfirmBookingEmail(r: {
+  to: string; studentName: string; subject: string; lessonStart: string; link: string;
+}): Promise<boolean> {
+  if (!r.to) return false;
+  const tx = transport();
+  if (!tx) return false;
+
+  const rows: [string, string][] = [
+    ['👤 תלמיד/ה', r.studentName],
+    ['📅 מועד',    whenLabel(r.lessonStart)],
+    ['📖 מקצוע',   r.subject],
+  ];
+  const notUs = 'לא הזמנתם? אין צורך לעשות דבר. בלי אישור שום דבר לא נרשם, והשעה תשתחרר.';
+
+  const text = [
+    'התקבלה בקשה לשיעור עם כתובת המייל הזו:',
+    '',
+    ...rows.map(([k, v]) => `${k}: ${v}`),
+    '',
+    'כדי שהשיעור יירשם אצלכם, אשרו אותו כאן (תוך יממה):',
+    r.link,
+    '',
+    notUs,
+  ].join('\n');
+
+  const html = shell(`
+    <h2 style="color:#2563EB;margin:0 0 4px">⏳ לאשר את השיעור?</h2>
+    <p style="color:#64748B;margin:0 0 16px">התקבלה בקשה לשיעור עם כתובת המייל הזו</p>
+    ${rowsTable(rows)}
+    ${linkBlock(r.link, '✅ לאישור השיעור')}
+    <p style="margin-top:12px;font-size:14px;color:#334155">הקישור תקף ליממה.</p>
+    <p style="margin-top:10px;font-size:14px;color:#64748B">${esc(notUs)}</p>`);
+
+  await tx.sendMail({
+    from: process.env.GMAIL_USER,
+    to: r.to,
+    subject: `⏳ לאשר את השיעור של ${r.studentName}? — מאה בקליק`,
+    text,
+    html,
+  });
+  return true;
+}
+
+/**
  * A fresh link, on request, with no password and no tutor in the loop.
  *
  * This is what makes the two-week link expiry affordable: losing a link is

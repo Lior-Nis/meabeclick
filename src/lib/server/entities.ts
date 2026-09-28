@@ -384,6 +384,11 @@ const OVERLAP_SOURCE = `
   SELECT start, "end" AS finish, status FROM bookings
   UNION ALL
   SELECT start, "end" AS finish, status FROM bookings_v2
+  UNION ALL
+  -- A booking waiting for its family's confirmation holds the hour until it
+  -- expires (migration 021); read as 'confirmed' so both consumers see it.
+  SELECT start, "end" AS finish, 'confirmed' AS status FROM pending_bookings
+   WHERE status = 'pending' AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 `;
 
 /** Whether any confirmed booking overlaps [start, end).

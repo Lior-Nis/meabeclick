@@ -30,12 +30,14 @@ test('a returning family is offered their own children, with contact details fil
   const { baseUrl, stop } = await startServer();
   try {
     const first = await book(baseUrl);
+    // Signed in: a signed-out booking with a known email waits for the
+    // family's confirmation (confirm-known-email.test.mjs).
+    const cookie = await familySession(first.portal.link);
     await book(baseUrl, {
       name: 'נועה כהן', subject: 'פיזיקה', level: 'כיתה ז', durationMin: 45,
       start: '2027-03-16T10:00:00+02:00', end: '2027-03-16T10:45:00+02:00',
-    });
+    }, { Cookie: cookie });
 
-    const cookie = await familySession(first.portal.link);
     const html = await (await fetch(`${baseUrl}/booking`, { headers: { Cookie: cookie } })).text();
 
     assert.match(html, /יובל כהן/, 'the first child should reach the page');

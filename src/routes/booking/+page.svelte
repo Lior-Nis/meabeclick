@@ -357,6 +357,10 @@
   // nothing was actually recorded for them, so the screen below must say
   // "received", never "booked", and there is no portal to hand over.
   let pending = $state(false);
+  /* The email belongs to a family we know, and this device is not signed in
+     as them: nothing is booked until the address on file confirms it
+     (/api/book's holdForConfirmation). */
+  let awaiting = $state(false);
 
   function showSuccess(portal: Handoff | null, familyEmailed: boolean, isPending: boolean, emailedLink = false) {
     const dateLabel = selectedSlot?.dateLabel ?? '';
@@ -453,6 +457,11 @@
          The difference is only whether it also landed in the calendar
          automatically, which is her problem to resolve, not something to
          show the parent. */
+      if (data.awaitingConfirmation) {
+        awaiting = true;
+        showSuccess(null, false, false);
+        return;
+      }
       if (data.ok || data.fallback) {
         bookedUnconfirmed = slotState === 'unconfirmed' || !!data.fallback;
         showSuccess(data.portal ?? null, !!data.familyEmailed, !!data.pending, !!data.linkEmailed);
@@ -609,7 +618,14 @@
   <!-- ── STEP 3: Success + handoff ──────────────────────── -->
   {#if step === 'success'}
     <div id="step-success">
-      {#if pending}
+      {#if awaiting}
+        <div class="success-icon">📧</div>
+        <h2>כמעט סיימנו: אשרו במייל</h2>
+        <p class="success-pending-note">
+          הכתובת <span dir="ltr">{email.trim()}</span> כבר מוכרת לנו, אז שלחנו אליה מייל עם כפתור אישור.
+          השיעור יירשם אחרי האישור (תוך יממה), ועד אז השעה שמורה לכם.
+        </p>
+      {:else if pending}
         <div class="success-icon">📝</div>
         <h2>הבקשה נקלטה</h2>
         <p class="success-pending-note">
@@ -683,7 +699,7 @@
         <div class="bk-next">
           <strong>מה הלאה?</strong>
           <ul>
-            {#if bookedUnconfirmed}<li>ניצור קשר לאישור המועד</li>{:else}<li>תזכורת תישלח אליכם במייל לפני השיעור</li>{/if}
+            {#if awaiting}<li>לאשר את השיעור מהמייל</li>{:else if bookedUnconfirmed}<li>ניצור קשר לאישור המועד</li>{:else}<li>תזכורת תישלח אליכם במייל לפני השיעור</li>{/if}
             <li>מומלץ להכין מראש את החומר או השאלות שלא הובנו</li>
           </ul>
         </div>

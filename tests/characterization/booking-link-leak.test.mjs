@@ -28,7 +28,9 @@ test('a stranger who books with a known family email gets no way into that famil
       start: '2027-04-06T10:00:00+03:00', end: '2027-04-06T10:45:00+03:00',
     });
     assert.equal(stranger.portal ?? null, null, 'no link and no child code in the response');
-    assert.equal(stranger.linkEmailed, true, 'the page can say the link went to the email on file');
+    // Since 2026-09-28 the booking itself waits for the family to confirm it
+    // from the email on file (confirm-known-email.test.mjs).
+    assert.equal(stranger.awaitingConfirmation, true, 'held for the address on file to confirm');
     assert.doesNotMatch(JSON.stringify(stranger), /enter\?t=/);
   } finally { await stop(); }
 });
