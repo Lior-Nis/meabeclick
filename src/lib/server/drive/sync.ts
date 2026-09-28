@@ -34,6 +34,7 @@ function comparable(input: unknown): string | null {
   return r.ok ? JSON.stringify({ title: r.edit.title, slides: r.edit.slides, examples: r.edit.examples }) : null;
 }
 import { listStudents } from '../entities.ts';
+import { israelDay } from '../../dates.ts';
 import { createHash } from 'node:crypto';
 import { unambiguousLessonsForStudent } from '../lessons.ts';
 import { byVersion, latestPublished } from '../materials.ts';
@@ -148,19 +149,19 @@ async function pass(
         };
 
         if (!item) {
-          docs.push({ title, date: lesson.lesson_at?.slice(0, 10) ?? '', fileId: await create() });
+          docs.push({ title, date: (lesson.lesson_at ? israelDay(lesson.lesson_at) : ''), fileId: await create() });
           result.created += 1;
           continue;
         }
 
         const m = await api.meta(item.fileId);
         if (!m || m.trashed) {
-          docs.push({ title, date: lesson.lesson_at?.slice(0, 10) ?? '', fileId: await create() });
+          docs.push({ title, date: (lesson.lesson_at ? israelDay(lesson.lesson_at) : ''), fileId: await create() });
           result.recreated += 1;
           await tell(`📄 המסמך של "${title}" נמחק מהדרייב, ונוצר מחדש מהגרסה שפורסמה.`);
           continue;
         }
-        docs.push({ title, date: lesson.lesson_at?.slice(0, 10) ?? '', fileId: item.fileId });
+        docs.push({ title, date: (lesson.lesson_at ? israelDay(lesson.lesson_at) : ''), fileId: item.fileId });
 
         if (item.syncedModified && m.modifiedTime > item.syncedModified) {
           /* Still being typed: leave it — not recorded as seen, not pushed

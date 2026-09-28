@@ -6,7 +6,9 @@
   import { tutorNames } from '$lib/tutors.ts';
   import type { TutorHomework } from '$lib/tutor-homework.ts';
   import { GRADES, GRADE_BUTTON, GRADE_LABEL, type HomeworkGrade } from '$lib/homework-grade.ts';
-  import { israelDay, israelToday } from '$lib/dates.ts';
+  import { formatDateTime, israelDay, israelToday } from '$lib/dates.ts';
+  import { sessionAware } from '$lib/tutor-session.ts';
+  import { readIssueWords } from '$lib/calendar-words.ts';
   /**
    * Port of pages/app/dashboard.html. Auth is handled entirely by
    * +page.server.ts (requireAuth) — see the comment there for why the old
@@ -166,22 +168,32 @@
 
   async function loadAllBalance() {
     try {
-      const r = await fetch('/api/payments/all', { cache: 'no-store' });
+      const r = await api('/api/payments/all', { cache: 'no-store' });
       if (r.ok) allBalance = (await r.json()).balance;
     } catch { /* the tile renders a dash */ }
   }
 
   /* ═══════════════════ notifications ═══════════════════
      Non-blocking replacements for alert()/confirm(), same as the source. */
-  interface Toast { id: number; message: string; kind: 'info' | 'success' | 'error'; sticky: boolean }
+  interface Toast { id: number; message: string; kind: 'info' | 'success' | 'error'; sticky: boolean; link?: { href: string; text: string } }
   let toasts = $state<Toast[]>([]);
   let toastSeq = 0;
 
-  function toast(message: string, opts: { kind?: Toast['kind']; sticky?: boolean } = {}) {
+  /* Every request on this page goes through `api`. The first 401 says the
+     sign-in ran out, once, with the way back; see tutor-session.ts. */
+  const session = sessionAware((input, init) => fetch(input, init), () => toast(
+    'ההתחברות הסתיימה, והשינוי האחרון לא נשמר. צריך להתחבר מחדש.',
+    { kind: 'error', sticky: true, link: { href: '/login?next=/app/dashboard', text: 'להתחברות' } },
+  ));
+  const api = session.fetch;
+
+  function toast(message: string, opts: { kind?: Toast['kind']; sticky?: boolean; link?: Toast['link'] } = {}) {
     const id = ++toastSeq;
     const kind = opts.kind ?? 'info';
     const sticky = opts.sticky ?? false;
-    toasts.push({ id, message, kind, sticky });
+    /* Once the sign-in is gone, every failure is that one, told wrong. */
+    if (session.over && kind === 'error' && !opts.link) return;
+    toasts.push({ id, message, kind, sticky, link: opts.link });
     if (!sticky) setTimeout(() => dismissToast(id), 5000);
   }
   function dismissToast(id: number) {
@@ -204,7 +216,7 @@
 
   /* ═══════════════════ add-student modal ═══════════════════ */
   let modalOpen = $state(false);
-  let nsName = $state(''); let nsSubject = $state(''); let nsCode = $state(''); let nsEmail = $state('');
+  let nsName = $state(''); let nsSubject = $state(''); let nsEmail = $state('');
   let nsLevel = $state(LEVELS[0]); let nsStyle = $state('');
   let nsGoals = $state(''); let nsPhone = $state('');
 
@@ -221,7 +233,7 @@
    * on a shared machine.
    */
   async function signOut() {
-    await fetch('/api/logout', { method: 'POST' }).catch(() => {});
+    await api('/api/logout', { method: 'POST' }).catch(() => {});
     location.href = '/';
   }
 
@@ -232,19 +244,14 @@
     const name = nsName.trim();
     if (!name) { toast('נא להזין שם', { kind: 'error' }); return; }
 
-    const code = nsCode.trim().toLowerCase();
-    if (!/^[a-z0-9-]+$/.test(code)) {
-      toast('הקוד האישי חייב להיות באנגלית קטנה, בלי רווחים', { kind: 'error' });
-      return;
-    }
     const email = nsEmail.trim();
     try {
-      const r = await fetch('/api/students', {
+      const r = await api('/api/students', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ code, name, email, subject: nsSubject || '', level: nsLevel || '', phone: nsPhone || '' }),
+        body: JSON.stringify({ name, email, subject: nsSubject || '', level: nsLevel || '', phone: nsPhone || '' }),
       });
       const body = await r.json();
-      if (!r.ok) { toast(body.error || 'שמירת הקוד נכשלה', { kind: 'error' }); return; }
+      if (!r.ok) { toast(body.error || 'הוספת התלמיד/ה נכשלה', { kind: 'error' }); return; }
 
       // goals/style have a server home now (migration 010) — write them
       // right after creation if the tutor filled them in. Best-effort: the
@@ -256,7 +263,7 @@
       if (nsStyle) extra.style = nsStyle;
       if (createdCode && Object.keys(extra).length) {
         try {
-          const pr = await fetch(`/api/students/${createdCode}`, {
+          const pr = await api(`/api/students/${createdCode}`, {
             method: 'PATCH', headers: { 'Content-Type': 'application/json' },
             body: JSON.stringify(extra),
           });
@@ -315,7 +322,7 @@
    *  (see the profile tab's comment). Keyed by the student's real `code`,
    *  same as every other local extra now. */
   async function refreshActivity(code: string) {
-    const r = await fetch(`/api/students/${code}/activity`, { credentials: 'same-origin', cache: 'no-store' });
+    const r = await api(`/api/students/${code}/activity`, { credentials: 'same-origin', cache: 'no-store' });
     if (!r.ok) throw new Error('activity load failed');
     const activity = await r.json() as ServerActivity;
     serverExtras = { ...serverExtras, [code]: activity };
@@ -325,25 +332,25 @@
     const f = sessionForm(code);
     if (!f.date || !f.amount) return;
     try {
-      const r = await fetch('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' },
+      const r = await api('/api/payments', { method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ studentCode: code, date: f.date, kind: f.type.startsWith('כפול') ? 'double' : f.type.startsWith('משולש') ? 'triple' : 'single', amountAgorot: Math.round(+f.amount * 100), paid: f.paid === 'true', note: f.notes }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
-    } catch { toast('לא ניתן לשמור את השיעור בשרת', { kind: 'error' }); }
+    } catch { toast('לא ניתן לשמור את השיעור', { kind: 'error' }); }
   }
 
   async function togglePaid(code: string, sessId: string) {
     const sess = extrasFor(code).sessions.find(x => x.id === sessId);
     if (!sess) return;
     try {
-      const r = await fetch('/api/payments/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [Number(sessId)], status: sess.paid ? 'owed' : 'paid' }) });
+      const r = await api('/api/payments/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [Number(sessId)], status: sess.paid ? 'owed' : 'paid' }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
     } catch { toast('לא ניתן לעדכן את התשלום', { kind: 'error' }); }
   }
   async function voidSession(code: string, sessId: string) {
     try {
-      const r = await fetch('/api/payments/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [Number(sessId)], status: 'void' }) });
+      const r = await api('/api/payments/mark', { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ ids: [Number(sessId)], status: 'void' }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
     } catch { toast('לא ניתן לבטל את הרישום', { kind: 'error' }); }
@@ -354,16 +361,16 @@
     const task = f.task.trim();
     if (!task) return;
     try {
-      const r = await fetch(`/api/students/${code}/activity`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', task, date: f.date }) });
+      const r = await api(`/api/students/${code}/activity`, { method: 'POST', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', task, date: f.date }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
-    } catch { toast('לא ניתן לשמור את שיעורי הבית בשרת', { kind: 'error' }); }
+    } catch { toast('לא ניתן לשמור את שיעורי הבית', { kind: 'error' }); }
   }
   async function toggleHw(code: string, hwId: string) {
     const hw = extrasFor(code).homework.find(x => x.id === hwId);
     if (!hw) return;
     try {
-      const r = await fetch(`/api/students/${code}/activity`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', id: Number(hwId), submitted: !hw.submitted }) });
+      const r = await api(`/api/students/${code}/activity`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', id: Number(hwId), submitted: !hw.submitted }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
     } catch { toast('לא ניתן לעדכן את שיעורי הבית', { kind: 'error' }); }
@@ -372,7 +379,7 @@
    *  finger must be as cheap to undo as the checkbox is. */
   async function gradeHw(code: string, hwId: string, grade: HomeworkGrade | null) {
     try {
-      const r = await fetch(`/api/students/${code}/activity`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', id: Number(hwId), grade }) });
+      const r = await api(`/api/students/${code}/activity`, { method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ kind: 'homework', id: Number(hwId), grade }) });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
     } catch { toast('לא ניתן לשמור את הבדיקה', { kind: 'error' }); }
@@ -380,7 +387,7 @@
 
   async function deleteHw(code: string, hwId: string) {
     try {
-      const r = await fetch(`/api/students/${code}/activity?id=${encodeURIComponent(hwId)}`, { method: 'DELETE' });
+      const r = await api(`/api/students/${code}/activity?id=${encodeURIComponent(hwId)}`, { method: 'DELETE' });
       if (!r.ok) throw new Error();
       await refreshActivity(code);
     } catch { toast('לא ניתן למחוק את שיעורי הבית', { kind: 'error' }); }
@@ -397,7 +404,7 @@
   async function deleteStudent(code: string) {
     if (!await confirmDialog('למחוק את התלמיד/ה?')) return;
     try {
-      const r = await fetch(`/api/students/${code}`, { method: 'DELETE' });
+      const r = await api(`/api/students/${code}`, { method: 'DELETE' });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
         toast(body.error || 'המחיקה נכשלה', { kind: 'error' });
@@ -436,20 +443,26 @@
   async function updateDashboardPlanStatus(code: string, nodeId: number, status: string) {
     const plan = dashboardPlans[code];
     if (!plan?.planId) return;
-    const response = await fetch(`/api/plans/${plan.planId}/events`, {
-      method: 'POST', headers: { 'Content-Type': 'application/json' },
-      body: JSON.stringify({ type: 'status', nodeId, status, evidence: null, note: null }),
-    });
-    const body = await response.json().catch(() => ({}));
-    if (!response.ok) throw new Error(body.error || 'עדכון הסטטוס נכשל');
-    dashboardPlans = { ...dashboardPlans, [code]: { ...plan, topics: body.tree } };
+    /* Said, not thrown: the tree awaits this and catches nothing, so a
+       throw here was a change that silently did not happen. */
+    try {
+      const response = await api(`/api/plans/${plan.planId}/events`, {
+        method: 'POST', headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ type: 'status', nodeId, status, evidence: null, note: null }),
+      });
+      const body = await response.json().catch(() => ({}));
+      if (!response.ok) { toast(body.error || 'עדכון הסטטוס נכשל', { kind: 'error' }); return; }
+      dashboardPlans = { ...dashboardPlans, [code]: { ...plan, topics: body.tree } };
+    } catch {
+      toast('אין חיבור לשרת — הסטטוס לא עודכן', { kind: 'error' });
+    }
   }
 
   async function loadCodes() {
     codesLoading = true;
     codesError = '';
     try {
-      const r = await fetch('/api/students', { cache: 'no-store' });
+      const r = await api('/api/students', { cache: 'no-store' });
       realStudents = ((await r.json()).students ?? []) as RealStudent[];
     } catch {
       codesError = 'אין חיבור לשרת';
@@ -461,7 +474,7 @@
   async function loadActivities() {
     const codes = realStudents.map(s => s.code);
     const loaded = await Promise.allSettled(codes.map(async code => {
-      const r = await fetch(`/api/students/${code}/activity`, { credentials: 'same-origin', cache: 'no-store' });
+      const r = await api(`/api/students/${code}/activity`, { credentials: 'same-origin', cache: 'no-store' });
       if (!r.ok) throw new Error(String(r.status));
       return [code, await r.json() as ServerActivity] as const;
     }));
@@ -507,13 +520,13 @@
     profileSaving = { ...profileSaving, [code]: true };
     profileError = { ...profileError, [code]: '' };
     try {
-      const r = await fetch(`/api/students/${code}`, {
+      const r = await api(`/api/students/${code}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ [field]: value }),
       });
       const body = await r.json().catch(() => ({}));
       if (!r.ok) {
-        profileError = { ...profileError, [code]: body.error || 'השמירה נכשלה' };
+        profileError = { ...profileError, [code]: session.over ? 'לא נשמר' : body.error || 'השמירה נכשלה' };
         return false;
       }
       // The only place `realStudents` changes for this student: a whole-row
@@ -566,7 +579,7 @@
   async function loadLinks(code: string) {
     linkBusy = code;
     try {
-      const r = await fetch(`/api/students/${code}/link`, { method: 'POST' });
+      const r = await api(`/api/students/${code}/link`, { method: 'POST' });
       if (!r.ok) { toast('לא הצלחתי להכין קישור', { kind: 'error' }); return; }
       links = { ...links, [code]: await r.json() };
     } catch {
@@ -625,12 +638,12 @@
 
     importRunning = true;
     try {
-      const r = await fetch('/api/students/import-local', {
+      const r = await api('/api/students/import-local', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({ entries: toSend }),
       });
       const body = await r.json().catch(() => ({}));
-      if (!r.ok) { toast('הייבוא נכשל', { kind: 'error' }); return; }
+      if (!r.ok) { toast('ההעברה נכשלה', { kind: 'error' }); return; }
       const outcomes = (body.results ?? []) as ImportOutcome[];
 
       // Line up every candidate with an outcome, including the ones that
@@ -655,7 +668,7 @@
       // Re-render the cards with whatever the import just wrote.
       await loadCodes();
     } catch {
-      toast('אין חיבור לשרת — הייבוא לא בוצע', { kind: 'error' });
+      toast('אין חיבור — שום דבר לא הועבר', { kind: 'error' });
     } finally {
       importRunning = false;
     }
@@ -671,7 +684,7 @@
   let picked = $state(new SvelteSet<number>());
 
   async function loadCharges(code: string) {
-    const r = await fetch(`/api/payments?student=${encodeURIComponent(code)}`, { cache: 'no-store' });
+    const r = await api(`/api/payments?student=${encodeURIComponent(code)}`, { cache: 'no-store' });
     if (!r.ok) { toast('לא הצלחתי לטעון חיובים', { kind: 'error' }); return; }
     chargesFor = { ...chargesFor, [code]: (await r.json()).charges };
   }
@@ -685,7 +698,7 @@
     const ids = idsForPanel(picked, chargesFor[code] ?? []);
     if (!ids.length) { toast('לא נבחרו חיובים', { kind: 'error' }); return; }
 
-    const r = await fetch('/api/payments/mark', {
+    const r = await api('/api/payments/mark', {
       method: 'POST', headers: { 'Content-Type': 'application/json' },
       body: JSON.stringify({ ids, status }),
     });
@@ -709,7 +722,7 @@
 
   async function loadCalendarFailures() {
     try {
-      const r = await fetch('/api/calendar-failures');
+      const r = await api('/api/calendar-failures');
       if (!r.ok) return;
       const j = await r.json();
       calendarFailures = (j.failures ?? []) as CalendarFailure[];
@@ -717,7 +730,7 @@
     } catch { /* not critical — the booking email already has the same warning */ }
   }
   async function resolveCalendarFailure(id: number) {
-    await fetch(`/api/calendar-failures/${id}/resolve`, { method: 'POST' }).catch(() => {});
+    await api(`/api/calendar-failures/${id}/resolve`, { method: 'POST' }).catch(() => {});
     loadCalendarFailures();
   }
 
@@ -732,7 +745,7 @@
     hwLoading = true;
     hwError = '';
     try {
-      const r = await fetch('/api/results', { credentials: 'same-origin' });
+      const r = await api('/api/results', { credentials: 'same-origin' });
       const j = await r.json();
       if (r.status === 401) { location.href = '/login'; return; }
       if (r.status !== 200) throw new Error(j.error || String(r.status));
@@ -775,7 +788,7 @@
     lessonsLoading = true;
     lessonsError = '';
     try {
-      const r = await fetch('/api/lessons', { credentials: 'same-origin' });
+      const r = await api('/api/lessons', { credentials: 'same-origin' });
       const j = await r.json();
       lessons = (j.lessons ?? []) as LessonEntry[];
     } catch {
@@ -840,8 +853,8 @@
       <div class="cs-title">⛔ קריאת יומן נכשלה — ייתכן ששעות תפוסות מוצגות כפנויות</div>
       {#each calendarSourceIssues as s (s.index)}
         <div class="cs-row">
-          <span class="cs-src">יומן {s.index} מתוך {s.total}</span>
-          <span class="cs-reason">({s.reason} · {String(s.at).slice(0, 16).replace('T', ' ')})</span>
+          <span class="cs-src">יומן {s.index} מתוך {s.total}:</span>
+          <span class="cs-reason">{readIssueWords(s.reason)} · {formatDateTime(s.at)}</span>
         </div>
       {/each}
       <div class="cs-note">השעות של היומן/ים האלה לא נבדקו בהצלחה לאחרונה, ולכן ייתכן שהן מוצעות כפנויות בטופס ההזמנה למרות שהן תפוסות בפועל. מומלץ לבדוק ידנית עד שהיומן יחזור להתעדכן.</div>
@@ -850,19 +863,19 @@
 
   {#if importResults}
     <div class="import-panel">
-      <div class="import-title"><Icon name="done" size={16} /> תוצאות הייבוא</div>
+      <div class="import-title"><Icon name="done" size={16} /> מה הועבר</div>
       <ul class="import-results">
         {#each importResults as r}
           <li>
             <b>{r.label}</b> —
             {#if r.result === 'updated'}
-              עודכן בשרת ({r.fields?.join(', ') ?? ''})
+              נשמר במערכת ({r.fields?.join(', ') ?? ''})
             {:else if r.result === 'skipped-ambiguous'}
               שם כפול בין כמה תלמידים ברשימה — לא ניתן היה לקבוע התאמה ודאית, לא נשלח (טיפול ידני)
             {:else if r.result === 'skipped-no-match'}
-              לא נמצאה התאמה לתלמיד/ה בשרת — לא יובא
+              לא נמצא/ה תלמיד/ה בשם הזה במערכת — לא הועבר
             {:else}
-              לא נמצא מה לייבא (השדות המקומיים ריקים)
+              אין מה להעביר (השדות ריקים)
             {/if}
           </li>
         {/each}
@@ -870,32 +883,28 @@
     </div>
   {:else if importCandidates.length && data.importedProfilesAt && !showImportPanelAnyway}
     <div class="import-hint">
-      <span>💾 נתוני הדפדפן הזה כבר יובאו לשרת בעבר ({formatDate(data.importedProfilesAt.slice(0, 10))}).</span>
+      <span>💾 הפרטים מהמכשיר הזה כבר הועברו למערכת ({formatDate(israelDay(data.importedProfilesAt))}).</span>
       <button class="btn btn-ghost btn-sm tap44" onclick={() => showImportPanelAnyway = true}>
-        הצג בכל זאת (למשל, ייבוא ממכשיר/דפדפן נוסף)
+        להציג שוב (למשל, כדי להעביר גם ממכשיר אחר)
       </button>
     </div>
   {:else if importCandidates.length}
     <div class="import-panel">
-      <div class="import-title">📋 נמצאו נתונים שקיימים רק בדפדפן הזה</div>
+      <div class="import-title">📋 יש פרטים ששמורים רק במכשיר הזה</div>
       <p class="import-copy">
-        הייבוא מעביר לשרת חמישה שדות שנשמרו עד עכשיו רק בדפדפן הזה: מטרות, סגנון למידה, הערות,
-        אחוז התקדמות והערת התקדמות. שדות נוספים מהכרטיס הישן — אימוג'י, רמה, טלפון תלמיד/ה וטלפון
-        הורה — <b>אינם</b> מיובאים ואינם ניתנים לעריכה יותר במסך הזה; אם הם חשובים לך, כדאי לשמור
-        אותם לפני שמנקים את נתוני הדפדפן. כלום לא נמחק מהדפדפן על ידי הייבוא עצמו, וההעתק המקומי
-        יישאר כפי שהוא. הייבוא קורה רק בלחיצה על הכפתור — שום דבר לא מועתק אוטומטית.
+        מטרות, סגנון למידה, הערות והתקדמות שנכתבו פעם בכרטיס הישן נשמרו רק במכשיר הזה.
+        «העברה למערכת» שומרת אותם במערכת, כך שיופיעו בכל מכשיר. שום דבר לא נמחק מהמכשיר.
+        אימוג'י, רמה וטלפונים מהכרטיס הישן <b>לא</b> עוברים — כדאי להעתיק אותם אם הם חשובים.
       </p>
       <p class="import-copy" style="font-weight:700">
-        ⚠️ ערך מקומי ריק לעולם לא ידרוס ערך שכבר קיים בשרת — אבל ערך מקומי שאינו ריק כן יחליף את
-        מה שרשום בשרת כרגע, גם אם השרת עודכן מאז מאוחר יותר. עמודת "בשרת" בכל שורה מראה בדיוק מה
-        יוחלף — כדאי לבדוק אותה לפני שלוחצים ייבוא.
+        ⚠️ מה שכתוב כאן יחליף את מה ששמור עכשיו במערכת (השורה «עכשיו:» בכל תא). תא ריק כאן לא מוחק כלום.
       </p>
       <div class="import-table-wrap">
         <table class="import-table">
           <thead>
             <tr>
               <th>תלמיד/ה (מקומי)</th><th>מטרות</th><th>סגנון</th><th>הערות</th>
-              <th>התקדמות (%)</th><th>הערת התקדמות</th><th>התאמה בשרת</th>
+              <th>התקדמות (%)</th><th>הערת התקדמות</th><th>תלמיד/ה במערכת</th>
             </tr>
           </thead>
           <tbody>
@@ -903,18 +912,18 @@
               {@const srv = c.code ? realStudents.find(rs => rs.code === c.code) : null}
               <tr>
                 <td>{c.localName}</td>
-                <td>{c.goals || '—'}<div class="import-server-val">בשרת: {srv?.goals || '—'}</div></td>
-                <td>{c.style || '—'}<div class="import-server-val">בשרת: {srv?.style || '—'}</div></td>
-                <td>{c.notes || '—'}<div class="import-server-val">בשרת: {srv?.notes || '—'}</div></td>
-                <td>{c.progress || 0}%<div class="import-server-val">בשרת: {srv?.progress ?? 0}%</div></td>
-                <td>{c.progressNote || '—'}<div class="import-server-val">בשרת: {srv?.progress_note || '—'}</div></td>
+                <td>{c.goals || '—'}<div class="import-server-val">עכשיו: {srv?.goals || '—'}</div></td>
+                <td>{c.style || '—'}<div class="import-server-val">עכשיו: {srv?.style || '—'}</div></td>
+                <td>{c.notes || '—'}<div class="import-server-val">עכשיו: {srv?.notes || '—'}</div></td>
+                <td>{c.progress || 0}%<div class="import-server-val">עכשיו: {srv?.progress ?? 0}%</div></td>
+                <td>{c.progressNote || '—'}<div class="import-server-val">עכשיו: {srv?.progress_note || '—'}</div></td>
                 <td>
                   {#if c.status === 'matched'}
                     {c.matchName} · <code style="direction:ltr">{c.code}</code>
                   {:else if c.status === 'ambiguous'}
-                    <span style="color:var(--danger)">⚠ שם כפול — אין התאמה ודאית, לא ייובא</span>
+                    <span style="color:var(--danger)">⚠ שם כפול — לא ברור למי, לא יועבר</span>
                   {:else}
-                    <span style="color:var(--danger)">⚠ אין התאמה — לא ייובא</span>
+                    <span style="color:var(--danger)">⚠ אין תלמיד/ה בשם הזה — לא יועבר</span>
                   {/if}
                 </td>
               </tr>
@@ -923,7 +932,7 @@
         </table>
       </div>
       <button class="btn btn-gold tap44" disabled={importRunning} onclick={runImport}>
-        {importRunning ? '...מייבא' : '⬆ ייבוא לשרת'}
+        {importRunning ? 'מעבירים…' : '⬆ העברה למערכת'}
       </button>
     </div>
   {/if}
@@ -969,7 +978,7 @@
   </div>
   <div class="students-grid">
     {#if !realStudents.length}
-      <div class="empty">אין תלמידים עדיין — לחץ "תלמיד חדש" כדי להתחיל</div>
+      <div class="empty">אין תלמידים עדיין — לחצו "תלמיד חדש" כדי להתחיל</div>
     {:else}
       {#each realStudents as s (s.code)}
         {@const t = studentTotals(s.code)}
@@ -1002,17 +1011,16 @@
           </div>
 
           <div class="sc-body">
-            <div class="sc-tabs">
-              <div class="sc-tab" class:active={tabFor(s.code) === 'overview'} onclick={() => switchTab(s.code, 'overview')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'overview')}>סקירה</div>
-              <div class="sc-tab" class:active={tabFor(s.code) === 'learning-plan'} onclick={() => switchTab(s.code, 'learning-plan')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'learning-plan')}>תכנית למידה</div>
-              <div class="sc-tab" class:active={tabFor(s.code) === 'payments'} onclick={() => switchTab(s.code, 'payments')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'payments')}>תשלומים</div>
-              <div class="sc-tab" class:active={tabFor(s.code) === 'homework'} onclick={() => switchTab(s.code, 'homework')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'homework')}>שיעורי בית</div>
-              <div class="sc-tab" class:active={tabFor(s.code) === 'profile'} onclick={() => switchTab(s.code, 'profile')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'profile')}>פרופיל</div>
+            <div class="sc-tabs" role="tablist">
+              <div class="sc-tab" class:active={tabFor(s.code) === 'overview'} aria-selected={tabFor(s.code) === 'overview'} onclick={() => switchTab(s.code, 'overview')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'overview')}>סקירה</div>
+              <div class="sc-tab" class:active={tabFor(s.code) === 'learning-plan'} aria-selected={tabFor(s.code) === 'learning-plan'} onclick={() => switchTab(s.code, 'learning-plan')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'learning-plan')}>תכנית למידה</div>
+              <div class="sc-tab" class:active={tabFor(s.code) === 'payments'} aria-selected={tabFor(s.code) === 'payments'} onclick={() => switchTab(s.code, 'payments')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'payments')}>תשלומים</div>
+              <div class="sc-tab" class:active={tabFor(s.code) === 'homework'} aria-selected={tabFor(s.code) === 'homework'} onclick={() => switchTab(s.code, 'homework')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'homework')}>שיעורי בית</div>
+              <div class="sc-tab" class:active={tabFor(s.code) === 'profile'} aria-selected={tabFor(s.code) === 'profile'} onclick={() => switchTab(s.code, 'profile')} role="tab" tabindex="0" onkeydown={(e) => e.key === 'Enter' && switchTab(s.code, 'profile')}>פרופיל</div>
             </div>
 
             <!-- OVERVIEW -->
             <div class="sc-panel" class:active={tabFor(s.code) === 'overview'}>
-              <div class="server-source-note">נתוני השיעור הבא נטענים מההזמנות שבשרת ומתעדכנים לאחר רענון.</div>
               {#if ex.nextLesson?.date}
                 <div class="next-lesson-box" style="margin-bottom:14px">
                   <div class="nl-label">📅 שיעור הבא</div>
@@ -1056,7 +1064,6 @@
 
             <!-- PAYMENTS -->
             <div class="sc-panel" class:active={tabFor(s.code) === 'payments'}>
-              <div class="server-source-note">השיעורים והתשלומים מוצגים מרשומות השרת. רישום ידני חדש נשמר בשרת.</div>
               <div class="payment-summary">
                 <div class="ps-item"><div class="psi-val" style="color:var(--text-primary)">₪{t.owed}</div><div class="psi-lbl">סה"כ</div></div>
                 <div class="ps-item"><div class="psi-val" style="color:var(--accent3-strong)">₪{t.paid}</div><div class="psi-lbl">שולם</div></div>
@@ -1121,7 +1128,6 @@
 
             <!-- HOMEWORK -->
             <div class="sc-panel" class:active={tabFor(s.code) === 'homework'}>
-              <div class="server-source-note">שיעורי הבית נשמרים בשרת ומשותפים בין מכשירים.</div>
               <div class="add-form" class:open={openForms[`${s.code}:hw`]}>
                 <h4>➕ הוסף שיעור בית</h4>
                 <div class="field-row">
@@ -1204,16 +1210,6 @@
               <div style="display:flex;align-items:center;gap:10px">
                 <span class="save-indicator" class:show={profileSaved[s.code]}>✓ נשמר</span>
                 {#if profileError[s.code]}<div class="field-error">{profileError[s.code]}</div>{/if}
-              </div>
-              <div class="divider"></div>
-              <div class="field-row">
-                <div class="field">
-                  <!-- Same-tab in-app link now that /app/* shares a layout (sub-project #4) —
-                       the old page opened this target="_blank". -->
-                  <a href="/app/parent" class="btn btn-outline btn-sm" style="text-align:center;text-decoration:none">
-                    🔗 פתח פורטל הורים
-                  </a>
-                </div>
               </div>
             </div>
           </div>
@@ -1326,7 +1322,7 @@
         <div class="hwr-card">
           <div class="hwr-head">
             <div class="hwr-name">{name}</div>
-            <div class="hwr-when">{res.lastPlayed ? 'שיחק לאחרונה: ' + formatDate(res.lastPlayed.slice(0, 10)) : ''}</div>
+            <div class="hwr-when">{res.lastPlayed ? 'משחק אחרון: ' + formatDate(israelDay(res.lastPlayed)) : ''}</div>
           </div>
           <div class="hwr-stats">
             <div class="hwr-stat"><div class="hwr-val">{res.plays}</div><div class="hwr-lbl">משחקים</div></div>
@@ -1403,7 +1399,7 @@
 <div class="toast-stack">
   {#each toasts as t (t.id)}
     <div class="toast" class:success={t.kind === 'success'} class:error={t.kind === 'error'}>
-      <div style="flex:1;white-space:pre-wrap">{t.message}</div>
+      <div style="flex:1;white-space:pre-wrap">{t.message}{#if t.link}<a href={t.link.href}>{t.link.text}</a>{/if}</div>
       <button class="toast-close" aria-label="סגירה" onclick={() => dismissToast(t.id)}><Icon name="close" size={15} /></button>
     </div>
   {/each}
@@ -1428,9 +1424,9 @@
       <div class="field"><label for="ns-name">שם</label><input id="ns-name" type="text" placeholder="שם התלמיד" bind:value={nsName} /></div>
       <div class="field"><label for="ns-subject">מקצוע</label><input id="ns-subject" type="text" placeholder="מתמטיקה, פיזיקה..." bind:value={nsSubject} /></div>
     </div>
-    <div class="field-row">
-      <div class="field"><label for="ns-code">קוד אישי (באנגלית)</label>
-        <input id="ns-code" type="text" placeholder="noga" autocomplete="off" bind:value={nsCode} /></div>
+    <!-- No code to invent: the page gets a generated address, as a booking
+         does, not one spelled from the child's name. -->
+    <div class="field-row single">
       <div class="field"><label for="ns-email">מייל של ההורה</label>
         <input id="ns-email" type="email" dir="ltr" placeholder="לא חובה — אבל בלעדיו אי אפשר לבקש קישור חדש" bind:value={nsEmail} /></div>
     </div>
@@ -1544,7 +1540,6 @@
      be reliably tappable. */
   .tap44 { min-height: 44px; }
 
-  .server-source-note { font-size: .78rem; color: var(--text-muted); background: var(--bg-surface); border: 1px solid var(--border); border-radius: var(--r-sm); padding: 8px 10px; margin-bottom: 12px; }
 
   /* ── Read-only server-sourced profile fields (no write endpoint exists
      for these) ── */
@@ -1616,7 +1611,10 @@
   .badge-warn  { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.28); color: var(--danger); }
 
   /* Tabs */
-  .sc-tabs { display: flex; border-bottom: 1px solid var(--border-strong); padding: 0 24px; gap: 0; }
+  .sc-tabs { display: flex; border-bottom: 1px solid var(--border-strong); padding: 0 24px; gap: 0; overflow-x: auto; scrollbar-width: none; }
+  /* Five tabs are wider than a 360px phone: the row scrolls rather than
+     pushing the page sideways. */
+  @media (max-width: 480px) { .sc-tabs { padding: 0 8px; } .sc-tab { padding: 10px 11px; } }
   .sc-tab { font-size: .82rem; font-weight: 700; color: var(--text-muted); padding: 10px 16px; cursor: pointer; border-bottom: 2px solid transparent; transition: color .2s, border-color .2s; white-space: nowrap; }
   .sc-tab.active { color: var(--accent); border-bottom-color: var(--accent); }
   .sc-tab:hover:not(.active) { color: var(--text-primary); }
@@ -1682,8 +1680,11 @@
   /* Toasts */
   .toast-stack { position: fixed; top: 18px; left: 50%; transform: translateX(-50%); z-index: 900; display: flex; flex-direction: column; gap: 10px; width: min(420px, 92vw); pointer-events: none; }
   .toast { pointer-events: auto; background: var(--bg-card); border: 1.5px solid var(--border); border-radius: var(--r-md); padding: 14px 16px; box-shadow: 0 10px 32px var(--shadow-md); display: flex; align-items: flex-start; gap: 10px; font-size: .88rem; line-height: 1.6; }
-  .toast.success { border-color: var(--accent3-strong); background: var(--accent3-dim); }
-  .toast.error   { border-color: rgba(220,38,38,0.28);   background: rgba(220,38,38,0.08); }
+  /* Tints over the card colour: a tint alone let the header show through. */
+  .toast.success { border-color: var(--accent3-strong); background: linear-gradient(var(--accent3-dim), var(--accent3-dim)), var(--bg-card); }
+  .toast.error   { border-color: rgba(220,38,38,0.28);   background: linear-gradient(rgba(220,38,38,0.08), rgba(220,38,38,0.08)), var(--bg-card); }
+  /* Margin, not a space: Svelte trims the space at an {#if} edge. */
+  .toast a { margin-inline-start: 0.4em; color: inherit; font-weight: 800; text-decoration: underline; }
   .toast-close { border: 0; background: none; cursor: pointer; font-size: 1rem; color: var(--text-muted); line-height: 1; padding: 0 0 0 4px; flex: none; }
 
   .confirm-bg { position: fixed; inset: 0; background: rgba(26,51,51,0.4); backdrop-filter: blur(6px); z-index: 950; display: none; align-items: center; justify-content: center; }

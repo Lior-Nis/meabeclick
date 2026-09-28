@@ -31,6 +31,21 @@ test('creating a student rejects a non-slug code', async () => {
   } finally { await stop(); }
 });
 
+test('a student added without a code gets one that says nothing about them', async () => {
+  const { baseUrl, stop } = await startServer();
+  try {
+    const cookie = await login(baseUrl);
+    const headers = { 'Content-Type': 'application/json', Cookie: cookie };
+    const r = await fetch(`${baseUrl}/api/students`, { method: 'POST', headers, body: JSON.stringify({ name: 'נועם', email: 'noam2@example.com' }) });
+    assert.equal(r.status, 200);
+    const { student } = await r.json();
+    assert.match(student.code, /^[0-9b-z]{8}$/, 'generated, like a booking\'s: not the child\'s name in a forwarded URL');
+
+    const nameless = await fetch(`${baseUrl}/api/students`, { method: 'POST', headers, body: JSON.stringify({ code: 'x-y-z' }) });
+    assert.equal(nameless.status, 400);
+  } finally { await stop(); }
+});
+
 test('creating a duplicate code is rejected', async () => {
   const { baseUrl, stop } = await startServer();
   try {
