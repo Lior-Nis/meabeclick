@@ -542,13 +542,48 @@ export async function generateLesson(req: LessonRequest): Promise<LessonPlan> {
    * changes nothing — for quota it actively makes things worse by spending
    * what little is left. */
   try {
-    return await generateOnce(req);
+    return balancePositions(await generateOnce(req));
   } catch (err) {
     const kind = err instanceof LessonGenerationError ? err.kind : null;
     if (kind !== 'bad-output' && kind !== 'no-output') throw err;
     console.warn(`lesson: ${kind} from the engine, retrying once`);
-    return await generateOnce(req);
+    return balancePositions(await generateOnce(req));
   }
+}
+
+/**
+ * Spreads out a key that never moves, when the model put every correct
+ * quiz option, or every lie of "two truths and a lie", in one position.
+ *
+ * validateLesson rejects that ("a key that never moves is a key the child
+ * learns") and holds the lesson — which costs a new engine run and breaks
+ * the gate's streak, for something fixable in place: two of six skills in
+ * the library trial (2026-09-28) were held for exactly this. Question i is
+ * rotated by i positions, so the keys differ and each still points at the
+ * same text. Keys that already vary are left exactly as they were: rotating
+ * those could line them up.
+ */
+export function balancePositions(plan: LessonPlan): LessonPlan {
+  const rotate = <T>(xs: T[], by: number): T[] => xs.map((_, j) => xs[(j - by + xs.length * 4) % xs.length]);
+  const stuck = (keys: number[]) => keys.length >= 3 && new Set(keys).size === 1;
+
+  const quiz = plan.games?.quiz;
+  if (quiz?.questions && stuck(quiz.questions.map(q => q.answer))) {
+    quiz.questions = quiz.questions.map((q, i) => {
+      const n = q.options?.length ?? 0;
+      if (n < 2) return q;
+      return { ...q, options: rotate(q.options, i), answer: (q.answer + i) % n };
+    });
+  }
+  const tt = plan.games?.twoTruths;
+  if (tt?.rounds && stuck(tt.rounds.map(r => r.lieIndex))) {
+    tt.rounds = tt.rounds.map((r, i) => {
+      const n = r.statements?.length ?? 0;
+      if (n < 2) return r;
+      return { ...r, statements: rotate(r.statements, i), lieIndex: (r.lieIndex + i) % n };
+    });
+  }
+  return plan;
 }
 
 async function generateOnce(req: LessonRequest): Promise<LessonPlan> {
