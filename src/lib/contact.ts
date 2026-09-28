@@ -15,3 +15,9 @@
  */
 export const TUTOR_PHONE = '972546969891';
 export const TUTOR_PHONE_DISPLAY = '0546969891';
+
+/** Where a family pays: the business's PayBox box (set up 2026-09-28). An
+ *  app link — on a phone it opens PayBox. Said on the parent board, in the
+ *  booking confirmation and in the after-lesson email; typed nowhere else
+ *  (tests/unit/paybox.test.mjs). */
+export const PAYBOX_LINK = 'https://links.payboxapp.com/k247i3oUN6b';

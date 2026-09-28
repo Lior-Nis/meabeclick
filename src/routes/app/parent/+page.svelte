@@ -35,7 +35,7 @@
   import type { FamilyLesson } from '$lib/family-lesson.ts';
   import { page } from '$app/state';
   import type { PageData } from './$types';
-  import { TUTOR_PHONE } from '$lib/contact.ts';
+  import { PAYBOX_LINK, TUTOR_PHONE } from '$lib/contact.ts';
   import { contactTutor, tutorNames } from '$lib/tutors.ts';
 
   const noStudentsWhatsAppHref =
@@ -686,6 +686,9 @@
         </div>
         <p class="pay-note">הסכומים הם של כל המשפחה. הרשימה למטה היא של {CURRENT.name}.</p>
       {/if}
+      <!-- The way to pay, beside what is owed. An app link: on a phone it opens PayBox. -->
+      <a class="pay-btn" href={PAYBOX_LINK} target="_blank" rel="noopener">💳 לתשלום ב-PayBox</a>
+      <p class="pay-note">התשלום אחרי כל שיעור.</p>
 
       <div class="table-wrap">
         <table class="data-table">
@@ -982,6 +985,11 @@
   .share-code-note { font-size: 0.78rem; color: var(--text-muted); }
 
   .pay-note { font-size: 0.82rem; color: var(--text-muted); margin: 0.7rem 0 0.2rem; }
+  .pay-btn {
+    display: inline-flex; align-items: center; gap: 6px; min-height: 44px; margin-top: 12px;
+    padding: 0 20px; border-radius: 999px; background: var(--accent); color: #fff;
+    font-weight: 800; text-decoration: none;
+  }
   .pay-badge { font-size: 0.75rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; }
   .pay-badge.paid { background: var(--accent3-dim); border: 1px solid var(--accent3-strong); color: var(--accent3-strong); }
   .pay-badge.owed { background: #fef3c7; border: 1px solid #92400e; color: #92400e; }
