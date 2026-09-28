@@ -21,22 +21,23 @@
  * Generation (triggerForBooking) is fire-and-forget and must never delay
  * or block the response — it is not awaited.
  */
-import { json } from '@sveltejs/kit';
+import { json, type Cookies } from '@sveltejs/kit';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { flagCalendarFailure } from '$server/db.ts';
-import { reserveBooking, slotTaken, cancelBooking } from '$server/entities.ts';
+import { reserveBooking, slotTaken, cancelBooking, findAccountByEmail, type AccountRow } from '$server/entities.ts';
+import { holdBooking, pendingById, claimPending, confirmLink } from '$server/pending-bookings.ts';
 import { recordEvent, VISITOR_ID_RE } from '$server/marketing.ts';
 import { HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
 import { addPayment, lessonDateInIsrael, voidChargeForBooking } from '$server/payments.ts';
 import { enrollFromBooking, EnrollError, type EnrollResult } from '$server/enroll.ts';
-import { sendBookingEmail, sendFamilyBookingEmail, type EnrolledForEmail } from '$server/email.ts';
+import { sendBookingEmail, sendFamilyBookingEmail, sendConfirmBookingEmail, type EnrolledForEmail } from '$server/email.ts';
 import { accountLink } from '$server/family-auth.ts';
 import { triggerForBooking, sendWhatsApp, type Booking } from '$server/lesson/queue.ts';
 import { addLessonRequest } from '$server/requests.ts';
 import { readJson } from '$server/http.ts';
 import { planLabel, planFor, kindFor, agorot } from '$lib/plans.ts';
-import { setFamilySession } from '$server/family-auth.ts';
+import { setFamilySession, verifyPendingToken } from '$server/family-auth.ts';
 import type { RequestHandler } from './$types';
 
 const TZ = 'Asia/Jerusalem';
@@ -466,6 +467,12 @@ async function book(
 export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   const parsed = await readJson(request);
   if (parsed instanceof Response) return parsed;
+
+  /* The family confirming, from their inbox, a booking held for them —
+     see holdForConfirmation below. */
+  const confirm = (parsed as { confirm?: unknown } | null)?.confirm;
+  if (typeof confirm === 'string') return confirmHeld(confirm, cookies);
+
   const body = parsed as BookBody;
 
   /* Moved up from book(): an incomplete request has to be refused BEFORE
@@ -487,6 +494,81 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   // backstop: even a stale client or a forged request must not attach a
   // self-report answer to a family the tutor already knows how she reached.
   const heardFrom = locals.family ? null : sanitizeHeardFrom(body.heardFrom);
+
+  /* A family we already know by the email typed in, and a visitor who is
+     not signed in as them and is not the tutor booking for them. Anyone who
+     knows a parent's email could otherwise put a child, a lesson and a
+     charge on that family's page (pre-launch review, 2026-09-28). The hour
+     is held and the address on file is asked; nothing is enrolled until
+     they answer. docs/superpowers/specs/2026-09-28-confirm-known-email-booking-design.md */
+  const signedInAs = locals.family?.kind === 'account' ? locals.family.id : null;
+  const known = findAccountByEmail(body.email);
+  if (known && known.id !== signedInAs && !locals.authenticated) {
+    return holdForConfirmation(body, known, { attribution, heardFrom });
+  }
+
+  return completeBooking(body, {
+    cookies, sessionAccountId: signedInAs, byTutor: !!locals.authenticated, attribution, heardFrom,
+  });
+};
+
+interface CompleteCtx {
+  cookies: Cookies;
+  /** The family account this request is signed in as, if any. */
+  sessionAccountId: number | null;
+  /** The tutor booking for a family: not a step in anyone's funnel. */
+  byTutor: boolean;
+  attribution: Attribution | null;
+  heardFrom: string | null;
+}
+
+/** Holds the hour for a known family and asks the address on file. Nothing
+ *  is awaited between the check and the hold, as with reserveBooking. */
+async function holdForConfirmation(
+  body: ConfirmedBookBody, account: AccountRow,
+  extra: { attribution: Attribution | null; heardFrom: string | null },
+): Promise<Response> {
+  if (slotTaken(body.start, body.end)) {
+    return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
+  }
+  const id = holdBooking({ accountId: account.id, body: { ...body, attribution: extra.attribution, heardFrom: extra.heardFrom } });
+  const held = pendingById(id);
+  const emailed = held && account.email
+    ? await sendConfirmBookingEmail({
+        to: account.email, studentName: body.name, subject: body.subject,
+        lessonStart: body.start, link: confirmLink(held),
+      }).catch(err => {
+        console.error('[book] confirmation email failed:', (err as Error).message);
+        return false;
+      })
+    : false;
+  return json({ ok: true, awaitingConfirmation: true, emailed });
+}
+
+/** The family's answer: the held booking, booked the ordinary way. The
+ *  click proves the inbox — what /enter accepts as proof too — so this
+ *  device is signed in to that family. */
+async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
+  const id = verifyPendingToken(token);
+  const held = id === null ? null : claimPending(id);
+  if (!held) {
+    return json({ error: 'הקישור לאישור לא תקף — ייתכן שפג תוקפו או שהשיעור כבר אושר' }, { status: 410 });
+  }
+  const { attribution, heardFrom, ...booking } = held.body as unknown as ConfirmedBookBody & {
+    attribution?: Attribution | null; heardFrom?: string | null;
+  };
+  const res = await completeBooking(booking as ConfirmedBookBody, {
+    cookies, sessionAccountId: held.accountId, byTutor: false,
+    attribution: attribution ?? null, heardFrom: heardFrom ?? null,
+  });
+  if (res.status === 200) setFamilySession(cookies, { kind: 'account', id: held.accountId });
+  return res;
+}
+
+/** Everything after the decision to book: enrolment, the hour, the charge,
+ *  calendar and email (book()), generation, and the response. */
+async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promise<Response> {
+  const { attribution, heardFrom, cookies } = ctx;
   const sourceUtm = attribution ? JSON.stringify({ utm: attribution.utm, visitorId: attribution.visitorId ?? null }) : null;
 
   /* Enrolment moved AHEAD of the reservation so the booking row can name a
@@ -600,7 +682,7 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
 
   let result: BookResult;
   try {
-    result = await book(body, enrolled, locals.family?.kind === 'account' ? locals.family.id : null);
+    result = await book(body, enrolled, ctx.sessionAccountId);
   } catch (e) {
     /* book() can throw synchronously — flagCalendarFailure does an unguarded
        INSERT from inside the calendar-failure catch. Without this, the throw
@@ -668,7 +750,7 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
        `lessonsHeld` with lessons that were never "scheduled" through any
        marketing surface at all — the same reason /api/events (task 2)
        already drops every beacon from her admin session. */
-    if (bookingId != null && !locals.authenticated) {
+    if (bookingId != null && !ctx.byTutor) {
       try {
         recordEvent({
           event: 'lesson_scheduled',

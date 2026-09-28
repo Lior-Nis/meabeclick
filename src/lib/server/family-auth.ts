@@ -117,6 +117,34 @@ export function verifyFamilyToken(token: string | null | undefined): FamilyIdent
   return { kind, id };
 }
 
+/* ── Booking confirmation ─────────────────────────────────────────────
+   A different kind of token on purpose: `p` is not in KIND_OF, so
+   verifyFamilyToken refuses it and it can never become a session; and a
+   family token lacks the `p`, so it is never a confirmation. See
+   pending-bookings.ts. */
+
+export function mintPendingToken(pendingId: number, expiresMs: number): string {
+  const payload = `p.${pendingId}.${expiresMs}`;
+  return `${payload}.${sign(payload)}`;
+}
+
+/** The held booking a confirmation token names, or null. */
+export function verifyPendingToken(token: string | null | undefined): number | null {
+  if (typeof token !== 'string') return null;
+  const dot = token.lastIndexOf('.');
+  if (dot < 1) return null;
+  const payload = token.slice(0, dot);
+  const given = Buffer.from(token.slice(dot + 1));
+  const want = Buffer.from(sign(payload));
+  if (given.length !== want.length || !timingSafeEqual(given, want)) return null;
+  const [kind, rawId, rawExp] = payload.split('.');
+  const id = Number(rawId);
+  const exp = Number(rawExp);
+  if (kind !== 'p' || !Number.isInteger(id) || id <= 0 || !Number.isFinite(exp)) return null;
+  if (exp <= Date.now()) return null;
+  return id;
+}
+
 export const mintAccountLinkToken = (accountId: number): string =>
   mint('account', accountId, LINK_TTL_MS);
 

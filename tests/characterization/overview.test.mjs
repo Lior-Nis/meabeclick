@@ -69,8 +69,10 @@ test('naming a child opens that board, even when siblings exist', async () => {
   const { baseUrl, stop } = await startServer();
   try {
     const first = await book(baseUrl);
-    await book(baseUrl, sibling);
+    // Signed in: a signed-out booking with a known email waits for the
+    // family's confirmation (confirm-known-email.test.mjs).
     const cookie = await familySession(first.portal.link);
+    await book(baseUrl, sibling, cookie);
 
     const html = await (await parentPage(baseUrl, cookie, `?s=${first.portal.code}`)).text();
     assert.doesNotMatch(html, /תלמידים בחשבון/, '?s= must open a board, not the overview');
@@ -81,7 +83,7 @@ test("the overview never carries another family's child", async () => {
   const { baseUrl, stop } = await startServer();
   try {
     const mine = await book(baseUrl);
-    await book(baseUrl, sibling);
+    await book(baseUrl, sibling, await familySession(mine.portal.link));
     const theirs = await book(baseUrl, {
       name: 'ילד של משפחה אחרת', email: 'other@example.com',
       start: '2027-04-01T10:00:00+02:00', end: '2027-04-01T11:30:00+02:00',
@@ -107,8 +109,8 @@ test('a student session is sent to its own board, never the overview', async () 
   const { baseUrl, stop } = await startServer();
   try {
     const first = await book(baseUrl);
-    await book(baseUrl, sibling);
     const parentCookie = await familySession(first.portal.link);
+    await book(baseUrl, sibling, parentCookie);
 
     const share = await (await fetch(`${baseUrl}/api/student-link`, {
       method: 'POST',

@@ -196,8 +196,11 @@ test('the same booking submitted twice at once writes one of everything', async 
 test('a retry for a different hour reuses the account and student and adds one booking', async () => {
   const { baseUrl, dbPath, stop } = await startServer();
   try {
-    await book(baseUrl);
-    const again = await book(baseUrl, { start: '2027-03-22T10:00:00+02:00', end: '2027-03-22T11:30:00+02:00' });
+    const { portal } = await (await book(baseUrl)).json();
+    // The family's own retry, signed in: signed out, a known email waits for
+    // the family's confirmation instead (confirm-known-email.test.mjs).
+    const cookie = await familySession(portal.link);
+    const again = await book(baseUrl, { start: '2027-03-22T10:00:00+02:00', end: '2027-03-22T11:30:00+02:00' }, { Cookie: cookie });
     assert.equal(again.status, 200);
     assert.deepEqual(counts(dbPath), { accounts: 1, students: 1, enrollments: 1, bookings: 2, payments: 2 });
   } finally { await stop(); }
