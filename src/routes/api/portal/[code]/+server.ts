@@ -37,7 +37,8 @@ import { balanceForAccount, chargesForStudent, todayInIsrael } from '$server/pay
 import { gameUrl } from '$server/urls.ts';
 import { resolveFamilyAccess, studentInScope } from '$server/family.ts';
 import { getStudentByCode, nextBookingForStudent } from '$server/entities.ts';
-import { lessonWhen } from '$lib/dates.ts';
+import { lessonWhen, israelDay } from '$lib/dates.ts';
+import { toFamilyLesson } from '$lib/family-lesson.ts';
 import { planFor } from '$lib/plans.ts';
 import { homeworkForStudent } from '$server/lessons.ts';
 import { progressFor } from '$server/progress.ts';
@@ -195,6 +196,12 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
        always had been, so a child with a lesson, homework and three games
        was told they were at zero. See progress.ts for what replaces it. */
     data.progress = progressFor(code);
+
+    /* Lessons in the one shape both family pages read: slides linked, the
+       tutor's note hidden, and "coming" apart from "happened". */
+    const todayIL = israelDay(new Date().toISOString());
+    data.lessons = (Array.isArray(data.lessons) ? data.lessons : [])
+      .map((l: Record<string, unknown>) => toFamilyLesson(l ?? {}, todayIL));
 
     /* The next lesson from the bookings, not the value frozen into the file
        when the family booked: that one never changed, so after the lesson

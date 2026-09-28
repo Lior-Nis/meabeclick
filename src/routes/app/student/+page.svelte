@@ -1,5 +1,6 @@
 <script lang="ts">
   import { GRADE_LABEL } from '$lib/homework-grade.ts';
+  import type { FamilyLesson } from '$lib/family-lesson.ts';
   import { homeworkState, HOMEWORK_STATE_LABEL } from '$lib/family-homework.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import Icon from '$lib/icons/Icon.svelte';
@@ -49,7 +50,7 @@
     grade?: 'ok' | 'partial' | 'redo' | null;
     [k: string]: unknown;
   }
-  interface LessonItem { topic: string; date: string; summary?: string; slidesUrl?: string | null; [k: string]: unknown }
+  type LessonItem = FamilyLesson;
   interface GameItem { title: string; url?: string | null; [k: string]: unknown }
   interface StudentData {
     name: string; emoji?: string; subject?: string; level?: string; tutor?: string; tutorPhone?: string;
@@ -351,7 +352,7 @@
    *  celebration emoji aimed at a child who had just enrolled. */
   const isDayOne = $derived(!!DATA
     && !(DATA.homework ?? []).length
-    && !(DATA.lessons ?? []).length
+    && !(DATA.lessons ?? []).filter(l => !l.upcoming).length
     && !(DATA.games ?? []).length);
 </script>
 
@@ -406,7 +407,7 @@
         {:else}
           <div class="stats">
             <div class="stat"><div class="stat-val">{hwOpen}</div><div class="stat-lbl">שיעורי בית פתוחים</div></div>
-            <div class="stat"><div class="stat-val">{(DATA.lessons ?? []).length}</div><div class="stat-lbl">שיעורים</div></div>
+            <div class="stat"><div class="stat-val">{(DATA.lessons ?? []).filter(l => !l.upcoming).length}</div><div class="stat-lbl">שיעורים</div></div>
             <!-- A count, not a bare percentage: "2 מתוך 4" can be checked
                  against the list below it; "50%" cannot be checked against
                  anything. -->
@@ -428,7 +429,7 @@
           {#each DATA.lessons ?? [] as l}
             <div class="card">
               <div class="card-title">{l.topic}</div>
-              <div class="card-meta">{fmtDate(l.date)}</div>
+              <div class="card-meta">{l.upcoming ? 'לקראת השיעור · ' : ''}{fmtDate(l.date)}</div>
               <div class="card-body">{l.summary || ''}</div>
               {#if l.slidesUrl}
                 <a class="play" href={toHref(l.slidesUrl)}><Icon name="slides" size={17} /> המצגת</a>
