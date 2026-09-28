@@ -19,8 +19,8 @@
  * working long before the device that legitimately used it does.
  */
 import { redirect } from '@sveltejs/kit';
-import { verifyFamilyToken, setFamilySession } from '$server/family-auth.ts';
-import { resolveFamilyAccess } from '$server/family.ts';
+import { verifyFamilyToken, setFamilySession, readFamilySession } from '$server/family-auth.ts';
+import { resolveFamilyAccess, studentInScope } from '$server/family.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ url, cookies }) => {
@@ -35,6 +35,16 @@ export const GET: RequestHandler = ({ url, cookies }) => {
 
   const access = resolveFamilyAccess(identity);
   if (!access) redirect(303, '/portal?expired=1');
+
+  /* One phone in the family. A parent's session already reaches this child,
+     so keeping it loses nothing; replacing it with the child's locked the
+     parent out of their own board on their own phone. A session that does
+     not reach this child (another family's, or none) is replaced as before. */
+  const held = identity.kind === 'student' ? readFamilySession(cookies) : null;
+  const heldAccess = held?.kind === 'account' ? resolveFamilyAccess(held) : null;
+  if (heldAccess && access.student && studentInScope(heldAccess, access.student.code)) {
+    redirect(303, `/app/student?s=${encodeURIComponent(access.student.code)}`);
+  }
 
   setFamilySession(cookies, identity);
 
