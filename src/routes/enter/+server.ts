@@ -14,9 +14,9 @@
  * time-bounded instead: a prefetch sets a cookie in a scanner nobody is
  * looking at, and costs the family nothing.
  *
- * The exchange still matters. The link expires in two weeks; the session it
- * establishes lasts six months. So a forwarded or archived link stops
- * working long before the device that legitimately used it does.
+ * The exchange still matters. The link expires after a year
+ * (LINK_TTL_MS in family-auth.ts); the session it establishes lasts six
+ * months. So a forwarded or archived link does not work forever.
  */
 import { redirect } from '@sveltejs/kit';
 import { verifyFamilyToken, setFamilySession, readFamilySession } from '$server/family-auth.ts';
