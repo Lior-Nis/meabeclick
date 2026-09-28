@@ -22,7 +22,7 @@ import {
   findAccountByEmail, findStudentInAccountByName,
   upsertEnrollment, defaultTeacher, normalizeEmail,
 } from '$server/entities.ts';
-import { writePortalFile } from '$server/enroll.ts';
+import { makeCode, writePortalFile } from '$server/enroll.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
@@ -39,18 +39,22 @@ export const POST: RequestHandler = async (event) => {
   if (parsed instanceof Response) return parsed;
   const body = parsed as Record<string, unknown>;
 
-  const code = body?.code as string | undefined;
+  const requested = String(body?.code ?? '').trim();
   const name = body?.name as string | undefined;
   const subject = String(body?.subject ?? '').trim();
   const level = String(body?.level ?? '').trim();
   const phone = String(body?.phone ?? '').trim() || null;
   const email = normalizeEmail(body?.email);
 
-  if (!code || !name) return json({ error: 'code and name are required' }, { status: 400 });
-  if (!/^[a-z0-9-]+$/.test(code)) {
+  if (!name) return json({ error: 'name is required' }, { status: 400 });
+  /* A code is optional. Without one the student gets a generated address,
+     as a booking does (makeCode in enroll.ts), rather than the tutor
+     inventing one from the child's name for a URL the family forwards. */
+  if (requested && !/^[a-z0-9-]+$/.test(requested)) {
     return json({ error: 'הקוד חייב להיות באנגלית קטנה, בלי רווחים' }, { status: 400 });
   }
-  if (getStudentByCode(code)) return json({ error: 'הקוד הזה כבר תפוס' }, { status: 409 });
+  if (requested && getStudentByCode(requested)) return json({ error: 'הקוד הזה כבר תפוס' }, { status: 409 });
+  const code = requested || makeCode(name, null);
 
   /* An address is optional here, unlike at booking. The tutor sometimes
      adds a student before she has one, and she can hand over a link

@@ -30,9 +30,10 @@ test('no date a person reads is cut from a UTC timestamp', () => {
   // calendar.ts keys recurrence overrides by the UTC instant, which is what
   // node-ical keys them by; it is never shown.
   const allowed = new Set([join('src', 'lib', 'server', 'calendar.ts')]);
+  // Comments may say what not to do; code may not do it.
+  const code = (s) => s.replace(/\/\*[\s\S]*?\*\//g, '').replace(/<!--[\s\S]*?-->/g, '').replace(/(^|\s)\/\/.*$/gm, '');
   const offenders = sources().filter((f) => !allowed.has(f)).filter((f) => {
-    const s = read(f);
-    return /toISOString\(\)\.slice\(0, ?10\)|toISOString\(\)\.split\('T'\)\[0\]|assigned_at\??\.slice\(0, ?10\)/.test(s);
+    return /\.slice\(0, ?10\)|toISOString\(\)\.split\('T'\)\[0\]/.test(code(read(f)));
   });
   assert.deepEqual(offenders, []);
 });
