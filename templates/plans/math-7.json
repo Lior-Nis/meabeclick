@@ -1,0 +1,197 @@
+{
+  "id": "math-7",
+  "version": 1,
+  "subject": "מתמטיקה",
+  "track": "חטיבת ביניים — כיתה ז",
+  "source": "docs/superpowers/research/2026-09-12-israeli-math-curriculum.md#5-middle-school-foundations-brief",
+  "reviewed": null,
+  "grades": [
+    "כיתה ז"
+  ],
+  "topics": [
+    {
+      "key": "num",
+      "title": "התחום המספרי",
+      "branches": [
+        {
+          "key": "num.signed",
+          "title": "מספרים מכוונים",
+          "skills": [
+            {
+              "key": "num.signed.concept",
+              "title": "מספרים שליליים וציר המספרים",
+              "gloss": "negative numbers and the number line",
+              "requires": []
+            },
+            {
+              "key": "num.signed.addsub",
+              "title": "חיבור וחיסור מספרים מכוונים",
+              "gloss": "adding and subtracting signed numbers",
+              "requires": [
+                "num.signed.concept"
+              ]
+            },
+            {
+              "key": "num.signed.muldiv",
+              "title": "כפל וחילוק מספרים מכוונים",
+              "gloss": "multiplying and dividing signed numbers",
+              "requires": [
+                "num.signed.addsub"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "num.powers",
+          "title": "חזקות ושורשים",
+          "skills": [
+            {
+              "key": "num.powers.natural",
+              "title": "חזקות עם מעריך טבעי",
+              "gloss": "powers with natural exponents",
+              "requires": [
+                "num.signed.muldiv"
+              ]
+            },
+            {
+              "key": "num.powers.sqrt",
+              "title": "שורש ריבועי חיובי",
+              "gloss": "the positive square root",
+              "requires": [
+                "num.powers.natural"
+              ]
+            },
+            {
+              "key": "num.powers.order",
+              "title": "סדר פעולות חשבון עם חזקות ומספרים מכוונים",
+              "gloss": "order of operations with powers and signed numbers",
+              "requires": [
+                "num.powers.natural"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "alg",
+      "title": "התחום האלגברי",
+      "branches": [
+        {
+          "key": "alg.coords",
+          "title": "מערכת צירים",
+          "skills": [
+            {
+              "key": "alg.coords.plane",
+              "title": "מערכת צירים: נקודות בארבעת הרביעים",
+              "gloss": "the coordinate plane, all four quadrants",
+              "requires": [
+                "num.signed.concept"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "alg.expr",
+          "title": "ביטויים אלגבריים",
+          "skills": [
+            {
+              "key": "alg.expr.var",
+              "title": "המשתנה וביטויים אלגבריים; הצבה בביטוי",
+              "gloss": "variables, algebraic expressions, substitution",
+              "requires": [
+                "num.powers.order"
+              ]
+            },
+            {
+              "key": "alg.expr.like",
+              "title": "כינוס איברים דומים ופתיחת סוגריים",
+              "gloss": "collecting like terms and expanding brackets",
+              "requires": [
+                "alg.expr.var"
+              ]
+            },
+            {
+              "key": "alg.expr.identity",
+              "title": "שוויון בין ביטויים (זהות)",
+              "gloss": "equivalent expressions (identities)",
+              "requires": [
+                "alg.expr.like"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "geo",
+      "title": "התחום הגאומטרי",
+      "branches": [
+        {
+          "key": "geo.angles",
+          "title": "זוויות",
+          "skills": [
+            {
+              "key": "geo.angles.pairs",
+              "title": "זוויות צמודות וקודקודיות",
+              "gloss": "adjacent and vertical angles",
+              "requires": []
+            },
+            {
+              "key": "geo.angles.sum",
+              "title": "סכום הזוויות במשולש ובמרובע",
+              "gloss": "angle sums in triangles and quadrilaterals",
+              "requires": [
+                "geo.angles.pairs"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.shapes",
+          "title": "צורות, שטחים וגופים",
+          "skills": [
+            {
+              "key": "geo.shapes.transform",
+              "title": "צורות חופפות וטרנספורמציות: הזזה, שיקוף וסיבוב",
+              "gloss": "congruent shapes and transformations",
+              "requires": []
+            },
+            {
+              "key": "geo.shapes.area",
+              "title": "שטחים של מצולעים",
+              "gloss": "areas of polygons",
+              "requires": []
+            },
+            {
+              "key": "geo.shapes.box",
+              "title": "תיבה וקובייה: נפח ושטח פנים",
+              "gloss": "cuboid and cube: volume and surface area",
+              "requires": [
+                "geo.shapes.area"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "data",
+      "title": "תחום אי הוודאות",
+      "branches": [
+        {
+          "key": "data.freq",
+          "title": "נתונים",
+          "skills": [
+            {
+              "key": "data.freq.relative",
+              "title": "שכיחות ושכיחות יחסית",
+              "gloss": "frequency and relative frequency",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}

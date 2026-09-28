@@ -24,9 +24,10 @@ function bookingGradeOptions() {
 const skillsOf = (t) => t.topics.flatMap(topic => topic.branches.flatMap(b => b.skills));
 const keysOf = (t) => new Set(skillsOf(t).map(s => s.key));
 
-test('both shipped math templates load and validate', () => {
+test('every shipped math template loads and validates', () => {
   const ids = loadTemplates().map(t => t.id).sort();
-  assert.deepEqual(ids, ['math-4u', 'math-5u']);
+  // High school (4u, 5u) and, since 2026-09-28, grades ז–ט.
+  assert.deepEqual(ids, ['math-4u', 'math-5u', 'math-7', 'math-8', 'math-9']);
   for (const id of ids) assert.deepEqual(validateTemplate(templateById(id)), [], id);
 });
 

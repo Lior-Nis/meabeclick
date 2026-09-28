@@ -1,0 +1,200 @@
+{
+  "id": "math-8",
+  "version": 1,
+  "subject": "מתמטיקה",
+  "track": "חטיבת ביניים — כיתה ח",
+  "source": "docs/superpowers/research/2026-09-12-israeli-math-curriculum.md#5-middle-school-foundations-brief",
+  "reviewed": null,
+  "grades": [
+    "כיתה ח"
+  ],
+  "topics": [
+    {
+      "key": "num",
+      "title": "התחום המספרי",
+      "branches": [
+        {
+          "key": "num.ratio",
+          "title": "יחס ואחוזים",
+          "skills": [
+            {
+              "key": "num.ratio.prop",
+              "title": "יחס ופרופורציה",
+              "gloss": "ratio and proportion",
+              "requires": []
+            },
+            {
+              "key": "num.ratio.scale",
+              "title": "קנה מידה",
+              "gloss": "scale",
+              "requires": [
+                "num.ratio.prop"
+              ]
+            },
+            {
+              "key": "num.ratio.percent",
+              "title": "אחוזים: אחוז מכמות ושינוי באחוזים",
+              "gloss": "percentages: a percent of a quantity, percent change",
+              "requires": [
+                "num.ratio.prop"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "alg",
+      "title": "התחום האלגברי",
+      "branches": [
+        {
+          "key": "alg.func",
+          "title": "פונקציות",
+          "skills": [
+            {
+              "key": "alg.func.intro",
+              "title": "מבוא לפונקציות: טבלה, גרף וביטוי; עלייה וירידה",
+              "gloss": "introduction to functions: table, graph, rule; increasing and decreasing",
+              "requires": []
+            },
+            {
+              "key": "alg.func.rate",
+              "title": "קצב שינוי ושיפוע של ישר",
+              "gloss": "rate of change and the slope of a line",
+              "requires": [
+                "alg.func.intro"
+              ]
+            },
+            {
+              "key": "alg.func.linear",
+              "title": "פונקציה לינארית: גרף, שיפוע ונקודות חיתוך",
+              "gloss": "the linear function: graph, slope, intercepts",
+              "requires": [
+                "alg.func.rate"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "alg.eq",
+          "title": "משוואות ואי שוויונות",
+          "skills": [
+            {
+              "key": "alg.eq.word",
+              "title": "שאלות מילוליות בעזרת משוואות ממעלה ראשונה",
+              "gloss": "word problems with first-degree equations",
+              "requires": []
+            },
+            {
+              "key": "alg.eq.system",
+              "title": "מערכת של שתי משוואות ממעלה ראשונה",
+              "gloss": "a system of two first-degree equations",
+              "requires": [
+                "alg.eq.word",
+                "alg.func.linear"
+              ]
+            },
+            {
+              "key": "alg.eq.ineq",
+              "title": "אי שוויונות ממעלה ראשונה",
+              "gloss": "first-degree inequalities",
+              "requires": [
+                "alg.eq.word"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "geo",
+      "title": "התחום הגאומטרי",
+      "branches": [
+        {
+          "key": "geo.tri",
+          "title": "משולשים",
+          "skills": [
+            {
+              "key": "geo.tri.pyth",
+              "title": "משפט פיתגורס ושימושיו",
+              "gloss": "the Pythagorean theorem and its uses",
+              "requires": []
+            },
+            {
+              "key": "geo.tri.congruence",
+              "title": "חפיפת משולשים: משפטי החפיפה",
+              "gloss": "triangle congruence theorems",
+              "requires": []
+            },
+            {
+              "key": "geo.tri.median",
+              "title": "תיכון במשולש",
+              "gloss": "the median of a triangle",
+              "requires": [
+                "geo.tri.congruence"
+              ]
+            },
+            {
+              "key": "geo.tri.exterior",
+              "title": "זווית חיצונית למשולש",
+              "gloss": "the exterior angle of a triangle",
+              "requires": []
+            },
+            {
+              "key": "geo.tri.isosceles",
+              "title": "משולש שווה שוקיים ומשפטים הפוכים",
+              "gloss": "the isosceles triangle and converse theorems",
+              "requires": [
+                "geo.tri.congruence"
+              ]
+            },
+            {
+              "key": "geo.tri.similarity",
+              "title": "דמיון משולשים (ז.ז)",
+              "gloss": "similar triangles (AA)",
+              "requires": [
+                "geo.tri.congruence"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.solids",
+          "title": "גופים",
+          "skills": [
+            {
+              "key": "geo.solids.cyl",
+              "title": "גליל וחרוט: נפח ושטח פנים",
+              "gloss": "cylinder and cone: volume and surface area",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "data",
+      "title": "תחום אי הוודאות",
+      "branches": [
+        {
+          "key": "data.stats",
+          "title": "סטטיסטיקה והסתברות",
+          "skills": [
+            {
+              "key": "data.stats.center",
+              "title": "מדדי מרכז: ממוצע, חציון ושכיח",
+              "gloss": "measures of centre: mean, median, mode",
+              "requires": []
+            },
+            {
+              "key": "data.stats.prob",
+              "title": "הסתברות: מרחב מדגם ומאורעות",
+              "gloss": "probability: sample space and events",
+              "requires": []
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
