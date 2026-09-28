@@ -5,7 +5,7 @@
    * place that trust boundary is visible, same as every other template.
    */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, offersHints, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
   import RoundHint from './RoundHint.svelte';
 
   type Question = { q: string; options: string[]; answer: number; why?: string; hint?: string };
@@ -39,6 +39,7 @@
     if (o.right) score++;
     else { o.state = 'wrong'; missed.push(questions[idx].q); }
     whyText = questions[idx].why ?? '';
+    engine.say(verdict(o.right, { answer: opts.find((x) => x.right)?.text, note: whyText }));
   }
 
   function next() {
@@ -72,7 +73,7 @@
         class:wrong={o.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(o)}
-      >{o.text}{#if o.state === 'correct'} ✓{:else if o.state === 'wrong'} ✗{/if}</button>
+      >{o.text}{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#key idx}

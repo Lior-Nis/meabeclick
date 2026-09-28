@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Port of games/two-truths.html. */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, offersHints, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
   import RoundHint from './RoundHint.svelte';
 
   type Round = { statements: string[]; lieIndex: number; why: string; hint?: string };
@@ -38,6 +38,7 @@
       missed.push(rounds[idx].statements[rounds[idx].lieIndex]);
     }
     whyText = rounds[idx].why;
+    engine.say(verdict(it.isLie, { answer: rounds[idx].statements[rounds[idx].lieIndex], note: whyText }));
   }
 
   function next() {
@@ -72,7 +73,7 @@
         class:wrong={it.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(it)}
-      >{#if it.state === 'correct'}<span class="tag lie">שקר</span>{/if}{it.text}</button>
+      >{#if it.state === 'correct'}<span class="tag lie">שקר</span>{/if}{it.text}{#if it.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#key idx}

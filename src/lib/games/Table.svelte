@@ -58,7 +58,7 @@
       return;
     }
 
-    whyHtml = `נכונים: <b>${score}</b> מתוך <b>${blanks.length}</b>. תקנו את האדומים ונסו שוב.`;
+    whyHtml = `נכונים: <b>${score}</b> מתוך <b>${blanks.length}</b>. תקנו את המסומנים ב-✗ ונסו שוב.`;
     tries++;
 
     // A second failed pass is where a student gets stuck, so open the answers.
@@ -67,6 +67,7 @@
       whyHtml = 'הנה התשובות — קראו אותן ולחצו בדיקה כדי לסיים.';
       revealed = true;
     }
+    engine.say(whyHtml);
   }
 
   if (cols.length && rows.length) {
@@ -108,12 +109,13 @@
                 {#if b}
                   <input
                     type="text"
-                    aria-label={r.label}
+                    aria-label={`${r.label}, ${cols[ci]}`}
+                    aria-invalid={checked && b.state === 'wrong'}
                     bind:value={b.value}
                     disabled={b.state === 'right'}
                     class:right={b.state === 'right'}
                     class:wrong={checked && b.state === 'wrong'}
-                  />
+                  />{#if checked && b.state === 'wrong'}<span class="cell-mark" aria-hidden="true">✗</span>{/if}
                 {:else}
                   {cell ?? ''}
                 {/if}
@@ -147,4 +149,6 @@
   td input:focus { outline: none; border-color: var(--accent); }
   td input.right { border-color: var(--accent3); background: var(--accent3-dim); color: var(--accent3-strong); font-weight: 800; }
   td input.wrong { border-color: var(--danger); background: var(--danger-dim); }
+  td:has(.cell-mark) { position: relative; }
+  .cell-mark { position: absolute; inset-block-start: 2px; inset-inline-end: 4px; color: var(--danger); font-weight: 900; font-size: 0.8rem; }
 </style>

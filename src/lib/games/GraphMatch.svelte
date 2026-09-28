@@ -20,7 +20,7 @@
    * looking at the same data either way.
    */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, offersHints, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
   import RoundHint from './RoundHint.svelte';
 
   type Round = { prompt: string; mainLabel?: string; main: number[]; options: number[][]; answer: number; why?: string; hint?: string };
@@ -97,6 +97,8 @@
     if (o.correct) score++;
     else { o.state = 'wrong'; missed.push(rounds[idx].prompt); }
     whyText = rounds[idx].why ?? '';
+    const right = opts.find((x) => x.correct);
+    engine.say(verdict(o.correct, { answer: right && `גרף ${right.label}`, note: whyText }));
   }
 
   function next() {
@@ -136,7 +138,7 @@
         disabled={answered}
         onclick={() => choose(o)}
       >
-        <div class="lbl">{o.label}.</div>
+        <div class="lbl">{o.label}.{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</div>
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html o.svg}
       </button>

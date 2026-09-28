@@ -26,7 +26,7 @@
    * 16 pairs in a data file.
    */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
 
   type Pair = { a: string; b: string };
   type Card = { id: number; pair: number; text: string; flipped: boolean; matched: boolean; wrong: boolean };
@@ -56,10 +56,11 @@
     if (lock || card.flipped || card.matched) return;
     card.flipped = true;
 
-    if (!first) { first = card; return; }
+    if (!first) { first = card; engine.say(card.text); return; }
 
     tries++;
     const a = first, b = card;
+    engine.say(`${b.text}. ${a.pair === b.pair ? verdict(true, { note: 'זוג!' }) : verdict(false, { note: 'לא זוג.' })}`);
 
     if (a.pair === b.pair) {
       a.matched = true;
@@ -123,7 +124,7 @@
           onclick={() => flip(c)}
         >
           <span class="face back">?</span>
-          <span class="face front">{c.text}</span>
+          <span class="face front">{c.text}{#if c.matched}<span class="mark">✓</span>{:else if c.wrong}<span class="mark">✗</span>{/if}</span>
         </button>
       </div>
     {/each}

@@ -85,8 +85,21 @@ export interface GameEngineContext {
   /** Ends the game: stops the timer, computes (or accepts an override)
    *  stars, shows GameShell's #done panel, and reports the result. */
   finish(input: FinishInput): void;
+  /** Says a line to a screen reader, through GameShell's one polite live
+   *  region. Colour and a moving card say nothing to a child who can't see
+   *  them; every answer goes through here. Markup (<b>) is dropped. */
+  say(text: string): void;
   shuffle: typeof shuffle;
   fmt: typeof fmt;
+}
+
+/** What is said after an answer: the verdict first, the right answer only
+ *  when it was missed, then any note (the round's "why"). */
+export function verdict(ok: boolean, detail: { answer?: string; note?: string } = {}): string {
+  const parts = [ok ? 'נכון!' : 'לא נכון.'];
+  if (!ok && detail.answer) parts.push(`התשובה: ${detail.answer}.`);
+  if (detail.note) parts.push(detail.note);
+  return parts.join(' ');
 }
 
 export function fmt(totalSeconds: number): string {

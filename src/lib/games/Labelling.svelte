@@ -66,13 +66,19 @@
     node.classList.add('active');
     activeNode = node;
     activeTarget = t;
-    hint = 'עכשיו בחרו את התווית המתאימה';
+    tell('עכשיו בחרו את התווית המתאימה');
+  }
+
+  /** The hint line is this game's only feedback: shown, and said. */
+  function tell(text: string) {
+    hint = text;
+    engine.say(text);
   }
 
   function selectLabel(btn: LabelBtn) {
     if (btn.used) return;
     if (!activeNode || !activeTarget) {
-      hint = 'קודם לחצו על חלק בתרשים';
+      tell('קודם לחצו על חלק בתרשים');
       return;
     }
 
@@ -81,13 +87,14 @@
       activeNode.classList.add('solved');
       btn.used = true;
       solved++;
-      hint = 'יפה! ממשיכים לחלק הבא';
+      tell('יפה! ממשיכים לחלק הבא');
       activeNode = null;
       activeTarget = null;
       if (solved === targets.length) setTimeout(end, 500);
     } else {
       wrong++;
       missed.push(activeTarget.label);
+      tell('לא התווית הזאת — נסו אחרת');
       btn.flash = true;
       setTimeout(() => { btn.flash = false; }, 500);
     }
