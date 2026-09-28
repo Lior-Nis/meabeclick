@@ -1,5 +1,6 @@
 <script lang="ts">
   import Icon from '$lib/icons/Icon.svelte';
+  import FormulaText from '$lib/components/FormulaText.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import ReportQueue from '$lib/components/ReportQueue.svelte';
   import LearningPlanTree from '$lib/components/LearningPlanTree.svelte';
@@ -1152,6 +1153,11 @@
                       <div class="hw-text">
                         <div class="hw-task" class:done-text={hw.submitted || hw.graded}>{hw.task}</div>
                         <div class="hw-date">{formatDate(hw.date)}</div>
+                        {#if hw.answer}
+                          <!-- The generator's answer key: hers, closed by default so it is not
+                               read out over her shoulder while the child is beside her. -->
+                          <details class="hw-key"><summary>🔑 תשובון</summary><div class="hw-key-text"><FormulaText text={hw.answer} /></div></details>
+                        {/if}
                         {#if hw.submitted && !hw.graded}
                           <!-- Handed in and waiting for her: the child sees
                                «הוגש — ממתין לבדיקה» until one of these. -->
@@ -1657,6 +1663,9 @@
   .hw-text { flex: 1; }
   .hw-task { font-size: .9rem; color: var(--text-primary); }
   .hw-task.done-text { text-decoration: line-through; color: var(--text-muted); }
+  .hw-key { margin-top: 4px; font-size: .82rem; }
+  .hw-key summary { cursor: pointer; color: var(--accent); font-weight: 700; min-height: 32px; line-height: 32px; }
+  .hw-key-text { white-space: pre-wrap; background: var(--bg-surface); border: 1px solid var(--border); border-radius: 8px; padding: 6px 8px; }
   .hw-date { font-size: .75rem; color: var(--text-muted); margin-top: 2px; }
   .hw-grade { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 6px; }
   .hw-grade-btn { min-height: 36px; }

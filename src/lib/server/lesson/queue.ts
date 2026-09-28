@@ -448,6 +448,8 @@ export async function appendToPortal(
   for (const h of plan.homework) {
     addHomework({
       studentId: student.id, task: h.task, template: null, dataId: null,
+      /* The tutor's answer key; never on a family route. */
+      answer: h.answer ?? null,
       /* The skill the lesson was generated for. Null when the student has
          no plan — "not evidence about any skill", which the suggestion
          engine must read as silence rather than as a zero. */

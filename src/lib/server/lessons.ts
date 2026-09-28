@@ -30,6 +30,8 @@ export type HomeworkRow = {
    *  it — migration 018. Both NULL on every row older than it. */
   booking_id: number | null;
   held_until: string | null;
+  /** The answer key, for the tutor only (migration 022). */
+  answer: string | null;
 };
 
 // Crockford-ish base32 without vowels, so a token cannot spell a word and
@@ -128,16 +130,18 @@ export function addHomework(h: {
    *  no report replaces it first. See migration 018. */
   bookingId?: number | null;
   heldUntil?: string | null;
+  /** The answer key — the tutor's, never shown to the family. */
+  answer?: string | null;
 }): number {
   /* No submission and no grade: a task starts life as neither finished nor
      judged, which is the only honest state for work nobody has done yet. */
   const info = handle().prepare(`
     INSERT INTO homework (lesson_id, student_id, task, template, data_id, assigned_at, due_at, node_id,
-                          booking_id, held_until)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+                          booking_id, held_until, answer)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(h.lessonId ?? null, h.studentId, h.task, h.template ?? null,
          h.dataId ?? null, new Date().toISOString(), h.dueAt ?? null,
-         h.nodeId ?? null, h.bookingId ?? null, h.heldUntil ?? null);
+         h.nodeId ?? null, h.bookingId ?? null, h.heldUntil ?? null, h.answer ?? null);
   return Number(info.lastInsertRowid);
 }
 
@@ -285,7 +289,7 @@ export function releaseHeld(bookingId: number): number {
  * were, so the fallback still delivers them.
  */
 export function replaceHeld(
-  bookingId: number, studentId: number, tasks: { task: string; nodeId: number | null }[],
+  bookingId: number, studentId: number, tasks: { task: string; nodeId: number | null; answer?: string | null }[],
   now: string = new Date().toISOString(),
 ): boolean {
   return inTransaction(() => {
@@ -293,7 +297,7 @@ export function replaceHeld(
       `DELETE FROM homework WHERE booking_id = ? AND held_until IS NOT NULL AND held_until > ?`
     ).run(bookingId, now);
     if (Number(removed.changes) === 0) return false;
-    for (const t of tasks) addHomework({ studentId, task: t.task, nodeId: t.nodeId, bookingId });
+    for (const t of tasks) addHomework({ studentId, task: t.task, nodeId: t.nodeId, bookingId, answer: t.answer ?? null });
     return true;
   });
 }

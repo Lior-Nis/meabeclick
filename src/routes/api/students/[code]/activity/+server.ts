@@ -40,6 +40,7 @@ function view(code: string) {
       /* Set while the family cannot see it yet: goes out when the lesson
          report replaces or releases it, or at this time by itself. */
       heldUntil: h.held_until && h.held_until > new Date().toISOString() ? h.held_until : null,
+      answer: h.answer ?? null,
     })),
     /* lessonsForStudent, not the old readLessons: that one read lessons_v2,
        which nothing writes, so this list was empty for every student while
