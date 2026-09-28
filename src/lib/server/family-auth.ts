@@ -26,14 +26,13 @@
  * than one shared secret — the split the PRD left open as "הפין משותף
  * להורה+תלמיד — זה מכוון או שצריך הפרדה?".
  *
- * ## Why links are short-lived and sessions are not
+ * ## How long links and sessions last
  *
- * A link sits in an inbox or a WhatsApp thread indefinitely, so it expires
- * in two weeks; the session cookie it establishes lasts six months. Since
- * booking now collects an email, replacing an expired link is self-service
- * (`/portal` mails a fresh one), which is what makes the short window
- * affordable — the old model could not expire anything, because expiry
- * meant messaging the tutor.
+ * A link expires after a year, and the session cookie it establishes lasts
+ * six months — see LINK_TTL_MS below for why a year and not the fortnight
+ * this started with. Since booking collects an email, replacing an expired
+ * link is self-service (`/portal` mails a fresh one); the old model could
+ * not expire anything, because expiry meant messaging the tutor.
  */
 
 import { createHmac, timingSafeEqual, randomBytes } from 'node:crypto';
