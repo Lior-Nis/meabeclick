@@ -828,6 +828,7 @@
   <div class="nav-actions">
     <span class="save-indicator" class:show={saveIndicatorVisible}>✓ נשמר</span>
     <button class="btn btn-outline" onclick={openModal}>+ תלמיד חדש</button>
+    <a href="/app/library" class="btn btn-ghost">ספרייה</a>
     <a href="/app/marketing" class="btn btn-ghost">שיווק</a>
     <a href="/" class="btn btn-ghost">← האתר</a>
     <button class="btn btn-ghost" onclick={signOut}>יציאה</button>

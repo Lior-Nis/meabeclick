@@ -38,6 +38,7 @@
 import { json } from '@sveltejs/kit';
 import { apiAuthDenied } from '$server/auth.ts';
 import { readLessons } from '$server/db.ts';
+import { isLibrarySlug } from '$server/library/prepare.ts';
 import { resolveStudent, studentRefById } from '$server/results.ts';
 import { gameUrl, lessonUrl } from '$server/urls.ts';
 import type { RequestHandler } from './$types';
@@ -64,7 +65,8 @@ export const GET: RequestHandler = async (event) => {
   const { url } = event;
   try {
     const raw = url.searchParams.get('student');
-    const lessons = readLessons(raw ? raw : undefined).map(l => {
+    /* Library masters are nobody's lesson: they live on /app/library. */
+    const lessons = readLessons(raw ? raw : undefined).filter(l => !isLibrarySlug(l.slug)).map(l => {
       /* Prefer the stable code: the legacy lessons table stores a display
          name, which is ambiguous between two children sharing one and
          changes when a child is renamed. An unresolvable name passes through

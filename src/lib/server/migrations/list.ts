@@ -20,6 +20,7 @@ import { sql as sql019 } from './019_drive_items.ts';
 import { sql as sql020 } from './020_drive_sync_baseline.ts';
 import { sql as sql021 } from './021_pending_bookings.ts';
 import { sql as sql022 } from './022_homework_answer.ts';
+import { sql as sql023 } from './023_library_items.ts';
 
 export interface Migration {
   version: number;
@@ -55,4 +56,5 @@ export const MIGRATIONS: Migration[] = [
   { version: 20, name: '020_drive_sync_baseline', sql: sql020 },
   { version: 21, name: '021_pending_bookings', sql: sql021 },
   { version: 22, name: '022_homework_answer', sql: sql022 },
+  { version: 23, name: '023_library_items', sql: sql023 },
 ];
