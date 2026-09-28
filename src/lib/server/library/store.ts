@@ -2,7 +2,7 @@
  * library_items (migration 023): which master lesson is the prepared
  * material for a skill of a plan template, and where its preparation stands.
  */
-import { handle } from '../db.ts';
+import { handle, finishLesson } from '../db.ts';
 
 export type LibraryStatus = 'queued' | 'preparing' | 'ready' | 'held' | 'failed';
 
@@ -38,6 +38,25 @@ export function itemFor(templateId: string, skillKey: string): LibraryItem | nul
   const r = handle().prepare(`SELECT * FROM library_items WHERE template_id = ? AND skill_key = ?`)
     .get(templateId, skillKey) as Row | undefined;
   return r ? toItem(r) : null;
+}
+
+/** Fixed words, like the engine's failure messages: they are shown as is. */
+export const INTERRUPTED = 'ההכנה נקטעה כשהשרת הופעל מחדש — אפשר להכין מחדש';
+
+/**
+ * At boot: preparations run inside the server process, so one that was
+ * queued or running when it restarted (a deploy, a crash) will never
+ * finish. Marked failed, with its master lesson, so the page offers
+ * «הכנה מחדש» instead of showing «בהכנה…» forever. Returns how many.
+ */
+export function resetInterrupted(): number {
+  const stuck = handle().prepare(`SELECT template_id, skill_key, slug FROM library_items WHERE status IN ('queued', 'preparing')`)
+    .all() as { template_id: string; skill_key: string; slug: string | null }[];
+  for (const s of stuck) {
+    if (s.slug) finishLesson(s.slug, { status: 'failed', problem: INTERRUPTED });
+    setItem({ templateId: s.template_id, skillKey: s.skill_key, status: 'failed', problem: INTERRUPTED });
+  }
+  return stuck.length;
 }
 
 export function itemsForTemplate(templateId: string): LibraryItem[] {

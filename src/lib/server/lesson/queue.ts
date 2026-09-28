@@ -30,6 +30,7 @@ import { contentPath } from '../content.ts';
 import { assertPathSegment } from '../urls.ts';
 import { singleton } from '../singleton.ts';
 import { autopilotCovers } from '../../subjects.ts';
+import { libraryPlanFor, recordUse } from '../library/use.ts';
 import { transliterate } from '../enroll.ts';
 import {
   LessonGenerationError, engineHasCredentials, type LessonFailureKind,
@@ -118,19 +119,28 @@ export function triggerForBooking(booking: Booking, opts: TriggerOpts = {}): Tri
 
   const slug = `${slugify(booking.name)}-${slugify(booking.subject)}-${Date.now().toString(36)}`;
 
-  // Structural pre-flight only — "has anyone configured credentials", not
-  // "are they still valid". A live-but-revoked credential passes here and
-  // fails inside run() as 'engine-auth', which is the same message.
-  if (!engineHasCredentials()) {
-    return skip(slug, booking, opts, 'no credentials', FAILURE_MESSAGES['engine-auth']);
-  }
+  /* Resolved here rather than in run(): a skill whose library item is
+     ready needs no engine, so neither the credentials check nor the daily
+     cap applies to it — its lessons keep coming even when the engine
+     cannot. See library/use.ts. */
+  const target: TargetSkill | null = targetSkillFor(opts.enrolledCode ?? null, booking.subject);
+  const fromLibrary = target ? libraryPlanFor(target.templateId, target.key) : null;
 
-  const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
-  while (recent.length && recent[0] < dayAgo) recent.shift();
-  if (recent.length >= MAX_PER_DAY) {
-    return skip(slug, booking, opts, 'daily cap', 'הגעת למכסה היומית ליצירת שיעורים — השיעור לא נוצר אוטומטית');
+  if (!fromLibrary) {
+    // Structural pre-flight only — "has anyone configured credentials", not
+    // "are they still valid". A live-but-revoked credential passes here and
+    // fails inside run() as 'engine-auth', which is the same message.
+    if (!engineHasCredentials()) {
+      return skip(slug, booking, opts, 'no credentials', FAILURE_MESSAGES['engine-auth']);
+    }
+
+    const dayAgo = Date.now() - 24 * 60 * 60 * 1000;
+    while (recent.length && recent[0] < dayAgo) recent.shift();
+    if (recent.length >= MAX_PER_DAY) {
+      return skip(slug, booking, opts, 'daily cap', 'הגעת למכסה היומית ליצירת שיעורים — השיעור לא נוצר אוטומטית');
+    }
+    recent.push(Date.now());
   }
-  recent.push(Date.now());
 
   /* Checked BEFORE generation, not after. publish() validates the slug on
      the way to disk, so an unusable one used to cost a full generation —
@@ -149,7 +159,7 @@ export function triggerForBooking(booking: Booking, opts: TriggerOpts = {}): Tri
   });
 
   // Intentionally not awaited.
-  run(slug, booking, opts).catch(err => {
+  run(slug, booking, opts, target, fromLibrary).catch(err => {
     // The engine's own words go to the log and ONLY to the log — see the
     // warning on LessonGenerationError.detail.
     const kind = err instanceof LessonGenerationError ? err.kind : 'unclassified';
@@ -231,12 +241,17 @@ interface RunMeta {
   durationMin?: number;
 }
 
-async function run(slug: string, booking: Booking, opts: TriggerOpts): Promise<void> {
-  /* Resolved BEFORE generation, because the title goes into the prompt and
-     the id is what the resulting rows are tagged with. Null for a student
-     with no plan, which is almost everyone today: the lesson is then
-     generated exactly as before and simply produces no evidence link. */
-  const target: TargetSkill | null = targetSkillFor(opts.enrolledCode ?? null, booking.subject);
+async function run(
+  slug: string, booking: Booking, opts: TriggerOpts,
+  /* Resolved BEFORE generation (in triggerForBooking), because the title
+     goes into the prompt and the id is what the resulting rows are tagged
+     with. Null for a student with no plan: the lesson is then generated
+     exactly as before and simply produces no evidence link. */
+  target: TargetSkill | null,
+  /* The master's published plan when the target skill is prepared: then
+     this lesson is a copy of it, and no engine runs. */
+  fromLibrary: { masterSlug: string; plan: LessonPlan } | null,
+): Promise<void> {
 
   const meta: RunMeta = {
     subject: booking.subject,
@@ -247,7 +262,14 @@ async function run(slug: string, booking: Booking, opts: TriggerOpts): Promise<v
     durationMin: booking.durationMin,
   };
 
-  const plan = await generateLesson(meta);
+  const plan = fromLibrary ? fromLibrary.plan : await generateLesson(meta);
+  /* Recorded the moment the library is chosen, before validation: a copy
+     is not an engine run whatever becomes of it, and the gate
+     (scripts/vision-metrics.mjs) must count neither a held nor a failed
+     copy against the engine. */
+  if (fromLibrary && target) {
+    recordUse({ lessonSlug: slug, masterSlug: fromLibrary.masterSlug, templateId: target.templateId, skillKey: target.key });
+  }
 
   // Structurally broken material is held rather than published — a game with
   // badStep out of range would break in a child's hands.
@@ -294,9 +316,10 @@ async function run(slug: string, booking: Booking, opts: TriggerOpts): Promise<v
     problem: onPortal ? null : NOT_DELIVERED,
   });
 
+  const ready = fromLibrary ? 'שיעור מוכן מהספרייה' : 'שיעור חדש מוכן';
   await notify(opts, onPortal
-    ? `✅ שיעור חדש מוכן — ${plan.title}\n${plan.gradeContext}`
-    : `⚠️ שיעור חדש מוכן — ${plan.title}\n${plan.gradeContext}\n${NOT_DELIVERED}`);
+    ? `✅ ${ready} — ${plan.title}\n${plan.gradeContext}`
+    : `⚠️ ${ready} — ${plan.title}\n${plan.gradeContext}\n${NOT_DELIVERED}`);
 }
 
 interface PublishedGame {

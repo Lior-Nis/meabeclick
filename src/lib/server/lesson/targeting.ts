@@ -21,11 +21,18 @@
  * content, never identity.
  */
 import { getStudentByCode, enrollmentsForStudent } from '../entities.ts';
-import { planForEnrollment, planData, lastLessonAt } from '../plans/store.ts';
+import { planForEnrollment, planData, lastLessonAt, nodeInPlan } from '../plans/store.ts';
 import { buildTree, nextTargetSkill } from '../plans/view.ts';
 import { handle } from '../db.ts';
 
-export interface TargetSkill { id: number; title: string }
+export interface TargetSkill {
+  id: number;
+  title: string;
+  /** The template's own key for the skill, and the template it came from:
+   *  what the prepared library is keyed by (library/use.ts). */
+  key: string;
+  templateId: string;
+}
 
 /**
  * The skill this student's next lesson in this subject should target, or
@@ -51,7 +58,10 @@ export function targetSkillFor(studentCode: string | null, subject: string): Tar
   if (!plan) return null;
 
   const { nodes, prereqs, events } = planData(plan.id);
-  return nextTargetSkill(buildTree(nodes, prereqs, events, lastLessonAt(student.id)));
+  const next = nextTargetSkill(buildTree(nodes, prereqs, events, lastLessonAt(student.id)));
+  if (!next) return null;
+  const node = nodeInPlan(plan.id, next.id);
+  return node ? { ...next, key: node.key, templateId: plan.template_id } : null;
 }
 
 /**
