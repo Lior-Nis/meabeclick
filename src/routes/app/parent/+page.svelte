@@ -535,6 +535,9 @@
             <div class="nl-label">שיעור הבא</div>
             <div class="nl-date">{formatDateHe(CURRENT.nextLesson.date)}</div>
             <div class="nl-meta">{CURRENT.nextLesson.time ? 'שעה ' + CURRENT.nextLesson.time : ''} {CURRENT.nextLesson.type ? '· ' + CURRENT.nextLesson.type : ''}</div>
+            <!-- The one way to reach the tutor about THIS lesson — prefilled,
+                 so the message says which child and which date. -->
+            <a class="nl-contact" href={`https://wa.me/${TUTOR_PHONE}?text=${encodeURIComponent(`היי, לגבי השיעור של ${CURRENT.name} ב-${formatDateHe(CURRENT.nextLesson.date)}`)}`} target="_blank" rel="noopener">💬 שאלה, שינוי או ביטול</a>
           </div>
         </div>
       {:else}
@@ -934,6 +937,7 @@
   .dayone-title { font-weight: 800; font-size: 1.02rem; color: var(--text-primary); }
   .dayone-sub { font-size: 0.89rem; color: var(--text-muted-strong); line-height: 1.65; margin-top: 0.25rem; }
 
+  .nl-contact { display: inline-block; margin-top: 6px; min-height: 44px; line-height: 44px; font-weight: 700; color: var(--accent); text-decoration: none; }
   .board-link { display: inline-block; min-height: 44px; line-height: 44px; font-weight: 700; color: var(--accent); text-decoration: none; }
   .lesson-slides { font-size: .82rem; color: var(--accent); font-weight: 600; }
   .share-intro { font-size: 0.9rem; color: var(--text-muted); line-height: 1.65; margin-bottom: 0.8rem; }

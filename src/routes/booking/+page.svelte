@@ -42,7 +42,7 @@
      so they are offered WITH a warning rather than withheld. A family that
      cannot book is a lost family; a family booked into an hour the tutor is
      already teaching is a worse outcome than either. */
-  let slotState = $state<'loading' | 'empty' | 'slots' | 'unconfirmed'>('loading');
+  let slotState = $state<'loading' | 'empty' | 'slots' | 'unconfirmed' | 'error'>('loading');
   let dayGroups = $state<DayGroup[]>([]);
   /* Step 2 used to render every slot for the next seven days at once —
      around 140 bare time chips over three phone screens, with no way to
@@ -87,7 +87,10 @@
          schedule that looks fine over a failure that is not. Saying we
          cannot check right now is the honest answer, and the WhatsApp
          escape below turns it into a booking anyway. */
-      renderOrEmpty([], true);
+      /* Not "no free times": we could not ask. Saying the week is full
+         when the request failed turned families away (pre-launch review,
+         2026-09-28). */
+      slotState = 'error';
     }
   }
 
@@ -262,6 +265,11 @@
   let heardFrom = $state('');
   let submitting = $state(false);
   let submitError = $state('');
+  /** A failed save (not a validation message): offer the WhatsApp we name. */
+  let submitFailed = $state(false);
+  /** Booked while the calendar could not be checked, or not written to it:
+   *  a request the tutor confirms, not a confirmed lesson. */
+  let bookedUnconfirmed = $state(false);
 
   type FieldName = 'isSelf' | 'name' | 'subject' | 'level' | 'email' | 'phone';
   let errors = $state<Partial<Record<FieldName, string>>>({});
@@ -401,6 +409,7 @@
   async function submitBooking() {
     submitting = true;
     submitError = '';
+    submitFailed = false;
     track('booking_submitted');
 
     try {
@@ -434,6 +443,8 @@
       if (res.status === 409) {
         submitError = data.error || 'השעה הזו כבר נתפסה. בחרו מועד אחר.';
         submitting = false;
+        // The list behind the sheet is stale now: refresh it for the next pick.
+        loadSlots();
         return;
       }
 
@@ -442,6 +453,7 @@
          automatically, which is her problem to resolve, not something to
          show the parent. */
       if (data.ok || data.fallback) {
+        bookedUnconfirmed = slotState === 'unconfirmed' || !!data.fallback;
         showSuccess(data.portal ?? null, !!data.familyEmailed, !!data.pending, !!data.linkEmailed);
       } else {
         throw new Error(data.error || 'שגיאה לא ידועה');
@@ -450,6 +462,7 @@
       /* Never the raw exception. A parent used to be shown
          `alert('שגיאה בשמירת ההזמנה: Unexpected token < in JSON at position 0')`. */
       submitError = 'לא הצלחנו לשמור את ההזמנה. נסו שוב, או שלחו לנו הודעה בוואטסאפ.';
+      submitFailed = true;
       submitting = false;
     }
   }
@@ -571,6 +584,12 @@
             onclick={() => track('cta_click', { target: 'whatsapp' })}>תיאום בוואטסאפ ←</a>
         </div>
         {@render slotPicker()}
+      {:else if slotState === 'error'}
+        <div class="state-block" role="status">
+          <p>לא הצלחנו לטעון את השעות כרגע.<br />אפשר לנסות שוב, או לתאם בוואטסאפ.</p>
+          <button class="btn-retry" onclick={loadSlots}>נסו שוב</button>
+          <a class="wa-link" href="https://wa.me/{TUTOR_PHONE}?text={encodeURIComponent('היי, אני רוצה לתאם שיעור')}" target="_blank" rel="noopener">פתיחת וואטסאפ ←</a>
+        </div>
       {:else if slotState === 'empty'}
         <div class="state-block">
           <p>אין שעות פנויות בשבוע הקרוב.<br />פנו אלינו בוואטסאפ לתיאום.</p>
@@ -593,12 +612,14 @@
         <div class="success-icon">📝</div>
         <h2>הבקשה נקלטה</h2>
         <p class="success-pending-note">
-          לא הצלחנו להשלים את הרישום אוטומטית — {contactTutor().name} תאשר את המועד ותשלח
-          את הדף האישי.
+          לא הצלחנו להשלים את הרישום אוטומטית — נאשר את המועד ונשלח את הדף האישי.
         </p>
       {:else}
         <div class="success-icon">✅</div>
-        <h2>השיעור נקבע!</h2>
+        <h2>{bookedUnconfirmed ? 'הבקשה התקבלה!' : 'השיעור נקבע!'}</h2>
+        {#if bookedUnconfirmed}
+          <p class="success-pending-note">לא הצלחנו לבדוק את היומן ברגע ההזמנה, אז נאשר את המועד ונעדכן אתכם.</p>
+        {/if}
       {/if}
 
       {#if handoff && !pending}
@@ -661,7 +682,7 @@
         <div class="bk-next">
           <strong>מה הלאה?</strong>
           <ul>
-            <li>{contactTutor().name} תיצור קשר לאישור סופי לפני השיעור</li>
+            {#if bookedUnconfirmed}<li>ניצור קשר לאישור המועד</li>{:else}<li>תזכורת תישלח אליכם במייל לפני השיעור</li>{/if}
             <li>מומלץ להכין מראש את החומר או השאלות שלא הובנו</li>
           </ul>
         </div>
@@ -837,7 +858,7 @@
           {:else}
           <p class="pane-intro">
             למייל נשלח הקישור לדף האישי — שם תראו את סיכומי השיעורים ושיעורי הבית.
-            הטלפון הוא איך ש{contactTutor().name} מאשרת את המועד.
+            הטלפון הוא הדרך שבה נאשר איתכם את המועד.
           </p>
 
           <label for="inp-email">מייל</label>
@@ -888,6 +909,7 @@
              changes pixels is invisible to a screen reader. -->
         <div class="live" role="alert" aria-live="assertive">
           {#if submitError}<p class="submit-error">{submitError}</p>{/if}
+          {#if submitFailed}<a class="wa-link" href="https://wa.me/{TUTOR_PHONE}?text={encodeURIComponent('היי, ניסיתי להזמין שיעור באתר ולא הצלחתי')}" target="_blank" rel="noopener">שליחת הודעה בוואטסאפ ←</a>{/if}
         </div>
       </div>
 
@@ -901,7 +923,7 @@
         {/if}
         <button class="btn-primary" onclick={onPrimary} disabled={submitting}>{primaryLabel}</button>
       </div>
-      <p class="sheet-note">השיעור יתואם ביומן. {contactTutor().name} תחזור אליכם לאישור סופי.</p>
+      <p class="sheet-note">השיעור יתואם ביומן, ונחזור אליכם לאישור סופי.</p>
       <!-- Notice at the moment of contracting, which is the one place it
            legally matters. A line rather than a checkbox on purpose: a
            required tick is friction on the only conversion step the funnel
@@ -1083,6 +1105,7 @@
   /* A degraded calendar read, stated above the slots it qualifies.
      Deliberately not a colour swap: the ⚠ glyph and the words carry the
      status, so it survives a colour-blind reader and a greyscale screen. */
+  .btn-retry { font: inherit; font-weight: 700; min-height: 44px; padding: 0 18px; border-radius: 10px; border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary); cursor: pointer; margin: 0.4rem 0; }
   .unconfirmed-note {
     border: 1px solid var(--border);
     border-inline-start: 4px solid var(--accent);
