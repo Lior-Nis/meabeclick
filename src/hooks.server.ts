@@ -47,6 +47,12 @@ if (!dev) {
   // process here instead of letting it bind the port and 500 every
   // database-backed route for the rest of its life.
   await import('$server/db.ts');
+
+  // Library preparations run in this process; any a restart cut short are
+  // marked failed, so the tutor can prepare them again (library/store.ts).
+  const { resetInterrupted } = await import('$server/library/store.ts');
+  const cut = resetInterrupted();
+  if (cut) console.warn(`[library] ${cut} preparation(s) cut short by the restart, marked failed`);
 }
 
 const { PERMISSIONS_POLICY } = await import('$server/document-policy.ts');

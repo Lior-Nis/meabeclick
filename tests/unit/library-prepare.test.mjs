@@ -116,3 +116,17 @@ test("the tutor's library view lists a template's topics and skills with their i
   assert.equal(V.topicSkillKeys('math-8', 'nope'), null);
   assert.equal(V.skillExists('math-8', 'alg.eq.word'), true);
 });
+
+test('a preparation cut short by a restart ends as failed, saying so — never stuck «בהכנה» forever', async () => {
+  const { createLesson } = await import('../../src/lib/server/db.ts');
+  createLesson({ slug: 'lib-cut-short', student: 'ספרייה', subject: 'מתמטיקה', level: 'כיתה ח', topic: 'x', lessonAt: null });
+  S.setItem({ templateId: 'math-7', skillKey: 'a', status: 'preparing', slug: 'lib-cut-short' });
+  S.setItem({ templateId: 'math-7', skillKey: 'b', status: 'queued' });
+  S.setItem({ templateId: 'math-7', skillKey: 'c', status: 'ready', slug: 'lib-fine' });
+  assert.equal(S.resetInterrupted(), 2);
+  assert.equal(S.itemFor('math-7', 'a').status, 'failed');
+  assert.match(S.itemFor('math-7', 'a').problem, /הופעל מחדש/);
+  assert.equal(S.itemFor('math-7', 'b').status, 'failed');
+  assert.equal(S.itemFor('math-7', 'c').status, 'ready');
+  assert.equal(readLessons().find(l => l.slug === 'lib-cut-short').status, 'failed', 'its master lesson is not left generating');
+});
