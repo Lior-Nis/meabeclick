@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Port of games/sort.html. */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
 
   type Item = { text: string; category: string };
   type CatBtn = { name: string; state: 'idle' | 'right' | 'wrong' };
@@ -30,6 +30,7 @@
     answered = true;
     const it = items[idx];
     catBtns.forEach((b) => { if (b.name === it.category) b.state = 'right'; });
+    engine.say(verdict(btn.name === it.category, { answer: it.category }));
     if (btn.name === it.category) {
       score++;
     } else {
@@ -81,7 +82,7 @@
         class:wrong={b.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(b)}
-      >{b.name}</button>
+      >{b.name}{#if b.state === 'right'}<span class="mark">✓</span>{:else if b.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#if whyHtml}<div class="why">{@html whyHtml}</div>{/if}

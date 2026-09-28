@@ -28,7 +28,7 @@
    * that payload must carry the request's signature (`t`) for
    * /api/game-result to accept it.
    */
-  import { onMount, setContext, type Snippet } from 'svelte';
+  import { onMount, setContext, tick, type Snippet } from 'svelte';
   import '$lib/styles/games.css';
   import { fmt, shuffle, starsFor, clampStars, reportResult, flushQueuedResults, GAME_CONTEXT_KEY, type FinishInput, type SaveResult } from './engine.ts';
 
@@ -65,6 +65,18 @@
    *  review found. */
   let saving = $state(false);
   let saved = $state<SaveResult | null>(null);
+  /** The finish panel. It replaces the board, and with it the button that
+   *  had the focus, so the focus moves here rather than to the page top. */
+  let doneEl = $state<HTMLElement>();
+  /** The live region's line — see `say` in engine.ts. */
+  let spoken = $state('');
+
+  /* Cleared first, so the same line twice in a row («נכון!») is read twice. */
+  async function say(text: string) {
+    spoken = '';
+    await tick();
+    spoken = text.replace(/<br\s*\/?>/g, ' ').replace(/<[^>]+>/g, '');
+  }
 
   /* Anything an earlier game could not send goes now, and again whenever the
      connection comes back. */
@@ -98,6 +110,7 @@
       `ענית נכון על <strong>${input.score}</strong> מתוך <strong>${input.total}</strong> תוך <strong>${fmt(secs)}</strong>`;
     doneLineHtml = line + (input.extraLine ? `<br>${input.extraLine}` : '');
     done = true;
+    tick().then(() => doneEl?.focus());
 
     saving = true;
     reportResult({
@@ -123,6 +136,7 @@
     secs: () => secs,
     best: () => best,
     finish,
+    say,
     shuffle,
     fmt,
   });
@@ -148,10 +162,13 @@
     <div class="best-note">השיא שלכם עד כה: <strong>{best}</strong> 🏆</div>
   {/if}
 
+  <!-- Always in the page: a region inserted together with its text is not read. -->
+  <div class="sr-only" aria-live="polite" aria-atomic="true">{spoken}</div>
+
   {#if !done}
     {@render children()}
   {:else}
-    <div id="done">
+    <div id="done" tabindex="-1" bind:this={doneEl}>
       <div class="stars">{'⭐'.repeat(stars)}{'☆'.repeat(3 - stars)}</div>
       <div class="done-title">סיימת! 🎉</div>
       <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -171,6 +188,11 @@
   .wrap { max-width: 760px; margin: 0 auto; padding-inline: 16px; }
   .back { display: inline-block; min-height: 44px; line-height: 44px; color: var(--accent); font-weight: 700; text-decoration: none; }
   .save-line { min-height: 1.4em; margin: 0.4rem 0 0.8rem; color: var(--text-muted); font-size: 0.9rem; }
+  .sr-only {
+    position: absolute; width: 1px; height: 1px; padding: 0; margin: -1px;
+    overflow: hidden; clip: rect(0 0 0 0); white-space: nowrap; border: 0;
+  }
+  #done:focus { outline: none; }
   .page-brand { display: flex; justify-content: center; padding: 1rem 0 0.9rem; }
   header { text-align: center; margin-bottom: 0.5rem; }
   h1 { font-size: clamp(1.25rem, 4vw, 1.8rem); font-weight: 900; }

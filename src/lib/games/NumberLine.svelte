@@ -119,6 +119,7 @@
     else missed.push(r.label ?? String(r.target));
     redraw(true);
     whyText = ok ? `מדויק! ${r.why || ''}` : `כמעט — סימנתם ${isolate(guess.toFixed(2))} והמספר נמצא ב-${isolate(r.target)}. ${r.why || ''}`;
+    engine.say(whyText);
   }
 
   function next() {

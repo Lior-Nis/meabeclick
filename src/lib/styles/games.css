@@ -117,6 +117,12 @@
   75% { transform: translateX(6px); }
 }
 
+/* ✓ or ✗ beside an answer: right and wrong said by a sign as well as a
+   colour. A span, because Svelte trims the space at the edge of an {#if}.
+   Margin on both sides: a bare number in a plaintext cell runs LTR, and
+   the mark then sits on the other side of it. */
+.mark { margin-inline: 0.3em; font-weight: 900; }
+
 /* Explanation shown after answering. Rendered with {#if}, not a .show
    class toggle — see the report's scoped-CSS inventory. */
 .why {

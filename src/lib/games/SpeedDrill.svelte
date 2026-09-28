@@ -9,7 +9,7 @@
    * `engine.best()` (the same value GameShell was given) instead.
    */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
 
   type Item = { q: string; a: string; options: string[] };
   type OptBtn = { text: string; state: 'idle' | 'correct' | 'wrong' };
@@ -70,6 +70,7 @@
       missed.push(cur.q);
       opts.forEach((x) => { if (x.text === cur!.a) x.state = 'correct'; });
     }
+    engine.say(verdict(ok, { answer: cur.a }));
     setTimeout(() => { if (left > 0) nextQ(); }, ok ? 180 : 850);
   }
 
@@ -108,7 +109,7 @@
         class:wrong={o.state === 'wrong'}
         disabled={answering}
         onclick={() => answer(o)}
-      >{o.text}</button>
+      >{o.text}{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
 {/if}

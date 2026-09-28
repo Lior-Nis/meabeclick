@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Port of games/error-hunt.html. */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, offersHints, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
   import RoundHint from './RoundHint.svelte';
 
   type Round = { problem: string; steps: string[]; badStep: number; why: string; hint?: string };
@@ -40,6 +40,7 @@
       missed.push(r.problem);
     }
     whyText = r.why;
+    engine.say(verdict(i === r.badStep, { answer: `שורה ${r.badStep + 1}`, note: whyText }));
   }
 
   function next() {
@@ -76,7 +77,7 @@
         onclick={() => choose(i)}
       >
         <span class="step-num">{i + 1}</span>
-        <span class="step-txt">{s.text}</span>
+        <span class="step-txt">{s.text}{#if s.state === 'found'}<span class="mark">✓</span>{:else if s.state === 'missed'}<span class="mark">✗</span>{/if}</span>
       </button>
     {/each}
   </div>

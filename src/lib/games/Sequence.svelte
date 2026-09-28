@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Port of games/sequence.html. */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
 
   type Step = { text: string; origIdx: number; placedOrder: number | null; state: 'idle' | 'placed' | 'miss' };
 
@@ -28,11 +28,13 @@
       s.state = 'placed';
       s.placedOrder = next;
       next++;
+      engine.say(verdict(true, { note: `שלב ${next}.` }));
       if (next === steps.length) setTimeout(end, 450);
     } else {
       wrong++;
       missed.push(steps[next]); // the step that should have come now
       s.state = 'miss';
+      engine.say(`${verdict(false)} זה לא השלב הבא.`);
       setTimeout(() => { if (s.state === 'miss') s.state = 'idle'; }, 500);
     }
   }
@@ -80,7 +82,7 @@
   <div>
     {#each unplaced as s (s.origIdx)}
       <button class="step" class:miss={s.state === 'miss'} onclick={() => choose(s)}>
-        <span class="num">?</span>
+        <span class="num">{s.state === 'miss' ? '✗' : '?'}</span>
         <span>{s.text}</span>
       </button>
     {/each}

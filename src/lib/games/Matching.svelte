@@ -1,7 +1,7 @@
 <script lang="ts">
   /** Port of games/matching.html. */
   import { getContext } from 'svelte';
-  import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
+  import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
 
   type Pair = { left: string; right: string; hint?: string };
   type Card = { text: string; pairIdx: number; side: 'left' | 'right'; state: 'idle' | 'picked' | 'done' | 'miss' };
@@ -72,12 +72,14 @@
       solved++;
       const hint = pairs[a.pairIdx].hint;
       if (hint) whyText = hint;
+      engine.say(verdict(true, { note: hint }));
       picked = null;
       if (solved === pairs.length) setTimeout(end, 500);
     } else {
       missed.push(pairs[a.pairIdx].left);
       a.state = 'miss';
       b.state = 'miss';
+      engine.say(`${verdict(false)} נסו זוג אחר.`);
       setTimeout(() => {
         if (a.state === 'miss') a.state = 'idle';
         if (b.state === 'miss') b.state = 'idle';
@@ -140,7 +142,7 @@
           class:miss={c.state === 'miss'}
           disabled={c.state === 'done'}
           onclick={() => pick(c)}
-        >{c.text}</button>
+        >{c.text}{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
       {/each}
     </div>
     <div>
@@ -153,7 +155,7 @@
           class:miss={c.state === 'miss'}
           disabled={c.state === 'done'}
           onclick={() => pick(c)}
-        >{c.text}</button>
+        >{c.text}{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
       {/each}
     </div>
   </div>
