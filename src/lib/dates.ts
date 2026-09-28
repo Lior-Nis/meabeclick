@@ -11,6 +11,12 @@ export function israelDay(iso: string): string {
   }).format(new Date(iso));
 }
 
+/** Today in Israel, as 'YYYY-MM-DD'. The ISO string's own date is UTC's
+ *  today, which after 21:00 or 22:00 here is still yesterday. */
+export function israelToday(now: Date = new Date()): string {
+  return israelDay(now.toISOString());
+}
+
 /** 'DD/MM/YYYY HH:MM' in Israel — for version history and the like, where
  *  the time of day matters and UTC would be two or three hours off. */
 export function formatDateTime(iso: string): string {

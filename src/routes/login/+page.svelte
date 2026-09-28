@@ -63,7 +63,7 @@
     />
     <button disabled={loading} onclick={login}>כניסה</button>
     <div class="err">{errorMsg}</div>
-    <a href="/">← חזרה לאתר</a>
+    <a href="/">→ חזרה לאתר</a>
   </div>
 </div>
 

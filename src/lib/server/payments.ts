@@ -11,6 +11,7 @@
  * parent reads must be exact.
  */
 import { handle } from './db.ts';
+import { israelDay, israelToday } from '../dates.ts';
 
 export type PaymentRow = {
   id: number; account_id: number; student_id: number; booking_id: number | null;
@@ -166,22 +167,18 @@ export function balanceAllAccounts(asOf: string): AccountBalance {
 }
 
 /**
- * A calendar date in Asia/Jerusalem as `YYYY-MM-DD`.
- *
- * Never `iso.slice(0, 10)`. Booking slots are minted with `toISOString()`,
+ * Dates here are Israel's (see israelDay in $lib/dates.ts), never
+ * `iso.slice(0, 10)`. Booking slots are minted with `toISOString()`,
  * so they carry a UTC date — and a lesson at 01:00 Israel time is on the
  * PREVIOUS day in UTC. Slicing would date its charge a day early, which
  * moves it across the due/upcoming boundary in §5 without anyone touching
  * the money. Today's booking windows happen to end at 21:00 (18:00Z, same
  * day) so a slice would work by luck; this does not depend on that luck
  * surviving a change to the windows.
+ *
+ * The date a lesson falls on, in the tutor's timezone.
  */
-const israeliDate = (d: Date): string => new Intl.DateTimeFormat('en-CA', {
-  timeZone: 'Asia/Jerusalem', year: 'numeric', month: '2-digit', day: '2-digit',
-}).format(d);
-
-/** The date a lesson falls on, in the tutor's timezone. */
-export const lessonDateInIsrael = (iso: string): string => israeliDate(new Date(iso));
+export const lessonDateInIsrael = (iso: string): string => israelDay(iso);
 
 /** Today, for the due/upcoming boundary. */
-export const todayInIsrael = (): string => israeliDate(new Date());
+export const todayInIsrael = (): string => israelToday();

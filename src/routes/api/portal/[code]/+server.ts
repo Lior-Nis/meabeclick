@@ -37,7 +37,7 @@ import { balanceForAccount, chargesForStudent, todayInIsrael } from '$server/pay
 import { gameUrl } from '$server/urls.ts';
 import { resolveFamilyAccess, studentInScope } from '$server/family.ts';
 import { getStudentByCode, nextBookingForStudent } from '$server/entities.ts';
-import { lessonWhen, israelDay } from '$lib/dates.ts';
+import { lessonWhen, israelDay, israelToday } from '$lib/dates.ts';
 import { toFamilyLesson } from '$lib/family-lesson.ts';
 import { planFor } from '$lib/plans.ts';
 import { homeworkForStudent } from '$server/lessons.ts';
@@ -170,7 +170,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
       data.homework = rows.map(h => ({
         id: h.id,
         task: h.task,
-        assigned: h.assigned_at?.slice(0, 10) ?? null,
+        assigned: h.assigned_at ? israelDay(h.assigned_at) : null,
         due: h.due_at ?? null,
         /* Two stages, because they are different claims: the child says
            they finished it, and someone judged it. One boolean cannot say
@@ -199,7 +199,7 @@ export const GET: RequestHandler = async ({ params, url, locals }) => {
 
     /* Lessons in the one shape both family pages read: slides linked, the
        tutor's note hidden, and "coming" apart from "happened". */
-    const todayIL = israelDay(new Date().toISOString());
+    const todayIL = israelToday();
     data.lessons = (Array.isArray(data.lessons) ? data.lessons : [])
       .map((l: Record<string, unknown>) => toFamilyLesson(l ?? {}, todayIL));
 

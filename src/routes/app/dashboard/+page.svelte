@@ -6,7 +6,7 @@
   import { tutorNames } from '$lib/tutors.ts';
   import type { TutorHomework } from '$lib/tutor-homework.ts';
   import { GRADES, GRADE_BUTTON, GRADE_LABEL, type HomeworkGrade } from '$lib/homework-grade.ts';
-  import { israelDay } from '$lib/dates.ts';
+  import { israelDay, israelToday } from '$lib/dates.ts';
   /**
    * Port of pages/app/dashboard.html. Auth is handled entirely by
    * +page.server.ts (requireAuth) — see the comment there for why the old
@@ -142,9 +142,6 @@
   const LEVELS = ['מתחיל', 'בינוני', 'מתקדם', 'מצטיין'];
   const STYLES = ['ויזואלי', 'שמיעתי', 'קינסתטי', 'קריאה/כתיבה'];
 
-  function todayISO(): string {
-    return new Date().toISOString().split('T')[0];
-  }
   function formatDate(d?: string | null): string {
     if (!d) return '—';
     const [y, m, day] = d.split('-');
@@ -296,7 +293,7 @@
   interface SessionForm { date: string; type: string; amount: number; paid: string; notes: string }
   let sessionForms = $state<Record<string, SessionForm>>({});
   function sessionForm(sid: string): SessionForm {
-    return sessionForms[sid] ?? { date: todayISO(), type: 'יחיד · 45 דק׳', amount: 120, paid: 'true', notes: '' };
+    return sessionForms[sid] ?? { date: israelToday(), type: 'יחיד · 45 דק׳', amount: 120, paid: 'true', notes: '' };
   }
   function setSessionField<K extends keyof SessionForm>(sid: string, field: K, value: SessionForm[K]) {
     sessionForms[sid] = { ...sessionForm(sid), [field]: value };
@@ -305,7 +302,7 @@
   interface HwForm { task: string; date: string }
   let hwForms = $state<Record<string, HwForm>>({});
   function hwForm(sid: string): HwForm {
-    return hwForms[sid] ?? { task: '', date: todayISO() };
+    return hwForms[sid] ?? { task: '', date: israelToday() };
   }
   function setHwField<K extends keyof HwForm>(sid: string, field: K, value: HwForm[K]) {
     hwForms[sid] = { ...hwForm(sid), [field]: value };
@@ -482,7 +479,7 @@
   const totalSessions = $derived(realStudents.reduce((n, s) => n + extrasFor(s.code).sessions.length, 0));
   const nextLessonsCount = $derived(realStudents.filter(s => {
     const nl = extrasFor(s.code).nextLesson;
-    return nl?.date && nl.date >= todayISO();
+    return nl?.date && nl.date >= israelToday();
   }).length);
 
   /* ═══════════════════ server-backed profile fields ═══════════════════
