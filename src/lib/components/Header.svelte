@@ -43,7 +43,7 @@
     {#if myPageHref}
       <a href={myPageHref} class="sidebar-btn" style="text-decoration:none;display:block;text-align:right;"><Icon name="my-page" size={18} /> הדף שלי</a>
     {/if}
-    <button class="sidebar-btn" onclick={() => scrollToSection('subjects')}><Icon name="subjects" size={18} /> מקצועות</button>
+    <button class="sidebar-btn" onclick={() => scrollToSection('subjects')}><Icon name="subjects" size={18} /> תחומים</button>
     <button class="sidebar-btn" onclick={() => scrollToSection('features-showcase')}><Icon name="games" size={18} /> מה תקבלו</button>
     <button class="sidebar-btn" onclick={() => scrollToSection('testimonials')}><Icon name="message" size={18} /> המלצות</button>
     <button class="sidebar-btn" onclick={() => scrollToSection('pricing')}><Icon name="payments" size={18} /> תעריף</button>

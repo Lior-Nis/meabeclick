@@ -1429,7 +1429,7 @@
     <h3>➕ הוספת תלמיד חדש</h3>
     <div class="field-row">
       <div class="field"><label for="ns-name">שם</label><input id="ns-name" type="text" placeholder="שם התלמיד" bind:value={nsName} /></div>
-      <div class="field"><label for="ns-subject">מקצוע</label><input id="ns-subject" type="text" placeholder="מתמטיקה, פיזיקה..." bind:value={nsSubject} /></div>
+      <div class="field"><label for="ns-subject">מקצוע</label><input id="ns-subject" type="text" placeholder="מתמטיקה" bind:value={nsSubject} /></div>
     </div>
     <!-- No code to invent: the page gets a generated address, as a booking
          does, not one spelled from the child's name. -->

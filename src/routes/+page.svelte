@@ -50,13 +50,18 @@
       copy: 'כל שיעור מתחבר לתכנית הלמידה ולמטרה הבאה של התלמיד.'
     }
   ];
-  const subjects = [
-    { icon: '🌍', label: 'אנגלית' },
-    { icon: '⚛️', label: 'פיזיקה' },
-    { icon: '📐', label: 'מתמטיקה' },
-    { icon: '✏️', label: 'עברית' },
-    { icon: '💻', label: 'תכנות' },
+  /* Maths only (Todoist 6hfrX4VFc3HWGF2q): the areas within it, not other
+     subjects. */
+  const mathAreas = [
+    { icon: '🧱', label: 'יסודות וחיזוק פערים' },
+    { icon: '📝', label: 'הכנה למבחנים' },
+    { icon: '🔢', label: 'אלגברה' },
+    { icon: '📐', label: 'גיאומטריה' },
+    { icon: '📈', label: 'פונקציות' },
+    { icon: '🎲', label: 'הסתברות' },
+    { icon: '🎓', label: 'הכנה לבגרות' },
   ];
+  const DESCRIPTION = 'שיעורים פרטיים במתמטיקה מיסודי ועד בגרות: תכנית אישית, תרגול שמרגיש כמו משחק, ופורטל שבו ההורים רואים את ההתקדמות.';
   const testimonials = [
     { lines: ['תודה רבה על ההכוונה וההסבר המעולה.', 'הציונים שלי השתפרו מאוד בזכותך :)'], name: 'זיו כהן' },
     { lines: ['שיעור מעניין ומורה מעולה!', 'בזכותו הבנתי את כל החומר.'], name: 'מיכל ניאזוב' },
@@ -211,7 +216,10 @@
 </script>
 
 <svelte:head>
-  <title>מאה בקליק</title>
+  <title>מאה בקליק — שיעורים פרטיים במתמטיקה</title>
+  <meta name="description" content={DESCRIPTION} />
+  <meta property="og:title" content="מאה בקליק — שיעורים פרטיים במתמטיקה" />
+  <meta property="og:description" content={DESCRIPTION} />
 </svelte:head>
 
 <button class="back-to-top" bind:this={backToTopEl} aria-label="חזרה לראש" onclick={() => window.scrollTo({ top: 0, behavior: 'smooth' })}>↑</button>
@@ -219,9 +227,9 @@
 <Header />
 
   <section id="hero">
-    <div class="hero-badge">למידה אישית שמתקדמת עם התלמיד</div>
+    <div class="hero-badge">שיעורים פרטיים במתמטיקה · מיסודי ועד בגרות</div>
 
-    <h1 class="hero-title">כל תלמיד יכול <span class="accent">להתקדם</span></h1>
+    <h1 class="hero-title">כל תלמיד יכול <span class="accent">להתקדם</span> במתמטיקה</h1>
 
     <div class="hero-subtitle-row">
       <span class="hero-sub-a">תכנית ברורה, תרגול מדויק וליווי אישי</span>
@@ -357,15 +365,15 @@
           <p>כל שיעור מתועד. הורים רואים בדיוק מה נלמד, מה השתפר, ומה הצעד הבא.</p>
           <div class="mini-dashboard">
             <div class="dash-bar-row">
-              <span>מתמטיקה</span>
+              <span>אלגברה</span>
               <div class="dash-bar"><div class="dash-fill" style="width:82%"></div></div>
             </div>
             <div class="dash-bar-row">
-              <span>פיזיקה</span>
+              <span>גיאומטריה</span>
               <div class="dash-bar"><div class="dash-fill" style="width:65%"></div></div>
             </div>
             <div class="dash-bar-row">
-              <span>אנגלית</span>
+              <span>הסתברות</span>
               <div class="dash-bar"><div class="dash-fill" style="width:90%"></div></div>
             </div>
           </div>
@@ -401,14 +409,14 @@
     </div>
   </section>
 
-  <!-- ── SUBJECTS ──────────────────────────────────────────── -->
+  <!-- ── MATHS AREAS ───────────────────────────────────────── -->
   <section id="subjects">
     <div class="container section-center">
-      <div class="section-label">מקצועות</div>
-      <h2 class="section-title">במה אנחנו מלמדים?</h2>
+      <div class="section-label">תחומים</div>
+      <h2 class="section-title">באילו תחומים במתמטיקה אנחנו עוזרים?</h2>
       <div class="subjects-carousel-outer">
-        <AutoCarousel axis="x" speed={50} gap="1.4rem" padding="1rem 0" label="מקצועות">
-          {#each subjects as sub (sub.label)}
+        <AutoCarousel axis="x" speed={50} gap="1.4rem" padding="1rem 0" label="תחומים במתמטיקה">
+          {#each mathAreas as sub (sub.label)}
             <div class="subj-card"><span class="subj-icon">{sub.icon}</span><span class="subj-label">{sub.label}</span></div>
           {/each}
         </AutoCarousel>
@@ -561,12 +569,12 @@
 
         <div class="faq-item">
           <div class="faq-question">
-            <span>באילו מקצועות אתם מלמדים?</span>
+            <span>באילו נושאים במתמטיקה אתם עוזרים?</span>
             <span class="faq-icon">+</span>
           </div>
           <div class="faq-answer">
             <div class="faq-answer-inner">
-              אנחנו מלמדים מתמטיקה, פיזיקה, עברית, תכנות ואנגלית.
+              אנחנו מלמדים מתמטיקה בלבד, מיסודי ועד בגרות: חיזוק יסודות ופערים, אלגברה, גיאומטריה, פונקציות, הסתברות, והכנה למבחנים ולבגרות.
             </div>
           </div>
         </div>
