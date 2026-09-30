@@ -10,7 +10,8 @@
  *
  * A formula starts at a digit, a Latin letter or "(", and ends at one of
  * those, ")" or a superscript; spaces and maths symbols may sit inside it,
- * sentence punctuation after it stays outside. A minus directly before it
+ * sentence punctuation after it stays outside. Plain digits are left as
+ * they are: alone, they already read right. A minus directly before it
  * belongs to it — unless a Hebrew letter precedes the minus, because «ל-16»
  * is the prefix hyphen of "to 16", not a negative number.
  */
@@ -21,12 +22,19 @@ export interface FormulaRun { text: string; ltr: boolean }
 export function formulaRuns(text: string): FormulaRun[] {
   const out: FormulaRun[] = [];
   let at = 0;
+  const plain = (t: string) => {
+    const prev = out[out.length - 1];
+    if (prev && !prev.ltr) prev.text += t; else out.push({ text: t, ltr: false });
+  };
   for (const m of text.matchAll(FORMULA)) {
     const start = m.index ?? 0;
-    if (start > at) out.push({ text: text.slice(at, start), ltr: false });
-    out.push({ text: m[0], ltr: true });
+    if (start > at) plain(text.slice(at, start));
+    /* Digits alone already read right inside Hebrew («שיעור 1», «2026»):
+       only a run with a sign, an operator or a letter needs its own
+       direction. */
+    if (/^\d+$/.test(m[0])) plain(m[0]); else out.push({ text: m[0], ltr: true });
     at = start + m[0].length;
   }
-  if (at < text.length) out.push({ text: text.slice(at), ltr: false });
+  if (at < text.length) plain(text.slice(at));
   return out;
 }
