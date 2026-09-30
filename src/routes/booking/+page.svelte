@@ -4,6 +4,7 @@
   import BrandMark from '$lib/components/BrandMark.svelte';
   import { PLANS, planFor, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
   import { SUBJECT } from '$lib/subjects.ts';
+  import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
   import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
@@ -169,16 +170,14 @@
   $effect(() => {
     if (!sheetOpen) return;
 
-    const { body } = document;
-    const previousOverflow = body.style.overflow;
-    body.style.overflow = 'hidden';
+    const unlock = lockScroll();
 
     // Focus lands on the first field, not the sheet, so a parent can start
     // typing immediately. Deferred one frame so the element exists.
     const raf = requestAnimationFrame(() => firstFieldEl?.focus());
 
     return () => {
-      body.style.overflow = previousOverflow;
+      unlock();
       cancelAnimationFrame(raf);
     };
   });
