@@ -92,3 +92,23 @@ test('the peach fill itself is documented as unfit for text', () => {
   const block = css.slice(css.indexOf('Secondary accent'), css.indexOf('--accent2-strong'));
   assert.match(block, /text/i, 'the comment above --accent2-strong should say it is the text/border variant');
 });
+
+/* WhatsApp green (Todoist 6hfrX4MVcfMjPP6q). The brand's own #25d366 is
+   1.98:1 on white — fills only, like the peach. The strong green is what
+   text, borders and focus rings use. */
+test('the strong WhatsApp green clears AA as text on every ground its buttons sit on', () => {
+  const strong = token('whatsapp-strong');
+  const green = token('whatsapp');
+  assert.ok(strong && green, '--whatsapp and --whatsapp-strong are in tokens.css');
+  const grounds = {
+    'white (cards)': token('bg-card'),
+    'page background': token('bg-base'),
+    'blue surface': token('bg-surface'),
+    'green wash on white (hover)': over(green, 0.12, token('bg-card')),
+    'green wash on blue surface': over(green, 0.12, token('bg-surface')),
+  };
+  for (const [name, ground] of Object.entries(grounds)) {
+    const ratio = contrast(strong, ground);
+    assert.ok(ratio >= AA_TEXT, `${strong} on ${name} ${ground} is ${ratio.toFixed(2)}:1, needs ${AA_TEXT}:1`);
+  }
+});
