@@ -39,6 +39,7 @@ import { readJson } from '$server/http.ts';
 import { planLabel, planFor, kindFor, agorot } from '$lib/plans.ts';
 import { setFamilySession, verifyPendingToken } from '$server/family-auth.ts';
 import type { RequestHandler } from './$types';
+import { SUBJECT } from '$lib/subjects.ts';
 
 const TZ = 'Asia/Jerusalem';
 
@@ -473,7 +474,11 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   const confirm = (parsed as { confirm?: unknown } | null)?.confirm;
   if (typeof confirm === 'string') return confirmHeld(confirm, cookies);
 
-  const body = parsed as BookBody;
+  /* The form no longer asks for a subject — every lesson is maths — so a
+     booking that names none is a maths booking. One that names another
+     is still recorded as it says. */
+  const body = { ...(parsed as BookBody) };
+  if (!String(body.subject ?? '').trim()) body.subject = SUBJECT;
 
   /* Moved up from book(): an incomplete request has to be refused BEFORE
      enrolment, or a request nobody can honour would still leave an account

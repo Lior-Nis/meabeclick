@@ -34,7 +34,6 @@ test('only maths is prepared automatically', () => {
   assert.equal(SUBJ.autopilotCovers('מתמטיקה'), true);
   assert.equal(SUBJ.autopilotCovers(' מתמטיקה '), true);
   for (const s of ['פיזיקה', 'עברית', 'תכנות', 'אחר', '']) assert.equal(SUBJ.autopilotCovers(s), false, s);
-  assert.deepEqual([...SUBJ.SUBJECTS], ['מתמטיקה', 'פיזיקה', 'עברית', 'תכנות', 'אחר']);
 });
 
 test('a physics booking starts nothing, records nothing and alarms no one', () => {
@@ -51,10 +50,9 @@ test('a maths booking is still attempted (here: no credentials, said as before)'
   assert.equal(r.skipped, 'no credentials');
 });
 
-test('the booking form offers the declared subjects, and the tutor is told which lessons are hers to prepare', async () => {
-  const page = await readFile(join(process.cwd(), 'src/routes/booking/+page.svelte'), 'utf8');
-  assert.match(page, /\{#each SUBJECTS as s\}<option>\{s\}<\/option>\{\/each\}/);
-  assert.doesNotMatch(page, /<option>פיזיקה<\/option>/, 'not typed twice');
+/* Since 2026-09-30 the form books maths only (tests/unit/booking-maths-only.test.mjs);
+   a record from before that can still name another subject. */
+test('the tutor is told which lessons are hers to prepare', async () => {
   const email = await readFile(join(process.cwd(), 'src/lib/server/email.ts'), 'utf8');
   assert.match(email, /autopilotCovers\(b\.subject\)/);
 });

@@ -3,7 +3,7 @@
   import Icon from '$lib/icons/Icon.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import { PLANS, planFor, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
-  import { SUBJECTS } from '$lib/subjects.ts';
+  import { SUBJECT } from '$lib/subjects.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
   import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
@@ -239,7 +239,6 @@
     // Carry what the child actually learns rather than making a parent
     // re-choose it from a dropdown they already answered once.
     name = kid.name;
-    subject = kid.subject;
     level = kid.level;
     isSelf = data.isSelf;
     errors = {};
@@ -249,12 +248,12 @@
     chosen = 'other';
     editingDetails = true;
     name = '';
-    subject = '';
     level = '';
     isSelf = null;
     errors = {};
   }
-  let subject = $state('');
+  /* Every lesson is maths: not asked, always sent (Todoist 6hfrX4XvwJRjccRq). */
+  const subject = SUBJECT;
   let request = $state('');
   let level = $state('');
   let phone = $state('');
@@ -272,7 +271,7 @@
    *  a request the tutor confirms, not a confirmed lesson. */
   let bookedUnconfirmed = $state(false);
 
-  type FieldName = 'isSelf' | 'name' | 'subject' | 'level' | 'email' | 'phone';
+  type FieldName = 'isSelf' | 'name' | 'level' | 'email' | 'phone';
   let errors = $state<Partial<Record<FieldName, string>>>({});
 
   const learnerLabel = $derived(isSelf ? 'השם שלך' : 'שם התלמיד/ה');
@@ -293,9 +292,8 @@
 
     if (isSelf === null) next.isSelf = 'בחרו מי לומד';
     if (!name.trim()) next.name = isSelf ? 'צריך את השם שלך' : 'צריך את שם התלמיד/ה';
-    if (!subject) next.subject = 'בחרו מקצוע';
     if (!level) next.level = 'בחרו כיתה או רמה';
-    errors = { ...errors, ...next, ...clearedOf(['isSelf', 'name', 'subject', 'level'], next) };
+    errors = { ...errors, ...next, ...clearedOf(['isSelf', 'name', 'level'], next) };
     return !Object.keys(next).length;
   }
 
@@ -424,7 +422,7 @@
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
           name: name.trim(),
-          subject,
+          subject: SUBJECT,
           request: request.trim(),
           level,
           phone: phone.trim(),
@@ -775,7 +773,7 @@
 
             {#if chosen && chosen !== 'other'}
               <div class="picked-recap">
-                <span>{[subject, level].filter(Boolean).join(' · ') || 'ללא מקצוע רשום'}</span>
+                <span>{[subject, level].filter(Boolean).join(' · ')}</span>
                 <button type="button" class="linkish" onclick={() => (editingDetails = true)}>שינוי פרטים</button>
               </div>
 
@@ -821,15 +819,7 @@
           />
           {#if errors.name}<p class="field-error" id="err-name">{errors.name}</p>{/if}
 
-          <label for="inp-subject">מקצוע</label>
-          <select
-            id="inp-subject" bind:value={subject}
-            aria-invalid={!!errors.subject} aria-describedby={errors.subject ? 'err-subject' : undefined}
-          >
-            <option value="">בחרו מקצוע...</option>
-            {#each SUBJECTS as s}<option>{s}</option>{/each}
-          </select>
-          {#if errors.subject}<p class="field-error" id="err-subject">{errors.subject}</p>{/if}
+          <p class="fixed-subject">📐 שיעור פרטי במתמטיקה</p>
 
           <label for="inp-level">כיתה / רמה</label>
           <select
@@ -1272,6 +1262,10 @@
     margin-top: 1rem;
   }
   .optional { color: var(--text-muted); font-weight: 400; }
+  .fixed-subject {
+    margin: 1rem 0 0; padding: 0.6rem 0.8rem; border-radius: 10px;
+    background: var(--accent-dim); color: var(--accent); font-size: 0.9rem; font-weight: 700;
+  }
 
   .sheet-body input,
   .sheet-body select,
