@@ -19,7 +19,7 @@ import { readJson } from '$server/http.ts';
    and lessons_v2 has never been written to (production 2026-09-21 — 4 rows
    against 0). Reading the empty one here would 404 every real lesson. */
 import { readLessons } from '$server/db.ts';
-import { editedPlan, publishPlan } from '$server/lesson/editing.ts';
+import { editedPlan, masterProblems, publishPlan } from '$server/lesson/editing.ts';
 import {
   addMaterial, history, latest, latestPublished, publishVersion, restoreVersion,
   hasUnpublishedEdits, type MaterialKind,
@@ -110,6 +110,12 @@ export const POST: RequestHandler = async (event) => {
     const { plan, teacherOnly } = result;
     if (type === 'save-plan') {
       return json({ saved: addMaterial({ slug, kind: 'plan', content: JSON.stringify(plan), teacherOnly, origin: 'edited' }) });
+    }
+    /* A draft may be unfinished; a published master is what the next
+       booking copies, and a copy that fails this check is held. */
+    const problems = masterProblems(slug, plan);
+    if (problems.length) {
+      return json({ error: `לא פורסם — שיעור שיוזמן מהגרסה הזו ייעצר: ${problems.join(' · ')}`, problems }, { status: 422 });
     }
     return json({ published: publishPlan(slug, plan, teacherOnly) });
   }

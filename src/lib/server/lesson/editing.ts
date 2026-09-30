@@ -6,11 +6,20 @@
  * edits the PLAN — title, slides, worked examples — never HTML (D1); the
  * deck is rendered from the plan on publish, so the two cannot drift (D2).
  * Games and homework stay as generated (D5): applyEdit carries them over
- * untouched rather than trusting the client to send them back.
+ * untouched rather than trusting the client to send them back — except on
+ * a library master, whose check questions and homework she may rewrite
+ * (docs/superpowers/specs/2026-09-28-prepared-library-design.md): no child
+ * has played a master, and every booking copied from it afterwards takes
+ * its published plan.
  */
-import { renderSlides, type LessonPlan, type Slide, type WorkedExample } from './prep.ts';
+import {
+  renderSlides, validateLesson, type HomeworkItem, type LessonPlan, type QuizGame, type Slide, type WorkedExample,
+} from './prep.ts';
 import { readLessons, inTransaction } from '../db.ts';
 import { addMaterial, history, type MaterialRow } from '../materials.ts';
+import { isLibrarySlug } from '../library/slug.ts';
+
+type QuizQuestion = QuizGame['questions'][number];
 
 export interface PlanEdit {
   title: string;
@@ -19,6 +28,11 @@ export interface PlanEdit {
   /** Notes for the tutor only — stored beside the version, never rendered
    *  into the deck or served to a family (D6). */
   teacherOnly: string | null;
+  /** A master's check questions and homework. Absent means "keep the
+   *  plan's own", which is what every edit of a student's lesson (and
+   *  every Drive edit) sends. */
+  quiz?: QuizQuestion[];
+  homework?: HomeworkItem[];
 }
 
 const MAX_FIELD = 2000;
@@ -84,7 +98,44 @@ function check(input: unknown): Result {
     examples.push({ problem, steps: lines(r.steps), answer });
   }
 
-  return { ok: true, edit: { title, slides, examples, teacherOnly: text(raw.teacherOnly) || null } };
+  const edit: PlanEdit = { title, slides, examples, teacherOnly: text(raw.teacherOnly) || null };
+
+  if (raw.quiz !== undefined) {
+    if (!Array.isArray(raw.quiz) || raw.quiz.length === 0) return { ok: false, error: 'צריך לפחות שאלה אחת בחידון' };
+    if (raw.quiz.length > MAX_ITEMS) return { ok: false, error: `יותר מדי שאלות — עד ${MAX_ITEMS}` };
+    edit.quiz = [];
+    for (const [i, x] of raw.quiz.entries()) {
+      const r = (x ?? {}) as Record<string, unknown>;
+      const q = text(r.q);
+      if (!q) return { ok: false, error: `לשאלה ${i + 1} אין טקסט` };
+      if (!Array.isArray(r.options) || r.options.length < 2) return { ok: false, error: `לשאלה ${i + 1} צריך לפחות שתי אפשרויות` };
+      if (r.options.length > MAX_ITEMS) return { ok: false, error: `יותר מדי אפשרויות בשאלה ${i + 1}` };
+      const options = r.options.map(text);
+      /* Refused, not dropped: dropping one would shift every later option,
+         and the marked answer would silently point at a different one. */
+      const blank = options.findIndex(o => !o);
+      if (blank >= 0) return { ok: false, error: `באפשרות ${blank + 1} של שאלה ${i + 1} אין טקסט` };
+      if (!Number.isInteger(r.answer) || (r.answer as number) < 0 || (r.answer as number) >= options.length) {
+        return { ok: false, error: `בשאלה ${i + 1} לא סומנה תשובה נכונה` };
+      }
+      edit.quiz.push({ q, options, answer: r.answer as number, why: text(r.why), hint: text(r.hint) });
+    }
+  }
+
+  if (raw.homework !== undefined) {
+    if (!Array.isArray(raw.homework)) return { ok: false, error: 'שיעורי בית לא תקינים' };
+    if (raw.homework.length > MAX_ITEMS) return { ok: false, error: `יותר מדי משימות — עד ${MAX_ITEMS}` };
+    edit.homework = [];
+    for (const [i, x] of raw.homework.entries()) {
+      const r = (x ?? {}) as Record<string, unknown>;
+      const task = text(r.task);
+      if (!task) return { ok: false, error: `למשימה ${i + 1} אין טקסט` };
+      const answer = text(r.answer);
+      edit.homework.push(answer ? { task, why: text(r.why), answer } : { task, why: text(r.why) });
+    }
+  }
+
+  return { ok: true, edit };
 }
 
 /**
@@ -97,25 +148,40 @@ export function formPlan(raw: unknown): {
   title: string;
   slides: { heading: string; bullets: string[]; note: string }[];
   examples: { problem: string; steps: string[]; answer: string }[];
+  /** Null when the plan has no quiz: there is nothing to edit, and the
+   *  editor must not offer to create one. */
+  quiz: { q: string; options: string[]; answer: number; why: string; hint: string }[] | null;
+  homework: { task: string; why: string; answer: string }[];
 } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
   const str = (v: unknown) => (typeof v === 'string' ? v : '');
   const list = (v: unknown) => (Array.isArray(v) ? v.map(str) : typeof v === 'string' && v ? [v] : []);
   const obj = (v: unknown) => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
+  const games = obj(r.games);
+  const quiz = games.quiz && typeof games.quiz === 'object' ? obj(games.quiz) : null;
   return {
     title: str(r.title),
     slides: (Array.isArray(r.slides) ? r.slides : []).map(obj)
       .map(s => ({ heading: str(s.heading), bullets: list(s.bullets), note: str(s.note) })),
     examples: (Array.isArray(r.examples) ? r.examples : []).map(obj)
       .map(e => ({ problem: str(e.problem), steps: list(e.steps), answer: str(e.answer) })),
+    quiz: quiz ? (Array.isArray(quiz.questions) ? quiz.questions : []).map(obj).map(q => ({
+      q: str(q.q), options: list(q.options), why: str(q.why), hint: str(q.hint),
+      answer: Number.isInteger(q.answer) ? q.answer as number : 0,
+    })) : null,
+    homework: (Array.isArray(r.homework) ? r.homework : []).map(obj)
+      .map(h => ({ task: str(h.task), why: str(h.why), answer: str(h.answer) })),
   };
 }
 
 /** The lesson an edit describes: the base plan with title, slides and
- *  examples replaced, and everything else — games, homework, gradeContext
- *  — kept as it was. */
+ *  examples replaced — and the quiz's questions and the homework when the
+ *  edit carries them — and everything else kept as it was. */
 export function applyEdit(base: LessonPlan, edit: PlanEdit): LessonPlan {
-  return { ...base, title: edit.title, slides: edit.slides, examples: edit.examples };
+  const plan: LessonPlan = { ...base, title: edit.title, slides: edit.slides, examples: edit.examples };
+  if (edit.quiz && base.games?.quiz) plan.games = { ...base.games, quiz: { ...base.games.quiz, questions: edit.quiz } };
+  if (edit.homework) plan.homework = edit.homework;
+  return plan;
 }
 
 /** What renderSlides needs to know about the lesson, from its own row —
@@ -159,9 +225,24 @@ export function editedPlan(slug: string, rawEdit: unknown):
   { plan: LessonPlan; teacherOnly: string | null } | { error: string; status: number } {
   const edit = normalizeEdit(rawEdit);
   if (!edit.ok) return { error: edit.error, status: 400 };
+  const { quiz, homework } = edit.edit;
+  if ((quiz || homework) && !isLibrarySlug(slug)) {
+    return { error: 'שאלות בדיקה ושיעורי בית אפשר לערוך רק בשיעור מהספרייה — בשיעור של תלמיד/ה הם כבר נשלחו', status: 400 };
+  }
   const base = editBase(slug);
   if (!base) return { error: 'לשיעור הזה אין גרסה שאפשר לערוך', status: 409 };
+  if (quiz && !base.plan.games?.quiz) return { error: 'בשיעור הזה אין חידון', status: 400 };
   return { plan: applyEdit(base.plan, edit.edit), teacherOnly: edit.edit.teacherOnly };
+}
+
+/**
+ * Why a plan may not be published, when the lesson is a library master:
+ * every booking copied from it is checked by validateLesson and held on a
+ * problem, so a master that fails the check would hold each of them. A
+ * student's own lesson is not checked — she is the judge of it.
+ */
+export function masterProblems(slug: string, plan: LessonPlan): string[] {
+  return isLibrarySlug(slug) ? validateLesson(plan) : [];
 }
 
 /**
