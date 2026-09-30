@@ -49,7 +49,10 @@ const book = (baseUrl, day, cookie) => fetch(`${baseUrl}/api/book`, {
 async function setup() {
   const s = await startServer();
   const tutor = await login(s.baseUrl);
-  const db = new DatabaseSync(s.dbPath);
+  /* This connection polls while the server writes the copy in the background;
+     without a busy timeout, a read that lands mid-write fails at once with
+     "database is locked" instead of waiting a few milliseconds for it. */
+  const db = new DatabaseSync(s.dbPath, { timeout: 5000 });
   const now = new Date().toISOString();
   db.prepare(`INSERT INTO library_items (template_id, skill_key, slug, status, updated_at) VALUES ('math-8', 'num.ratio.prop', ?, 'ready', ?)`).run(MASTER, now);
   db.prepare(`INSERT INTO lessons (slug, student, subject, level, title, status, at) VALUES (?, 'ספרייה', 'מתמטיקה', 'כיתה ח', ?, 'ready', ?)`).run(MASTER, plan.title, now);

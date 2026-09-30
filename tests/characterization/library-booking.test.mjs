@@ -44,7 +44,10 @@ test('a prepared skill reaches the child with no engine', async () => {
     assert.equal(created.status, 200);
 
     // The master, as a preparation would leave it: a ready item whose lesson has a published plan.
-    const db = new DatabaseSync(dbPath);
+    /* This connection polls while the server writes the copy in the background;
+       without a busy timeout, a read that lands mid-write fails at once with
+       "database is locked" instead of waiting a few milliseconds for it. */
+    const db = new DatabaseSync(dbPath, { timeout: 5000 });
     const now = new Date().toISOString();
     const MASTER = 'lib-math-8-num-ratio-prop-seed';
     db.prepare(`INSERT INTO library_items (template_id, skill_key, slug, status, updated_at) VALUES ('math-8', 'num.ratio.prop', ?, 'ready', ?)`).run(MASTER, now);
