@@ -23,7 +23,12 @@ test('a leading minus belongs to its number, and sentence punctuation does not',
   assert.equal(runs('התשובה: -5.'), 'התשובה: [-5].');
   assert.equal(runs('בדיקה: 12-(4+2)=6;'), 'בדיקה: [12-(4+2)=6];');
   // A Hebrew prefix hyphen is not a minus: «שווה ל-16» is "equal to 16".
-  assert.equal(runs('שני האגפים שווים ל-16'), 'שני האגפים שווים ל-[16]');
+  assert.equal(runs('שני האגפים שווים ל-16'), 'שני האגפים שווים ל-16', 'plain digits after a prefix hyphen stay as they are');
+});
+
+test('a plain number is not a formula: digits alone already read right in Hebrew', () => {
+  assert.equal(runs('שיעור 1 מתוך 5, בשנת 2026'), 'שיעור 1 מתוך 5, בשנת 2026');
+  assert.equal(runs('התשובה 12 ולא -12'), 'התשובה 12 ולא [-12]', 'a sign still needs its own direction');
 });
 
 test('prose with no formula is one plain run, and lines stay lines', () => {

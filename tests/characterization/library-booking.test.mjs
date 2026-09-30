@@ -53,7 +53,8 @@ test('a prepared skill reaches the child with no engine', async () => {
 
     await book(baseUrl, '08', family);
     const copy = await (async () => {
-      for (let i = 0; i < 100; i++) {
+      // Up to 30s: generous, because the whole suite runs servers in parallel.
+      for (let i = 0; i < 300; i++) {
         const row = db.prepare(`SELECT l.slug, l.status, l.title FROM lessons l JOIN library_uses u ON u.lesson_slug = l.slug`).get();
         if (row?.status === 'ready') return row;
         await new Promise(r => setTimeout(r, 100));

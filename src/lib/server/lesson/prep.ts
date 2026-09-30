@@ -22,6 +22,7 @@
  * tutor to review. It goes out under her name.
  */
 
+import { formulaRuns } from '../../bidi.ts';
 import { writeFile, mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
@@ -780,21 +781,57 @@ async function runAgent(prompt: string, cwd: string, planPath: string): Promise<
 
 /** Self-contained RTL deck, site palette, arrow-key navigation. */
 export function renderSlides(plan: LessonPlan, { subject, level, student }: { subject: string; level: string; student?: string }): string {
-  const slides = plan.slides.map((s, i) => `
-    <section class="slide"${i === 0 ? ' data-active' : ''}>
-      <h2>${esc(s.heading)}</h2>
-      <ul>${s.bullets.map(b => `<li>${esc(b)}</li>`).join('')}</ul>
-      ${s.note ? `<div class="note">${esc(s.note)}</div>` : ''}
-      <div class="num">${i + 1} / ${plan.slides.length + plan.examples.length}</div>
-    </section>`).join('');
+  /* Text with formulas in it: each formula isolated left to right (bidi.ts),
+     everything escaped. In this right-to-left document "8-(x+3)" was laid
+     out as ")x+3(-8". */
+  const rich = (s: unknown): string => formulaRuns(String(s ?? ''))
+    .map(r => (r.ltr ? `<bdi dir="ltr">${esc(r.text)}</bdi>` : esc(r.text))).join('');
 
-  const examples = plan.examples.map((e, i) => `
-    <section class="slide">
+  /* The order a lesson is taught in (Todoist 6hRhqRXHcGj9m98H):
+     explanation → worked example → check yourself → summary. The plan's
+     closing «סיכום» used to come before the worked examples, because the
+     examples were simply appended after every plan slide. */
+  const last = plan.slides[plan.slides.length - 1];
+  const hasSummary = !!last && /סיכום/.test(last.heading);
+  const explanation = hasSummary ? plan.slides.slice(0, -1) : plan.slides;
+  const check = plan.games?.quiz?.questions?.[0];
+
+  const slideBody = (s: Slide) => `
+      <h2>${rich(s.heading)}</h2>
+      <ul>${s.bullets.map(b => `<li>${rich(b)}</li>`).join('')}</ul>
+      ${s.note ? `<div class="note">${rich(s.note)}</div>` : ''}`;
+
+  /* The solution waits until asked for: the tutor can let the child try
+     first. Printing opens every one (the beforeprint handler below). */
+  const exampleBody = (e: WorkedExample, i: number) => `
       <h2>דוגמה ${i + 1}</h2>
-      <div class="problem">${esc(e.problem)}</div>
-      <ol>${e.steps.map(s => `<li>${esc(s)}</li>`).join('')}</ol>
-      <div class="answer">תשובה: ${esc(e.answer)}</div>
-      <div class="num">${plan.slides.length + i + 1} / ${plan.slides.length + plan.examples.length}</div>
+      <div class="problem">${rich(e.problem)}</div>
+      <details><summary>הצגת הפתרון</summary>
+        <ol>${e.steps.map(st => `<li>${rich(st)}</li>`).join('')}</ol>
+        <div class="answer">תשובה: ${rich(e.answer)}</div>
+      </details>`;
+
+  /* A comprehension question from the lesson's own quiz — nothing new is
+     generated, and without a quiz there is no such slide. */
+  const checkBody = (q: QuizGame['questions'][number]) => `
+      <h2>בדקו את עצמכם</h2>
+      <div class="problem">${rich(q.q)}</div>
+      <ol class="options">${q.options.map(o => `<li>${rich(o)}</li>`).join('')}</ol>
+      <details><summary>הצגת התשובה</summary>
+        <div class="answer">${rich(q.options[q.answer])}</div>
+        ${q.why ? `<p class="why">${rich(q.why)}</p>` : ''}
+      </details>`;
+
+  const bodies = [
+    ...explanation.map(slideBody),
+    ...plan.examples.map(exampleBody),
+    ...(check ? [checkBody(check)] : []),
+    ...(hasSummary ? [slideBody(last)] : []),
+  ];
+  const total = bodies.length;
+  const sections = bodies.map((b, i) => `
+    <section class="slide"${i === 0 ? ' data-active' : ''} aria-label="שקף ${i + 1} מתוך ${total}">${b}
+      <div class="num">${i + 1} / ${total}</div>
     </section>`).join('');
 
   return `<!DOCTYPE html>
@@ -817,6 +854,13 @@ export function renderSlides(plan: LessonPlan, { subject, level, student }: { su
             background:linear-gradient(90deg,var(--brand),var(--mint))}
   ul,ol{margin:1.4rem 1.2rem 0;line-height:1.9;font-size:1.05rem}
   li{margin-bottom:.5rem}
+  /* Nothing runs off a phone's edge: a long word or formula wraps. */
+  li,.problem,.note,.answer,.why,h2{overflow-wrap:anywhere}
+  details summary{display:inline-block;margin-top:1.1rem;min-height:44px;line-height:44px;cursor:pointer;
+                  font-weight:800;color:var(--brand)}
+  .options{list-style:hebrew;margin-top:1rem}
+  .why{margin-top:.8rem;line-height:1.8}
+  .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
   .problem{margin-top:1.3rem;background:#EFF6FF;border-right:5px solid var(--brand);
            border-radius:0 12px 12px 0;padding:.9rem 1.1rem;font-weight:700;font-size:1.1rem}
   .answer{margin-top:1.2rem;background:#ECFDF5;border:1.5px solid var(--mint);color:#047857;
@@ -829,11 +873,12 @@ export function renderSlides(plan: LessonPlan, { subject, level, student }: { su
   .nav button{background:var(--brand);color:#fff;border:none;border-radius:999px;
               padding:.6rem 1.6rem;min-height:44px;font-family:inherit;font-weight:800;cursor:pointer}
   .nav button:disabled{opacity:.4;cursor:default}
-  @media print{.nav,.meta{display:none}.slide{display:block!important;page-break-after:always;border:none}}
+  @media print{.nav,.meta,details summary{display:none}.slide{display:block!important;page-break-after:always;border:none}}
 </style></head><body>
 <div class="deck">
   <div class="meta">${esc(subject)} · ${esc(level)}${student ? ' · ' + esc(student) : ''} — ${esc(plan.gradeContext)}</div>
-  ${slides}${examples}
+  ${sections}
+  <div class="sr" aria-live="polite" id="where"></div>
   <div class="nav">
     <button id="prev">→ הקודם</button><button id="next">הבא ←</button>
   </div>
@@ -842,10 +887,12 @@ export function renderSlides(plan: LessonPlan, { subject, level, student }: { su
   const s=[...document.querySelectorAll('.slide')];let i=0;
   const show=n=>{i=Math.max(0,Math.min(s.length-1,n));
     s.forEach((el,k)=>k===i?el.setAttribute('data-active',''):el.removeAttribute('data-active'));
-    prev.disabled=i===0;next.disabled=i===s.length-1;};
+    prev.disabled=i===0;next.disabled=i===s.length-1;
+    where.textContent='שקף '+(i+1)+' מתוך '+s.length;};
   next.onclick=()=>show(i+1);prev.onclick=()=>show(i-1);
   addEventListener('keydown',e=>{if(e.key==='ArrowLeft')show(i+1);if(e.key==='ArrowRight')show(i-1);});
   show(0);
+  addEventListener('beforeprint',()=>document.querySelectorAll('details').forEach(d=>{d.open=true}));
 <\/script></body></html>`;
 }
 
