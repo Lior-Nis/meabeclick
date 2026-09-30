@@ -426,6 +426,7 @@
       lessons={data.activities}
       topics={tree}
       onstatus={handleTreeStatus}
+      library={data.plan?.library ?? {}}
     />
 
     <!-- Kept server-rendered but visually removed while older smoke tests and

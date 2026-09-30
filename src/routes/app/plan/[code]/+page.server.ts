@@ -15,6 +15,7 @@ import { buildTree } from '$server/plans/view.ts';
 import { readLessons } from '$server/db.ts';
 import { resultsForStudent } from '$server/results.ts';
 import { gameUrl } from '$server/urls.ts';
+import { readyMaster } from '$server/library/use.ts';
 import { FILTER_VALUES, type FilterKind } from '$lib/plan-status.ts';
 import type { PageServerLoad } from './$types';
 
@@ -91,6 +92,13 @@ export const load: PageServerLoad = async (event) => {
             tree: buildTree(nodes, prereqs, events, lesson),
             events,
             templateReviewed: templateById(plan.template_id)?.reviewed ?? null,
+            /* Each skill's ready library lesson, by plan node: the tutor
+               finds a skill's material from the student too, not only
+               from the library page. */
+            library: Object.fromEntries(nodes.filter(n => n.kind === 'skill').flatMap(n => {
+              const master = readyMaster(plan.template_id, n.key);
+              return master ? [[n.id, master.slug]] : [];
+            })) as Record<number, string>,
           };
         })()
       : null,
