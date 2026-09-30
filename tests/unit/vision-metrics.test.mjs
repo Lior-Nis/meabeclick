@@ -130,8 +130,25 @@ test('a lesson copied from the library is not an engine run: not counted, never 
     const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
     assert.deepEqual(later.gate, { streak: 2, target: 10 }, 'the failed copy did not break it, the clean one did not extend it');
     assert.equal(later.autogen.units, 5);
-    assert.deepEqual(later.library, { copies: 2 });
+    assert.deepEqual(later.library, { copies: 2, imported: 0 });
   } finally {
     w.exec(`DELETE FROM lessons WHERE slug IN ('c1','c2'); DELETE FROM library_uses`);
+  }
+});
+
+test('a library lesson made by another engine is not a Codex run: not counted, never breaks the streak', () => {
+  const w = new DatabaseSync(process.env.DB_PATH);
+  w.prepare(`INSERT INTO lessons (slug, student, at, status) VALUES (?, 'ספרייה', ?, ?)`).run('lib-imp-1', daysAgo(0.2), 'ready');
+  w.prepare(`INSERT INTO lessons (slug, student, at, status) VALUES (?, 'ספרייה', ?, ?)`).run('lib-imp-2', daysAgo(0.1), 'failed');
+  const eng = w.prepare(`INSERT INTO lesson_engines (lesson_slug, engine, at) VALUES (?, 'claude', ?)`);
+  eng.run('lib-imp-1', daysAgo(0.2));
+  eng.run('lib-imp-2', daysAgo(0.1));
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    assert.deepEqual(later.gate, { streak: 2, target: 10 });
+    assert.equal(later.autogen.units, 5);
+    assert.equal(later.library.imported, 2);
+  } finally {
+    w.exec(`DELETE FROM lessons WHERE slug IN ('lib-imp-1','lib-imp-2'); DELETE FROM lesson_engines`);
   }
 });

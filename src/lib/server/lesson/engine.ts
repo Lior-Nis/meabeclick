@@ -96,6 +96,28 @@ export function engineBin(): string {
   return process.env.CODEX_BIN || 'codex';
 }
 
+/**
+ * Which agent generates a LESSON: Codex, unless LESSON_ENGINE names another.
+ *
+ * The server never sets it, and stays on Codex. Claude Code and opencode are
+ * for the tutor's own machine, where scripts/library-local.mjs prepares
+ * library lessons and imports them (/api/library/import). They came back on
+ * 2026-10-01, when production's Codex account ran out of usage until 12.10:
+ * the Claude path removed earlier (see the top of this file) could not run
+ * on the box; this one runs where those CLIs are installed and signed in.
+ * Only lesson generation takes them — ask.ts and homework.ts are Codex only.
+ */
+export type LessonEngine = 'codex' | 'claude' | 'opencode';
+
+export function lessonEngine(): LessonEngine {
+  const e = (process.env.LESSON_ENGINE || 'codex').trim();
+  if (e === 'codex' || e === 'claude' || e === 'opencode') return e;
+  throw new Error(`LESSON_ENGINE must be codex, claude or opencode, not "${e}"`);
+}
+
+export const claudeBin = (): string => process.env.CLAUDE_BIN || 'claude';
+export const opencodeBin = (): string => process.env.OPENCODE_BIN || 'opencode';
+
 /** Where Codex keeps its credentials. Honours CODEX_HOME, which is also how
  *  the container reaches its mounted auth file. */
 export function codexHome(): string {
