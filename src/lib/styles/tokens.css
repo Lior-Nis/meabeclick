@@ -39,6 +39,15 @@
      --accent3-strong and --accent-deep below. */
   --accent2-strong: #b83d0b;
 
+  /* WhatsApp green, for the links that open a WhatsApp chat (Todoist
+     6hfrX4MVcfMjPP6q: in the peach they read as red, not as WhatsApp).
+     The brand's own #25d366 is FILLS ONLY — 1.98:1 on white. As text, a
+     border or a focus ring use --whatsapp-strong, checked for 4.5:1 on
+     every ground those buttons sit on by tests/unit/tokens-contrast.test.mjs. */
+  --whatsapp: #25d366;
+  --whatsapp-dim: rgba(37, 211, 102, 0.12);
+  --whatsapp-strong: #11763a;
+
   /* Tertiary accent — mint (progress, success, "done" states).
      Fails contrast as small text on light bg — use for fills/borders only. */
   --accent3: #10b981;

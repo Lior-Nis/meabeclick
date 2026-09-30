@@ -455,7 +455,7 @@
           rel="noopener"
           class="whatsapp-cta"
           onclick={() => track('cta_click', { target: 'whatsapp' })}
-        ><Icon name="message" size={17} /> וואטסאפ</a>
+        ><Icon name="whatsapp" size={17} /> וואטסאפ</a>
       </div>
     </div>
   </section>
@@ -495,7 +495,7 @@
         class="whatsapp-cta-icon"
         aria-label="וואטסאפ"
         onclick={() => track('cta_click', { target: 'whatsapp' })}
-      ><Icon name="message" size={20} /></a>
+      ><Icon name="whatsapp" size={20} /></a>
     </div>
   </section>
 
@@ -1343,35 +1343,37 @@ h1, h2, h3, h4 {
 
 /* ── WHATSAPP CTA (secondary) ─────────────────────────────────
    Same shape and rhythm as .book-cta — same radius, padding, weight —
-   but an outline in the peach family instead of a fill, so it reads as
-   the secondary action beside the primary booking CTA without adding a
-   colour outside tokens.css. --accent2-strong is the token tokens.css
-   itself names for peach AS TEXT/BORDER (--accent2 alone is fills-only,
+   but an outline instead of a fill, so it reads as the secondary action
+   beside the primary booking CTA. WhatsApp green with WhatsApp's mark, so
+   it reads as WhatsApp at a glance: it used to be the peach's dark
+   orange, which read as red (Todoist 6hfrX4MVcfMjPP6q). --whatsapp-strong
+   is the green tokens.css names for TEXT/BORDER (--whatsapp is fills-only,
    see its comment there). */
 .whatsapp-cta {
   display: inline-flex;
   align-items: center;
   gap: 0.6rem;
   background: var(--bg-card);
-  color: var(--accent2-strong);
+  color: var(--whatsapp-strong);
   font-family: 'Heebo', sans-serif;
   font-size: 1.05rem;
   font-weight: 800;
   padding: 0.82rem 2.2rem;
   border-radius: 40px;
-  border: 1.5px solid var(--accent2-strong);
+  border: 1.5px solid var(--whatsapp-strong);
   text-decoration: none;
   transition: transform 0.22s ease, background 0.22s ease, opacity 0.22s ease;
   letter-spacing: 0.02em;
 }
 .whatsapp-cta:hover {
   transform: translateY(-3px);
-  background: var(--accent2-dim);
-  opacity: 0.92;
+  background: var(--whatsapp-dim);
 }
+.whatsapp-cta:active { transform: translateY(-1px); background: var(--whatsapp-dim); }
+.whatsapp-cta:focus-visible { outline: 3px solid var(--whatsapp-strong); outline-offset: 3px; }
 
 /* ── WHATSAPP CTA, icon-only (sticky bar) ───────────────────────
-   Same secondary styling as .whatsapp-cta (peach outline, --accent2-strong
+   Same secondary styling as .whatsapp-cta (green outline, --whatsapp-strong
    — see that rule's comment), but round and label-free so the fixed
    bottom bar it lives in never grows past one line. 46px with a 44px
    floor keeps it at least the standard minimum touch target. The label
@@ -1387,16 +1389,17 @@ h1, h2, h3, h4 {
   flex: none;
   border-radius: 50%;
   background: var(--bg-card);
-  color: var(--accent2-strong);
-  border: 1.5px solid var(--accent2-strong);
+  color: var(--whatsapp-strong);
+  border: 1.5px solid var(--whatsapp-strong);
   text-decoration: none;
   transition: transform 0.22s ease, background 0.22s ease, opacity 0.22s ease;
 }
 .whatsapp-cta-icon:hover {
   transform: translateY(-3px);
-  background: var(--accent2-dim);
-  opacity: 0.92;
+  background: var(--whatsapp-dim);
 }
+.whatsapp-cta-icon:active { transform: translateY(-1px); background: var(--whatsapp-dim); }
+.whatsapp-cta-icon:focus-visible { outline: 3px solid var(--whatsapp-strong); outline-offset: 3px; }
 
 
 /* ── BACK TO TOP ───────────────────────────────────────────── */

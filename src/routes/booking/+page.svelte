@@ -1102,7 +1102,7 @@
   @keyframes spin { to { transform: rotate(360deg); } }
   .wa-link {
     display: inline-block; margin-top: 1rem;
-    color: var(--accent); font-weight: 700; min-height: 44px; padding: 0.7rem;
+    color: var(--whatsapp-strong); font-weight: 700; min-height: 44px; padding: 0.7rem;
   }
 
   /* A degraded calendar read, stated above the slots it qualifies.

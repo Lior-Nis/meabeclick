@@ -17,6 +17,13 @@ request and no runtime dependency. It also means any single icon can be
 replaced with custom artwork without fighting a package — drop a new
 `booking.svg` over the vendored one and only that icon changes.
 
+One exception: `whatsapp.svg` is WhatsApp's own mark, from
+[Simple Icons](https://simpleicons.org) (**CC0**), added by hand because
+Lucide has no brand icons. It is used only on links that open a WhatsApp
+chat, and the vendor script does not touch it. It is a filled glyph, so its
+path says `fill="currentColor" stroke="none"`: the icon CSS outlines by
+default.
+
 To refresh after `npm i -D lucide-static@latest`:
 
 ```bash
