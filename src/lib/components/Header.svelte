@@ -47,7 +47,7 @@
     <button class="sidebar-btn" onclick={() => scrollToSection('features-showcase')}><Icon name="games" size={18} /> מה תקבלו</button>
     <button class="sidebar-btn" onclick={() => scrollToSection('testimonials')}><Icon name="message" size={18} /> המלצות</button>
     <button class="sidebar-btn" onclick={() => scrollToSection('pricing')}><Icon name="payments" size={18} /> תעריף</button>
-    <button class="sidebar-btn" onclick={() => scrollToSection('faqs')}><Icon name="faq" size={18} /> שאלות</button>
+    <button class="sidebar-btn" onclick={() => scrollToSection('how-it-works')}><Icon name="faq" size={18} /> איך זה עובד</button>
     <!-- The two dashboards sit together at the end, below the page sections. -->
     <a href="/portal" class="sidebar-btn" style="text-decoration:none;display:block;text-align:right;"><Icon name="portal" size={18} /> פורטל הורה ותלמיד/ה</a>
     <a href="/app/dashboard" class="sidebar-btn" style="text-decoration:none;display:block;text-align:right;"><Icon name="dashboard" size={18} /> לוח בקרה מורה</a>

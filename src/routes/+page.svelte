@@ -61,6 +61,15 @@
     { icon: '🎲', label: 'הסתברות' },
     { icon: '🎓', label: 'הכנה לבגרות' },
   ];
+  /* «איך זה עובד?» (Todoist 6hfrX4W5mfXVmG5H): the path from a first
+     booking to following progress, in the order a family meets it. */
+  const HOW_STEPS = [
+    { title: 'קובעים שיעור', copy: 'בוחרים מועד שנוח לכם כאן באתר, או כותבים לנו בוואטסאפ.' },
+    { title: 'מבינים את הרמה והקושי', copy: 'בשיעור הראשון מזהים איפה התלמיד/ה עומד/ת, מה כבר ברור ומה מקשה.' },
+    { title: 'בונים תכנית אישית', copy: 'תכנית במתמטיקה לפי החומר של הכיתה, ממוקדת במה שחשוב עכשיו: פער, מבחן או בגרות.' },
+    { title: 'מתרגלים ומתקדמים', copy: 'בשיעור מסבירים עם מצגת ודוגמאות פתורות, ובין השיעורים מתרגלים בתרגילים ובמשחקים קצרים.' },
+    { title: 'עוקבים אחרי ההתקדמות', copy: 'בפורטל רואים מה נלמד, מה השתפר ומה הצעד הבא.' },
+  ];
   const DESCRIPTION = 'שיעורים פרטיים במתמטיקה מיסודי ועד בגרות: תכנית אישית, תרגול שמרגיש כמו משחק, ופורטל שבו ההורים רואים את ההתקדמות.';
   const testimonials = [
     { lines: ['תודה רבה על ההכוונה וההסבר המעולה.', 'הציונים שלי השתפרו מאוד בזכותך :)'], name: 'זיו כהן' },
@@ -190,24 +199,10 @@
     const dashEl = document.querySelector('.hero-dashboard-mini');
     if (dashEl) dashObs.observe(dashEl);
 
-    /* ── FAQ accordion ───────────────────────── */
-    const faqListeners: Array<() => void> = [];
-    document.querySelectorAll<HTMLElement>('.faq-question').forEach((q) => {
-      const handler = () => {
-        const item = q.closest('.faq-item');
-        const isOpen = item?.classList.contains('open');
-        document.querySelectorAll('.faq-item').forEach((i) => i.classList.remove('open'));
-        if (!isOpen) item?.classList.add('open');
-      };
-      q.addEventListener('click', handler);
-      faqListeners.push(() => q.removeEventListener('click', handler));
-    });
-
     return () => {
       window.removeEventListener('scroll', onScroll);
       cardListeners.forEach((off) => off());
       closeHandlers.forEach((off) => off());
-      faqListeners.forEach((off) => off());
       revealObs.disconnect();
       dashObs.disconnect();
       clearTimeout(revealTimeout);
@@ -499,87 +494,54 @@
     </div>
   </section>
 
-  <!-- ── FAQs ───────────────────────────────────────────── -->
-  <section id="faqs">
+  <!-- ── HOW IT WORKS ───────────────────────────────────── -->
+  <section id="how-it-works">
     <div class="container section-center">
-      <div class="section-label">שאלות</div>
-      <h2 class="section-title">שאלות נפוצות</h2>
+      <div class="section-label">התהליך</div>
+      <h2 class="section-title">איך זה עובד?</h2>
 
-      <div class="faq-list reveal">
+      <ol class="how-steps reveal">
+        {#each HOW_STEPS as step, i (step.title)}
+          <li class="how-step">
+            <span class="how-num" aria-hidden="true">{i + 1}</span>
+            <h3>{step.title}</h3>
+            <p>{step.copy}</p>
+          </li>
+        {/each}
+      </ol>
 
-        <div class="faq-item open">
-          <div class="faq-question">
-            <span>איך מתבצע תהליך ההרשמה לשיעור?</span>
-            <span class="faq-icon">+</span>
-          </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              ניתן להירשם בקלות דרך כפתור "בדקו מועד לשיעור" באתר, או ליצור קשר ישירות דרך הוואטסאפ. נחזור אליכם בהקדם לתיאום השיעור הראשון.
-            </div>
-          </div>
-        </div>
+      <a
+        href="/booking"
+        class="book-cta how-cta"
+        onclick={() => track('cta_click', { target: 'booking' })}
+      ><Icon name="booking" size={17} /> קובעים שיעור ראשון</a>
 
-        <div class="faq-item">
-          <div class="faq-question">
-            <span>האם השיעורים מתקיימים פנים מול פנים או אונליין?</span>
-            <span class="faq-icon">+</span>
-          </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              אנחנו מציעים גם שיעורים פרונטליים וגם שיעורים אונליין, בהתאם להעדפת התלמיד/ה. שני הפורמטים יעילים ומותאמים לצרכים השונים.
-            </div>
-          </div>
-        </div>
+      <!-- What a parent still asks after the steps. Native <details>: it
+           opens with the keyboard and a screen reader says whether it is
+           open, which the click-only divs it replaces did not. -->
+      <div class="faq-list" id="faqs">
+        <h3 class="faq-title">עוד כמה פרטים</h3>
 
-        <div class="faq-item">
-          <div class="faq-question">
-            <span>מה משך השיעור?</span>
-            <span class="faq-icon">+</span>
+        <details class="faq-item">
+          <summary>מה משך השיעור?<span class="faq-icon" aria-hidden="true">+</span></summary>
+          <div class="faq-answer-inner">
+            קיימת אפשרות להזמין שלושה סוגים של שיעורים: {DURATIONS_SENTENCE}.
           </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              קיימת אפשרות להזמין שלושה סוגים של שיעורים: {DURATIONS_SENTENCE}.
-            </div>
-          </div>
-        </div>
+        </details>
 
-        <div class="faq-item">
-          <div class="faq-question">
-            <span>איך מתבצע התשלום?</span>
-            <span class="faq-icon">+</span>
+        <details class="faq-item">
+          <summary>איך מתבצע התשלום?<span class="faq-icon" aria-hidden="true">+</span></summary>
+          <div class="faq-answer-inner">
+            התשלום מתבצע בסוף כל שיעור, ב-PayBox (בקישור שנשלח אליכם), בביט או במזומן.
           </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              התשלום מתבצע בסוף כל שיעור, ב-PayBox (בקישור שנשלח אליכם), בביט או במזומן.
-            </div>
-          </div>
-        </div>
+        </details>
 
-        <div class="faq-item">
-          <div class="faq-question">
-            <span>לאיזה גילאים השיעורים מתאימים?</span>
-            <span class="faq-icon">+</span>
+        <details class="faq-item">
+          <summary>השיעורים פנים מול פנים או אונליין?<span class="faq-icon" aria-hidden="true">+</span></summary>
+          <div class="faq-answer-inner">
+            גם וגם, לפי מה שנוח לתלמיד/ה. שני הפורמטים יעילים ומותאמים אישית.
           </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              השיעורים מתאימים לתלמידי בית ספר יסודי, חטיבת ביניים ותיכון.
-            </div>
-          </div>
-        </div>
-
-        <div class="faq-item">
-          <div class="faq-question">
-            <span>באילו נושאים במתמטיקה אתם עוזרים?</span>
-            <span class="faq-icon">+</span>
-          </div>
-          <div class="faq-answer">
-            <div class="faq-answer-inner">
-              אנחנו מלמדים מתמטיקה בלבד, מיסודי ועד בגרות: חיזוק יסודות ופערים, אלגברה, גיאומטריה, פונקציות, הסתברות, והכנה למבחנים ולבגרות.
-            </div>
-          </div>
-        </div>
-
-
+        </details>
       </div>
     </div>
   </section>
@@ -1183,20 +1145,71 @@ h1, h2, h3, h4 {
   margin-bottom: 0;
 }
 
-/* ── FAQ ───────────────────────────────────────────────────── */
-#faqs {
+/* ── HOW IT WORKS ──────────────────────────────────────────── */
+#how-it-works {
   padding: 5rem 1.5rem 3rem;
   border-top: 1px solid var(--border);
   background: var(--bg-surface);
 }
 
+/* A numbered path: one column on a phone, five across on a wide screen.
+   The numbers are the list's own order, drawn, so they are aria-hidden. */
+.how-steps {
+  list-style: none;
+  padding: 0;
+  margin: 2rem auto 0;
+  max-width: 1100px;
+  display: grid;
+  grid-template-columns: 1fr;
+  gap: 0.9rem;
+  text-align: right;
+}
+.how-step {
+  display: grid;
+  grid-template-columns: auto 1fr;
+  column-gap: 0.9rem;
+  align-items: start;
+  /* Cards in a row share a height; the spare space goes below the text,
+     so every title sits on the same line. */
+  align-content: start;
+  background: var(--bg-card);
+  border: 1.5px solid var(--border);
+  border-radius: var(--r-md);
+  padding: 1rem 1.2rem;
+  box-shadow: 0 2px 8px var(--shadow);
+}
+.how-num {
+  grid-row: span 2;
+  width: 38px;
+  height: 38px;
+  border-radius: 50%;
+  background: var(--accent);
+  color: #fff;
+  font-weight: 800;
+  font-size: 1.05rem;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+}
+.how-step h3 { margin: 0.1rem 0 0.25rem; font-size: 1.02rem; font-weight: 800; color: var(--text-primary); }
+.how-step p { margin: 0; color: var(--text-muted); font-size: 0.92rem; line-height: 1.7; }
+@media (min-width: 992px) {
+  .how-steps { grid-template-columns: repeat(5, minmax(0, 1fr)); }
+  .how-step { grid-template-columns: 1fr; text-align: center; padding: 1.3rem 1rem; }
+  .how-num { grid-row: auto; margin: 0 auto 0.7rem; }
+}
+.how-cta { margin-top: 2rem; }
+
+/* ── THE SHORT FAQ, under the steps ────────────────────────── */
 .faq-list {
   max-width: 720px;
-  margin: 2rem auto 0;
+  margin: 3rem auto 0;
   display: flex;
   flex-direction: column;
   gap: 0.7rem;
+  text-align: right;
 }
+.faq-title { margin: 0 0 0.3rem; font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
 
 .faq-item {
   background: var(--bg-card);
@@ -1206,21 +1219,23 @@ h1, h2, h3, h4 {
   box-shadow: 0 2px 8px var(--shadow);
   transition: border-color 0.2s;
 }
-.faq-item:global(.open) { border-color: var(--border-strong); }
+.faq-item[open] { border-color: var(--border-strong); }
 
-.faq-question {
+.faq-item summary {
   display: flex;
   align-items: center;
   justify-content: space-between;
+  gap: 1rem;
+  min-height: 44px;
   padding: 1.1rem 1.4rem;
   cursor: pointer;
   font-weight: 600;
   font-size: 1rem;
   color: var(--text-primary);
-  user-select: none;
-  gap: 1rem;
-  text-align: right;
+  list-style: none;
 }
+.faq-item summary::-webkit-details-marker { display: none; }
+.faq-item summary:focus-visible { outline: 3px solid var(--accent); outline-offset: -3px; }
 
 .faq-icon {
   flex-shrink: 0;
@@ -1238,26 +1253,18 @@ h1, h2, h3, h4 {
   line-height: 1;
   transition: transform 0.3s, background 0.2s;
 }
-.faq-item:global(.open) .faq-icon {
+.faq-item[open] .faq-icon {
   background: var(--accent);
   border-color: var(--accent);
   color: white;
   transform: rotate(45deg);
 }
 
-.faq-answer {
-  max-height: 0;
-  overflow: hidden;
-  transition: max-height 0.35s ease;
-}
-.faq-item:global(.open) .faq-answer { max-height: 300px; }
-
 .faq-answer-inner {
   padding: 0 1.4rem 1.2rem;
   color: var(--text-muted);
   font-size: 0.95rem;
   line-height: 1.85;
-  text-align: right;
 }
 
 /* ── PRICING CTA ───────────────────────────────────────────── */
