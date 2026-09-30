@@ -4,6 +4,7 @@
   import { TUTOR_PHONE, TUTOR_PHONE_DISPLAY } from '$lib/contact.ts';
   import { contactTutor } from '$lib/tutors.ts';
   import { track } from '$lib/marketing.ts';
+  import { lockScroll } from '$lib/scroll-lock.ts';
   let sidebarOpen = $state(false);
   let myPageHref = $state<string | null>(null);
 
@@ -27,8 +28,11 @@
     if (savedSlug) myPageHref = '/portal?s=' + encodeURIComponent(savedSlug);
   });
 
+  /* The returned release runs when the sidebar closes and when this header
+     is destroyed — following one of the sidebar's links to another page
+     destroys it while still open. See $lib/scroll-lock.ts. */
   $effect(() => {
-    document.body.style.overflow = sidebarOpen ? 'hidden' : '';
+    if (sidebarOpen) return lockScroll();
   });
 </script>
 

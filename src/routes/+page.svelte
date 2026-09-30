@@ -202,6 +202,10 @@
     if (dashEl) dashObs.observe(dashEl);
 
     return () => {
+      /* An open tutor popup lives on <body> (see openPopup), outside this
+         page's DOM, so it would outlive the page: a back/forward navigation
+         left it floating over the next page, blocking clicks. */
+      closeAllPopups();
       window.removeEventListener('scroll', onScroll);
       cardListeners.forEach((off) => off());
       closeHandlers.forEach((off) => off());
