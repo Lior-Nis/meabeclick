@@ -36,20 +36,21 @@ test('both /booking buttons on the landing page read exactly "בדקו מועד 
     'a /booking button still carries the old label');
 });
 
-test('the FAQ answer about registering quotes the current button label, not the old one', () => {
+test('no prose quotes a button label that no longer exists on this page', () => {
   // src/routes/+page.svelte only — Header.svelte's own nav-cta ("הזמנת
-  // שיעור") is a separate file/component and out of scope here (the
-  // controller finding was specifically about the FAQ prose quoting a
-  // button label that no longer exists on this page).
-  assert.match(landing, /כפתור\s*"בדקו מועד לשיעור"/,
-    'the FAQ should quote the /booking buttons\' current label');
+  // שיעור") is a separate file/component and out of scope here. The FAQ
+  // answer that quoted the /booking label became «איך זה עובד?»'s first
+  // step (Todoist 6hfrX4W5mfXVmG5H), which names no button.
   assert.doesNotMatch(landing, /כפתור\s*"הזמנת שיעור"/,
-    'the FAQ still quotes the old button label, which no longer appears on this page');
+    'prose quotes the old button label, which no longer appears on this page');
 });
 
-test('both landing /booking buttons send cta_click with target "booking"', () => {
+test('every landing /booking button sends cta_click with target "booking"', () => {
+  // Pricing, the sticky bar, and «קובעים שיעור ראשון» under «איך זה עובד?».
+  const buttons = (landing.match(/href="\/booking"/g) ?? []).length;
   const matches = [...landing.matchAll(/href="\/booking"[\s\S]{0,300}?track\(\s*'cta_click'\s*,\s*\{\s*target:\s*'booking'\s*\}\s*\)/g)];
-  assert.equal(matches.length, 2, `expected both /booking buttons to track target booking, found ${matches.length}`);
+  assert.equal(buttons, 3);
+  assert.equal(matches.length, buttons, `expected every /booking button to track target booking, found ${matches.length} of ${buttons}`);
 });
 
 test('a WhatsApp button sits beside each /booking button, built from contact.ts', () => {
