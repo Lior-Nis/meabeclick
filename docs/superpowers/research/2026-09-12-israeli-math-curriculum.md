@@ -4,7 +4,8 @@ Researched 2026-09-12. Purpose: a factual, source-traceable map of how Israeli
 school math (כיתות ז–יב) is structured, precise enough to derive
 prerequisite-ordered skill-tree templates. Priorities: (1) derivatives and
 חקירת פונקציה, (2) geometry (Euclidean + analytic), (3) probability, plus
-middle-school foundations.
+middle-school foundations. §7, added 2026-10-01, extends the map down to
+elementary grades 5–6 for the `math-5-6` template.
 
 **Source policy.** Almost everything below comes from Ministry of Education
 documents on `pop.education.gov.il` / `meyda.education.gov.il`, read as text.
@@ -404,7 +405,8 @@ Prerequisite edges for the priority trees:
 
 ### 6.1 Sources
 
-All were accessed 2026-09-12. PDFs were read with `pdftotext`.
+[S1]–[S21] were accessed 2026-09-12; [S22]–[S29] (for §7) were accessed
+2026-10-01. PDFs were read with `pdftotext`.
 
 - **[S1]** תוכנית הלימודים החדשה – מתמטיקה חטיבה עליונה (portal page: reform year תשפ"ד, questionnaire numbers, weights, links to curriculum PDFs and formula sheets). https://pop.education.gov.il/tchumey_daat/matmatika/chativa-elyona/teaching-mathematics/new-curriculum/
 - **[S2]** מבנה ההיבחנות הישן (old structure; the תשפ"ו choice statement). https://pop.education.gov.il/tchumey_daat/matmatika/chativa-elyona/teaching-mathematics/tohnit-limudim/
@@ -429,6 +431,14 @@ All were accessed 2026-09-12. PDFs were read with `pdftotext`.
 - **[S19]** תכניות לימודים ופריסות הוראה – מתמטיקה חט"ב. https://pop.education.gov.il/tchumey_daat/matmatika/chativat-beynayim/teaching-mathematics/tohnit-limudim/ ; and the חוזר מפמ"ר תשפ"ז (dated July 2026, updated 23/08/26). https://meyda.education.gov.il/files/Pop/0files/matmatika/Chativa-Elyona/mafmar/hozer-mafmar-tashpaz.pdf
 - **[S20]** פריסת הוראה כיתה ז / ח – תשפ"ז. https://meyda.education.gov.il/files/Pop/0files/matmatika/Chativat-Beynayim/tashpaz/prisa_7.pdf , …/prisa_8.pdf
 - **[S21]** פריסת הוראה כיתה ט (רגילה) and ט מצומצמת – תשפ"ז. https://meyda.education.gov.il/files/Pop/0files/matmatika/Chativat-Beynayim/tashpaz/prisa_9A.pdf , …/prisa_9B.pdf
+- **[S22]** Elementary curriculum portal pages: תוכנית הלימודים במתמטיקה ליסודי (the rollout statement, links to [S24] and [S25] and to the ציוני דרך documents). https://pop.education.gov.il/tchumey_daat/matmatika/yesodi/oraat-math/tohnit-limudim/ ; and תוכנית הלימודים החדשה (links to [S28]). https://pop.education.gov.il/tchumey_daat/matmatika/yesodi/oraat-math/new-curriculum/
+- **[S23]** חוזר מפמ"ר מתמטיקה תשפ"ז בחינוך היסודי, dated 2 August 2026. https://meyda.education.gov.il/files/Mazkirut_Pedagogit/math/primary-school/math2025/mafmar_yesodi_tashpaz.pdf (linked from the inspector's site https://mathematics-elementary.education.gov.il/ )
+- **[S24]** תכנית לימודים במתמטיקה לכיתות א–ו בכל המגזרים, ירושלים התשס"ו 2006: מבוא (strands, the 75% / 25% split, per-strand grade tables). https://meyda.education.gov.il/files/mazkirut_pedagogit/matematika/tochnyotlemud/mavo1.pdf
+- **[S25]** Same curriculum, כיתה ה' (pp. 97–116) and כיתה ו' (pp. 117–140): chapters, hours, numbered sub-topics, examples, and the "שליטה ויכולת ביצוע" lists. https://meyda.education.gov.il/files/mazkirut_pedagogit/matematika/tochnyotlemud/kita5.pdf , …/kita6.pdf
+- **[S26]** המלצות לארגון ההוראה – תשפ"ז, הפיקוח על הוראת המתמטיקה בחינוך היסודי (23 pp., PDF created 2026-09-01): each grade's topics, with "אפשר לא ללמד" / "אפשר לדחות" flags. https://meyda.education.gov.il/files/Mazkirut_Pedagogit/math/primary-school/math2025/teaching_organization_tashpaz.pdf
+- **[S27]** מאגר משימות הערכה, "יחידות הערכה" (built by ראמ"ה with the elementary inspectorate): unit titles per grade for the end of the first and the second trimester. https://pop.education.gov.il/tchumey_daat/matmatika/yesodi/oraat-math/assessment-tasks/ ; the grade 6 first-trimester geometry answer key: https://meyda.education.gov.il/files/Rama/Test_Units/Math_Heb_6_Geometry_Machvan.docx
+- **[S28]** New elementary curriculum, כיתה ה' (36 pp., PDF created 2026-03-01) and כיתה ו' (24 pp., PDF created 2025-12-04). Not yet in force for grades 5–6; used only for the §7 look-ahead. https://meyda.education.gov.il/files/Mazkirut_Pedagogit/math/primary-school/math2023/Newprogramgrade5.pdf , …/Newprogramgrade6.pdf
+- **[S29]** צוות מדריכות המתמטיקה במחוז מרכז, "הצעה לפריסת תכנון תוכנית הלימודים במתמטיקה לכיתה ה' / ו' תשע"ח" (a district draft, PDFs created 2017-08-11). A month-by-month order, not a national document. https://meyda.education.gov.il/files/merkaz/new/Disciplines/Math/tl-e.pdf , …/tl-f.pdf
 
 ### 6.2 Unverified, disagreements, reform changes
 
@@ -480,4 +490,232 @@ All were accessed 2026-09-12. PDFs were read with `pdftotext`.
   4u integrals, "c/(ax+b)²", is reconstructed. Hebrew prose and topic names
   extracted cleanly.
 - **Secondary sources used:** none for content claims. Scribd titles are
-  mentioned only to flag that the list exists.
+  mentioned only to flag that the list exists. §7 also uses one district draft,
+  [S29], and only as evidence of teaching order.
+
+---
+
+## 7. Elementary grades 5–6 (for the math-5-6 template)
+
+Added 2026-10-01. The booking form offers one level, «כיתה ה–ו», so `math-5-6`
+is one tree. Inside each topic, grade 5 skills come before grade 6 skills.
+
+**Which curriculum applies.** Elementary math is also mid-reform. A new
+curriculum started with grade 1 in תשפ"ה and adds one grade a year [S22]. The
+תשפ"ז circular says grade 3 joins this year and that "תלמידי כיתות ד'-ו'
+ימשיכו בשנת הלימודים תשפ"ז ללמוד על פי התוכנית משנת 2006" [S23]. The template
+therefore follows the 2006 curriculum [S24][S25], trimmed where the Ministry's
+תשפ"ז recommendations allow it [S26]. At one grade a year, grade 5 would switch
+in תשפ"ט and grade 6 in תש"ץ (**inferred**: no document names those years).
+
+**Structure.** The 2006 curriculum has two central topics [S24]:
+- "מספרים ופעולות, כולל חקר נתונים": 75% of lessons
+- "גאומטרייה", with measurement: 25% of lessons
+
+The תשפ"ז circular asks for about 20% on "גאומטריה ומדידות" [S23]. Each grade
+is a list of chapters with hours and numbered sub-topics [S25]. The template's
+four topics regroup those chapters:
+- מספרים ופעולות
+- שברים פשוטים, מספרים עשרוניים ואחוזים: the strand in [S24] is "שברים
+  פשוטים, שברים עשרוניים, אחוזים", and the assessment units use the
+  template's wording [S27]
+- חקר נתונים
+- גאומטריה ומדידות
+
+### 7.1 Grade 5 (125 h in the 2006 plan) [S25]
+
+The chapters are in the curriculum's order, and the sub-topics follow its
+numbering.
+- **שברים פשוטים ושברים עשרוניים (55 ש').** The sequence runs:
+  1. משמעויות השבר הפשוט (כולל שברים גדולים מ-1 ומספרים מעורבים). New in
+     grade 5: the fraction as a point on the number line and as a quotient.
+  2. צמצום והרחבה
+  3. חיבור וחיסור שברים, השוואת שברים
+  4. שאלות חיבור וחיסור שברים
+  5. משמעות השבר העשרוני (עשיריות, מאיות, אלפיות). This includes a first
+     look at אחוז as "שם אחר למאית".
+  6. חיבור וחיסור שברים עשרוניים והשוואתם
+  7. מעבר משבר פשוט לשבר עשרוני (terminating cases only)
+
+  The curriculum allows simple fractions first, decimals first, or both in
+  parallel.
+- **פעולות חשבון במספרים טבעיים (27 ש'):** חיבור, חיסור וכפל – חזרה, הרחבה
+  והעמקה (with סדר הפעולות) → חילוק במספר דו-ספרתי → אומדן תוצאות של פעולות,
+  אומדן כמויות → שאלות כוללות (אינטגרטיביות), which are multi-step problems.
+- **חקר נתונים, ממוצע (10 ש'):** tables, including relative frequency; the
+  double bar chart; ממוצע, both calculating it and its properties.
+- **מצולעים (24 ש'):** a review of diagonals, parallel and perpendicular lines,
+  and measuring and estimating angles → מרובעים: ניתוח תכונות, מיון מרובעים,
+  קשרי הכלה → ריצוף במצולעים משוכללים חופפים → גבהים, in parallelograms and
+  triangles.
+- **מדידות שטחים (9 ש'):** area units (סמ"ר, מ"ר, דונם, and also ממ"ר and
+  דצמ"ר); the areas of rectangles (review), parallelograms and triangles.
+
+### 7.2 Grade 6 (125 h in the 2006 plan) [S25]
+
+- **שברים (37 ש').** Eleven sub-topics, in this order:
+  1. שבר כמנת חילוק
+  2. שברים פשוטים ומספרים עשרוניים על ישר המספרים, צפיפות
+  3. כפל שלם בשבר פשוט ובמספר מעורב
+  4. כפל שבר בשבר
+  5. כפל וחילוק שברים עשרוניים ב-10, 100 וכו'
+  6. כפל שברים עשרוניים
+  7. חילוק שברים עשרוניים
+  8. חלק של כמות: מציאת ערך החלק
+  9. חלק של כמות: חישוב החלק ומציאת הכמות היסודית
+  10. חילוק שברים פשוטים
+  11. שבר עשרוני מחזורי
+- **The remaining chapters, in order:**
+  - אחוזים (15)
+  - יחס (10)
+  - מידות עשרוניות (4)
+  - קנה מידה (6)
+  - מספרים ופעולות – הרחבה והעמקה (8)
+  - שאלות כוללות (7), including שאלות תנועה והספק
+  - חקר נתונים וניתוח סיכויים (8)
+  - גופים (12): prisms, pyramids, cylinders and cones, with their nets.
+    גופים משוכללים is an extra activity.
+  - מדידות (18): מעגל ועיגול, then חישובי נפחים. For volume, the "שליטה"
+    list asks only for the cuboid, the cylinder, and a prism from its base
+    and height.
+
+### 7.3 What תשפ"ז asks for [S26]
+
+The תשפ"ז recommendations list each grade's topics and flag what a school may
+skip or defer.
+- **Grade 5, in the order listed:**
+  - פעולות החשבון במספרים טבעיים ו-0, with estimation and integrative word
+    problems
+  - חילוק במספר דו-ספרתי: "במידת הצורך אפשר לא ללמד"
+  - ספרות רומיות: "אפשר לא ללמד"
+  - fractions: meaning, צמצום והרחבה, comparison
+  - decimals: meaning, converting between fractions and decimals, comparison
+  - פעולות בשברים: adding and subtracting fractions, then decimals, then
+    rounding and estimation
+  - אחוזים (היכרות): "אפשר לדחות לכיתה ו"
+  - quadrilaterals. בניית מרובעים לפי אלכסונים is taught "בהיקף מצומצם",
+    and ריצוף is "אפשר לא ללמד".
+  - the heights of the parallelogram and the triangle
+  - areas of rectangles, parallelograms, triangles and composite shapes
+  - מדידות משקל: "אפשר לא ללמד"
+  - data: frequency tables and the mean
+- **Grade 6, in the order listed:**
+  - מספרים ופעולות – הרחבה והעמקה
+  - שאלות תנועה והספק: "אפשר לא ללמד (יילמד בחט"ב)"
+  - the fraction as a quotient and on the number line
+  - multiplying and dividing fractions, then decimals, then חלק של כמות
+  - מספר עשרוני מחזורי, יחס and קנה מידה: all "אפשר לא ללמד (יילמד בחט"ב)"
+  - אחוזים: meaning, ערך האחוז, חישוב האחוז
+  - מידות עשרוניות: focus on converting from a big unit to a small one;
+    volume units may be skipped
+  - consolidating areas and perimeters
+  - גופים. גופים משוכללים may be skipped.
+  - volume. "במידת הצורך", a school may skip the prism that is not a cuboid,
+    the pyramid, the cone and the sphere.
+  - מעגל ועיגול
+  - data, with relative frequency and the mode. ניתוח סיכויים is "אפשר לא
+    ללמד (יילמד בחט"ב)".
+- **The circular's grade 6 priorities.** Grade 6 must consolidate the
+  operations on whole numbers, fractions and decimals, and the areas and
+  perimeters of basic and composite polygons. These are the base for middle
+  school [S23].
+
+### 7.4 How the template maps this
+
+`math-5-6` has 30 skills. In each topic, grade 5 branches come first. Inside a
+branch, skills follow the 2006 numbering and the order of the תשפ"ז list.
+
+| Topic | Grade 5 branches | Grade 6 branches |
+|---|---|---|
+| מספרים ופעולות | `num.natural` | `num.deepen` |
+| שברים פשוטים, מספרים עשרוניים ואחוזים | `frac.meaning`, `frac.addsub` (the תשפ"ז headings "שברים" and "פעולות בשברים") | `frac.line`, `frac.muldiv` ("פעולות בשברים ובמספרים עשרוניים"), `frac.percent` |
+| חקר נתונים | `data.stats` | `data.freq` |
+| גאומטריה ומדידות | `geo.polygons`, `geo.area` | `geo.solids`, `geo.measure` |
+
+**Left out.** The תשפ"ז recommendations let schools skip these:
+- Roman numerals
+- tiling
+- weight measurement
+- regular solids
+- volumes other than the cuboid and the cylinder
+- the five grade 6 topics marked "יילמד בחט"ב": motion and work-rate
+  problems, repeating decimals, ratio, scale and chance
+
+The middle-school trees already hold ratio, scale and probability:
+`num.ratio.prop`, `num.ratio.scale` and `data.stats.prob` in `math-8`.
+
+**Other placement choices:**
+- **Percent is grade 6 only.** The grade 5 introduction to percent is deferred,
+  as תשפ"ז allows.
+- **חילוק במספר דו-ספרתי is kept.** It is skippable only "במידת הצורך", and
+  decimal division builds on it.
+- **The angle review has no skill.** Grade 5 geometry opens with a review of
+  angles, which the curriculum calls "חזרה על המושגים". The תשפ"ז list omits
+  it.
+
+### 7.5 Teaching order: evidence and disagreements
+
+I found no national month-by-month plan for grades 5–6, nothing like the
+middle-school פריסות [S20][S21]. The evidence for the order is:
+- **Trimester checkpoints [S27].**
+  - Grade 5, end of the first trimester: משמעות השבר הפשוט, פעולות בשברים
+    פשוטים, שטח והיקף מלבן, פעולות חשבון במספרים טבעיים, גיאומטריה.
+  - Grade 5, end of the second trimester: שברים עשרוניים and שברים פשוטים.
+  - Grade 6, end of the first trimester: שברים חלק א' / ב'. The geometry unit
+    covers solids and nets.
+  - Grade 6, end of the second trimester: "שברים פשוטים, מספרים עשרוניים
+    ואחוזים".
+- **A district draft [S29].** The Central District's תשע"ח plan gives a
+  month-by-month order.
+  - Grade 5, numbers: fraction meanings (Sept–Nov) → צמצום והרחבה (Nov) →
+    חיבור וחיסור שברים (Dec–Jan) → decimals (from January to the end of the
+    year).
+  - Grade 5, geometry: polygons → quadrilaterals → heights (Jan–Feb) → area
+    (Feb–May) → tiling (May–June).
+  - Grade 5, other: the mean in Feb–Mar; two-digit division in May–June.
+  - Grade 6, numbers: fraction as quotient and on the number line (Sept–Nov)
+    → multiplying fractions (Nov–Dec) → multiplying and dividing decimals
+    (Jan–Feb) → חלק של כמות (Feb–Apr) → dividing fractions (Apr) →
+    percentages (May–June).
+  - Grade 6, geometry: solids (Sept–Dec) → circle (Dec–Feb) → volume
+    (Feb–May).
+
+**Disagreements:**
+- **Two-digit division.** [S25] lists it second in its chapter. [S29] teaches
+  it at the end of grade 5. [S26] lets schools skip it.
+- **Grade 6 percentages.** [S25] puts אחוזים straight after שברים, and the
+  second-trimester unit already tests percentages [S27]. [S29] teaches them in
+  May–June.
+- **Circle vs volume.** [S25] and [S29] teach מעגל ועיגול before חישובי
+  נפחים. [S26] lists volume first. The template puts the circle first, because
+  the volume of a cylinder needs the area of a circle.
+- **Grade 6 data.** [S25] lists it 8th of 10 chapters. [S29] opens the year
+  with it.
+- **Tiling.** [S25] puts ריצוף before heights. [S29] puts it at the end of the
+  year. The template leaves it out (§7.4).
+
+### 7.6 What could not be verified
+
+- **The switch year for grades 5 and 6.** The switch years above (תשפ"ט for
+  grade 5, תש"ץ for grade 6) are inferred from "וכך הלאה" [S22].
+- **Order across branches.** Inside a grade, the template uses the order of the
+  curriculum and the תשפ"ז list, not an official calendar. Across branches it
+  follows prerequisites only.
+- **The ציוני דרך documents (2009).** They are linked from [S22]. I did not
+  read them.
+- **Most assessment units.** For the units in [S27], I read the titles and
+  only one answer key, grade 6 geometry.
+- **The new curriculum [S28].** This is a look-ahead for a future version 2.
+  - Grade 5 chapters: הכרת המספרים (~23 h), שברים – הכרה ופעולות (~35 h),
+    שברים עשרוניים – הכרה ופעולות (~25 h), גאומטרייה ומדידות (~30 h), חקר
+    נתונים (~12 h).
+  - Grade 6 chapters: המספרים הטבעיים וה-0 (~15 h); שברים – משמעויות ופעולות
+    (~62 h, including ~12 h of אחוזים); גאומטרייה – מדידות (~29 h: composite
+    areas, the circle, volume); חקר נתונים (~20 h, including ~10 h on the
+    mean).
+  - A keyword search of the PDF text suggests that the mean moves from grade 5
+    to grade 6, and that "קנה מידה" and "סיכוי" do not appear in grade 6.
+    Treat this as unverified until the documents are read in full.
+- **Extraction.** The 2006 PDFs [S24][S25] and [S26] extracted cleanly. The
+  district drafts [S29] garble digits (hours, page numbers), so no hours are
+  quoted from them.

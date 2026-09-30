@@ -26,8 +26,8 @@ const keysOf = (t) => new Set(skillsOf(t).map(s => s.key));
 
 test('every shipped math template loads and validates', () => {
   const ids = loadTemplates().map(t => t.id).sort();
-  // High school (4u, 5u) and, since 2026-09-28, grades ז–ט.
-  assert.deepEqual(ids, ['math-4u', 'math-5u', 'math-7', 'math-8', 'math-9']);
+  // High school (4u, 5u); since 2026-09-28, grades ז–ט; since 2026-10-01, ה–ו.
+  assert.deepEqual(ids, ['math-4u', 'math-5-6', 'math-5u', 'math-7', 'math-8', 'math-9']);
   for (const id of ids) assert.deepEqual(validateTemplate(templateById(id)), [], id);
 });
 

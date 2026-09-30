@@ -1,0 +1,355 @@
+{
+  "id": "math-5-6",
+  "version": 1,
+  "subject": "מתמטיקה",
+  "track": "יסודי — כיתות ה–ו",
+  "source": "docs/superpowers/research/2026-09-12-israeli-math-curriculum.md#7-elementary-grades-56-for-the-math-5-6-template",
+  "reviewed": null,
+  "grades": [
+    "כיתה ה–ו"
+  ],
+  "topics": [
+    {
+      "key": "num",
+      "title": "מספרים ופעולות",
+      "branches": [
+        {
+          "key": "num.natural",
+          "title": "פעולות החשבון במספרים טבעיים ו-0",
+          "skills": [
+            {
+              "key": "num.natural.ops",
+              "title": "פעולות החשבון, סדר פעולות וחוקי הפעולות",
+              "gloss": "the four operations on large whole numbers; order of operations and the laws of operations",
+              "requires": []
+            },
+            {
+              "key": "num.natural.estimate",
+              "title": "אומדן תוצאות של פעולות ואומדן כמויות",
+              "gloss": "estimating results and quantities; a feel for large numbers",
+              "requires": [
+                "num.natural.ops"
+              ]
+            },
+            {
+              "key": "num.natural.div",
+              "title": "חילוק במספר דו-ספרתי",
+              "gloss": "dividing by a two-digit number",
+              "requires": [
+                "num.natural.ops"
+              ]
+            },
+            {
+              "key": "num.natural.word",
+              "title": "שאלות כוללות (אינטגרטיביות): שאלות רב-שלביות בארבע הפעולות",
+              "gloss": "multi-step word problems with the four operations",
+              "requires": [
+                "num.natural.ops"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "num.deepen",
+          "title": "מספרים ופעולות – הרחבה והעמקה",
+          "skills": [
+            {
+              "key": "num.deepen.integrative",
+              "title": "שאלות אינטגרטיביות במספרים טבעיים, בשברים ובמספרים עשרוניים",
+              "gloss": "consolidating the operations across whole numbers, fractions and decimals in multi-step problems",
+              "requires": [
+                "num.natural.word",
+                "frac.addsub.decimal"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "frac",
+      "title": "שברים פשוטים, מספרים עשרוניים ואחוזים",
+      "branches": [
+        {
+          "key": "frac.meaning",
+          "title": "שברים",
+          "skills": [
+            {
+              "key": "frac.meaning.simple",
+              "title": "משמעויות השבר הפשוט: חלק של שלם, חלק של כמות, נקודה על ישר המספרים ומנה",
+              "gloss": "meanings of a fraction, including fractions greater than 1 and mixed numbers",
+              "requires": []
+            },
+            {
+              "key": "frac.meaning.equiv",
+              "title": "צמצום והרחבה, השוואת שברים",
+              "gloss": "simplifying and expanding fractions; comparing fractions",
+              "requires": [
+                "frac.meaning.simple"
+              ]
+            },
+            {
+              "key": "frac.meaning.decimal",
+              "title": "משמעות השבר העשרוני; מעבר ממספר עשרוני לשבר פשוט ולהיפך",
+              "gloss": "decimal place value (tenths, hundredths, thousandths); converting between decimals and fractions; comparing decimals",
+              "requires": [
+                "frac.meaning.equiv"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "frac.addsub",
+          "title": "פעולות בשברים",
+          "skills": [
+            {
+              "key": "frac.addsub.simple",
+              "title": "חיבור וחיסור שברים, כולל מספרים מעורבים ושאלות מילוליות",
+              "gloss": "adding and subtracting fractions and mixed numbers (common denominator), with word problems",
+              "requires": [
+                "frac.meaning.equiv"
+              ]
+            },
+            {
+              "key": "frac.addsub.decimal",
+              "title": "חיבור וחיסור שברים עשרוניים; עיגול ואומדן",
+              "gloss": "adding and subtracting decimals; rounding and estimating",
+              "requires": [
+                "frac.meaning.decimal",
+                "num.natural.ops"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "frac.line",
+          "title": "שברים על ישר המספרים",
+          "skills": [
+            {
+              "key": "frac.line.quotient",
+              "title": "משמעות השבר כמנה; שברים פשוטים ומספרים עשרוניים על ישר המספרים",
+              "gloss": "a fraction as a quotient; placing fractions and decimals on the number line (density)",
+              "requires": [
+                "frac.meaning.decimal"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "frac.muldiv",
+          "title": "פעולות בשברים ובמספרים עשרוניים",
+          "skills": [
+            {
+              "key": "frac.muldiv.mul",
+              "title": "כפל שברים פשוטים: כפל שלם בשבר ושבר בשבר, כולל מספרים מעורבים",
+              "gloss": "multiplying fractions: a whole number by a fraction and a fraction by a fraction, including mixed numbers",
+              "requires": [
+                "frac.addsub.simple"
+              ]
+            },
+            {
+              "key": "frac.muldiv.div",
+              "title": "חילוק שברים פשוטים",
+              "gloss": "dividing fractions",
+              "requires": [
+                "frac.muldiv.mul"
+              ]
+            },
+            {
+              "key": "frac.muldiv.decmul",
+              "title": "כפל שברים עשרוניים, כולל כפל וחילוק ב-10, 100 וכו'",
+              "gloss": "multiplying decimals, including multiplying and dividing by 10, 100, ...",
+              "requires": [
+                "frac.addsub.decimal",
+                "frac.muldiv.mul"
+              ]
+            },
+            {
+              "key": "frac.muldiv.decdiv",
+              "title": "חילוק שברים עשרוניים",
+              "gloss": "dividing decimals",
+              "requires": [
+                "frac.muldiv.decmul",
+                "num.natural.div"
+              ]
+            },
+            {
+              "key": "frac.muldiv.part",
+              "title": "חלק של כמות: מציאת ערך החלק, מציאת השלם על פי החלק וחישוב החלק",
+              "gloss": "a fraction of a quantity: finding the part, the whole from a part, and what fraction one amount is of another",
+              "requires": [
+                "frac.muldiv.mul"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "frac.percent",
+          "title": "אחוזים",
+          "skills": [
+            {
+              "key": "frac.percent.meaning",
+              "title": "משמעות האחוז: אחוז כשם אחר למאית",
+              "gloss": "what a percent is: another name for a hundredth",
+              "requires": [
+                "frac.meaning.decimal"
+              ]
+            },
+            {
+              "key": "frac.percent.calc",
+              "title": "חישוב ערך האחוז וחישוב האחוז, כולל שאלות מילוליות",
+              "gloss": "finding a percent of a quantity and what percent one quantity is of another, with word problems",
+              "requires": [
+                "frac.percent.meaning",
+                "frac.muldiv.part"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "data",
+      "title": "חקר נתונים",
+      "branches": [
+        {
+          "key": "data.stats",
+          "title": "חקר נתונים, ממוצע",
+          "skills": [
+            {
+              "key": "data.stats.present",
+              "title": "איסוף, ארגון וייצוג של נתונים: טבלאות שכיחות ודיאגרמת עמודות כפולה",
+              "gloss": "collecting, organising and showing data: frequency tables, bar and double bar charts",
+              "requires": []
+            },
+            {
+              "key": "data.stats.mean",
+              "title": "ממוצע: חישוב ותכונות",
+              "gloss": "the mean: computing it and its properties",
+              "requires": [
+                "data.stats.present",
+                "num.natural.ops"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "data.freq",
+          "title": "שכיחות יחסית ושכיח",
+          "skills": [
+            {
+              "key": "data.freq.relative",
+              "title": "טבלאות שכיחות, שכיחות יחסית, שכיח",
+              "gloss": "relative frequency and the mode, compared with the mean",
+              "requires": [
+                "data.stats.mean",
+                "frac.meaning.simple"
+              ]
+            }
+          ]
+        }
+      ]
+    },
+    {
+      "key": "geo",
+      "title": "גאומטריה ומדידות",
+      "branches": [
+        {
+          "key": "geo.polygons",
+          "title": "מצולעים",
+          "skills": [
+            {
+              "key": "geo.polygons.quads",
+              "title": "מרובעים: ניתוח תכונות, מיון מרובעים, קשרי הכלה",
+              "gloss": "quadrilaterals: properties, classification and which families contain which",
+              "requires": []
+            },
+            {
+              "key": "geo.polygons.heights",
+              "title": "גבהים במקביליות ובמשולשים",
+              "gloss": "altitudes in parallelograms and triangles",
+              "requires": [
+                "geo.polygons.quads"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.area",
+          "title": "מדידות שטחים",
+          "skills": [
+            {
+              "key": "geo.area.rect",
+              "title": "יחידות שטח; שטח והיקף של מלבן",
+              "gloss": "area units (cm², m², dunam); area and perimeter of a rectangle",
+              "requires": []
+            },
+            {
+              "key": "geo.area.polygons",
+              "title": "חישובי שטחים של מקביליות ומשולשים",
+              "gloss": "areas of parallelograms and triangles, from any side and its altitude",
+              "requires": [
+                "geo.area.rect",
+                "geo.polygons.heights"
+              ]
+            },
+            {
+              "key": "geo.area.composite",
+              "title": "מציאת שטח והיקף של צורות מורכבות",
+              "gloss": "area and perimeter of composite shapes",
+              "requires": [
+                "geo.area.polygons"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.solids",
+          "title": "גופים",
+          "skills": [
+            {
+              "key": "geo.solids.intro",
+              "title": "הכרת גופים: מנסרה ישרה, פירמידה ישרה, גליל וחרוט, כולל פריסות",
+              "gloss": "solids: right prism, right pyramid, cylinder and cone, and their nets",
+              "requires": [
+                "geo.polygons.quads"
+              ]
+            }
+          ]
+        },
+        {
+          "key": "geo.measure",
+          "title": "מדידות",
+          "skills": [
+            {
+              "key": "geo.measure.units",
+              "title": "מידות עשרוניות: מעבר בין יחידות אורך, משקל וכסף",
+              "gloss": "converting between metric units of length, mass and money",
+              "requires": [
+                "frac.muldiv.decmul"
+              ]
+            },
+            {
+              "key": "geo.measure.circle",
+              "title": "מעגל ועיגול: היקף המעגל ושטח העיגול",
+              "gloss": "the circle: circumference and area (π)",
+              "requires": [
+                "geo.area.polygons",
+                "frac.muldiv.decmul"
+              ]
+            },
+            {
+              "key": "geo.measure.volume",
+              "title": "חישובי נפחים: נפח תיבה ונפח גליל",
+              "gloss": "volume: units, the cuboid and the cylinder",
+              "requires": [
+                "geo.solids.intro",
+                "geo.measure.circle"
+              ]
+            }
+          ]
+        }
+      ]
+    }
+  ]
+}
