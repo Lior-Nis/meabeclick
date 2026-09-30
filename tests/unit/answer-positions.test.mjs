@@ -46,5 +46,5 @@ test('keys that already vary are left exactly as they were', () => {
 
 test('generation applies it before anything validates the plan', () => {
   const src = readFileSync(join(process.cwd(), 'src/lib/server/lesson/prep.ts'), 'utf8');
-  assert.match(src, /return balancePositions\(await generateOnce\(req\)\);[\s\S]*return balancePositions\(await generateOnce\(req\)\);/);
+  assert.equal((src.match(/balancePositions\(await generateOnce\(req\)\)/g) ?? []).length, 2, 'on both paths');
 });

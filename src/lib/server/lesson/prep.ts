@@ -543,12 +543,12 @@ export async function generateLesson(req: LessonRequest): Promise<LessonPlan> {
    * changes nothing — for quota it actively makes things worse by spending
    * what little is left. */
   try {
-    return balancePositions(await generateOnce(req));
+    return dropAmbiguousPairs(balancePositions(await generateOnce(req)));
   } catch (err) {
     const kind = err instanceof LessonGenerationError ? err.kind : null;
     if (kind !== 'bad-output' && kind !== 'no-output') throw err;
     console.warn(`lesson: ${kind} from the engine, retrying once`);
-    return balancePositions(await generateOnce(req));
+    return dropAmbiguousPairs(balancePositions(await generateOnce(req)));
   }
 }
 
@@ -564,6 +564,30 @@ export async function generateLesson(req: LessonRequest): Promise<LessonPlan> {
  * same text. Keys that already vary are left exactly as they were: rotating
  * those could line them up.
  */
+/**
+ * Drops a matching pair whose left or right side repeats an earlier one.
+ *
+ * A matching game where two pairs share a side cannot be played: both
+ * «∠B = ∠C» and «AB = AC» lead to «המשולש שווה שוקיים», and the child
+ * cannot tell which goes where. Each pair is correct maths; the game can
+ * only hold one. The later duplicate goes when at least three pairs remain
+ * (validateLesson's own minimum) — otherwise the game is left as it was,
+ * for validation to hold. Found in the library, 2026-09-30.
+ */
+export function dropAmbiguousPairs(plan: LessonPlan): LessonPlan {
+  const m = plan.games?.matching;
+  if (!m?.pairs?.length) return plan;
+  const lefts = new Set<string>(), rights = new Set<string>();
+  const kept = m.pairs.filter(p => {
+    const l = String(p.left ?? '').trim(), r = String(p.right ?? '').trim();
+    if (lefts.has(l) || rights.has(r)) return false;
+    lefts.add(l); rights.add(r);
+    return true;
+  });
+  if (kept.length < m.pairs.length && kept.length >= 3) m.pairs = kept;
+  return plan;
+}
+
 export function balancePositions(plan: LessonPlan): LessonPlan {
   const rotate = <T>(xs: T[], by: number): T[] => xs.map((_, j) => xs[(j - by + xs.length * 4) % xs.length]);
   const stuck = (keys: number[]) => keys.length >= 3 && new Set(keys).size === 1;
