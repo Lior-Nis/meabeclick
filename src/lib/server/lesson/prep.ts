@@ -27,7 +27,7 @@ import { writeFile, mkdir, readFile, rm } from 'node:fs/promises';
 import { join } from 'node:path';
 import { tmpdir } from 'node:os';
 
-import { LessonGenerationError, engineBin } from './engine.ts';
+import { LessonGenerationError, engineBin, lessonEngine, claudeBin, opencodeBin } from './engine.ts';
 import { getRegistry } from './registry.ts';
 import { planFor } from '../../plans.ts';
 import { spawnAgent } from './spawn.ts';
@@ -39,6 +39,18 @@ import { deckRootCss, DECK_FONT } from '../../brand.ts';
 /** Long, because a whole lesson is minutes of work. /api/ask sets its own,
  *  far shorter budget — see src/lib/server/lesson/spawn.ts. */
 const LESSON_TIMEOUT_MS = 5 * 60 * 1000;
+
+/**
+ * How long one generation may run. Codex on the server keeps its five
+ * minutes: a booking waits on it. Claude Code and opencode run in a batch on
+ * the tutor's machine (scripts/library-local.mjs), where nobody waits and a
+ * full lesson took longer than that. LESSON_TIMEOUT_MINUTES overrides both.
+ */
+export function lessonTimeoutMs(): number {
+  const minutes = Number(process.env.LESSON_TIMEOUT_MINUTES);
+  if (Number.isFinite(minutes) && minutes > 0) return minutes * 60_000;
+  return lessonEngine() === 'codex' ? LESSON_TIMEOUT_MS : 20 * 60_000;
+}
 
 export interface Slide {
   heading: string;
@@ -786,7 +798,56 @@ function buildPrompt({ subject, level, request, student, skill, durationMin }: L
  * generated. A nullable-everything variant could thread that needle; it is a
  * separate piece of work with its own test, not a flag to add here.
  */
+/**
+ * The JSON object in an agent's reply, as text, or null. Claude Code and
+ * opencode answer on stdout, which can carry more than the plan: a sentence
+ * before it, a ```json fence, opencode's coloured "> build · model" header.
+ * parsePlan stays strict; this only finds what to hand it.
+ */
+export function extractJsonObject(reply: string): string | null {
+  const text = reply.replace(/\u001b\[[0-9;]*m/g, '');
+  const fenced = text.match(/```(?:json)?\s*\n([\s\S]*?)\n?```/);
+  const candidates = [fenced?.[1], text.slice(text.indexOf('{'), text.lastIndexOf('}') + 1)];
+  for (const c of candidates) {
+    if (!c || !c.trim().startsWith('{')) continue;
+    try {
+      const v = JSON.parse(c);
+      if (v && typeof v === 'object' && !Array.isArray(v)) return c.trim();
+    } catch { /* the next candidate */ }
+  }
+  return null;
+}
+
+/** Claude Code or opencode: the reply is stdout, written to where Codex
+ *  would have written it so everything after is the same. A reply with no
+ *  object in it is written as it came, for parsePlan to call bad-output
+ *  with the text in the log. */
+async function runStdoutAgent(engine: 'claude' | 'opencode', prompt: string, cwd: string, planPath: string): Promise<void> {
+  const model = process.env.LESSON_MODEL;
+  let reply: string;
+  if (engine === 'claude') {
+    /* -p: headless; the prompt on stdin, never argv (it embeds parent text,
+       and argv shows in `ps`). No tools: the answer is text, and it touches
+       nothing. */
+    const args = ['-p', '--output-format', 'text', '--tools', '', '--no-session-persistence'];
+    if (model) args.push('--model', model);
+    reply = await spawnAgent(claudeBin(), args, prompt, cwd, { label: 'claude', timeoutMs: lessonTimeoutMs(), collectStdout: true });
+  } else {
+    /* opencode takes its message in argv, so the prompt goes as an attached
+       file and argv carries only a fixed instruction. */
+    const file = join(cwd, 'prompt.md');
+    await writeFile(file, prompt, 'utf8');
+    const args = ['run', 'Follow the instructions in the attached file exactly, and reply with the JSON only.', '-f', file];
+    if (model) args.push('-m', model);
+    reply = await spawnAgent(opencodeBin(), args, '', cwd, { label: 'opencode', timeoutMs: lessonTimeoutMs(), collectStdout: true });
+  }
+  const found = extractJsonObject(reply);
+  if (found !== null || reply.trim()) await writeFile(planPath, found ?? reply, 'utf8');
+}
+
 async function runAgent(prompt: string, cwd: string, planPath: string): Promise<void> {
+  const engine = lessonEngine();
+  if (engine !== 'codex') return runStdoutAgent(engine, prompt, cwd, planPath);
   const args = [
     'exec', '-C', cwd,
     '--skip-git-repo-check', '--ephemeral', '--ignore-user-config',
@@ -800,7 +861,7 @@ async function runAgent(prompt: string, cwd: string, planPath: string): Promise<
   if (process.env.LESSON_MODEL) args.push('-m', process.env.LESSON_MODEL);
   args.push('-');
 
-  return spawnAgent(engineBin(), args, prompt, cwd, { label: 'codex', timeoutMs: LESSON_TIMEOUT_MS });
+  await spawnAgent(engineBin(), args, prompt, cwd, { label: 'codex', timeoutMs: lessonTimeoutMs() });
 }
 
 /** Self-contained RTL deck, site palette, arrow-key navigation. */

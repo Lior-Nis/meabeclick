@@ -44,25 +44,35 @@ export interface SpawnOptions {
   /** Names the program in error messages. */
   label: string;
   timeoutMs: number;
+  /** Resolve with the whole of stdout, for an agent whose answer IS its
+   *  stdout (Claude Code, opencode) rather than a file it writes (Codex). */
+  collectStdout?: boolean;
 }
+
+/** The most stdout kept for an answer: a lesson plan is tens of kilobytes. */
+const ANSWER_MAX = 4 * 1024 * 1024;
 
 export function spawnAgent(
   bin: string,
   args: string[],
   prompt: string,
   cwd: string,
-  { label, timeoutMs }: SpawnOptions,
-): Promise<void> {
+  { label, timeoutMs, collectStdout = false }: SpawnOptions,
+): Promise<string> {
   return new Promise((resolve, reject) => {
     const child = spawn(bin, args, { cwd, stdio: ['pipe', 'pipe', 'pipe'] });
 
     let out = '';
     let err = '';
+    let answer = '';
     const keep = (buf: string, chunk: unknown): string => {
       const next = buf + String(chunk);
       return next.length > CAPTURE_TAIL ? next.slice(-CAPTURE_TAIL) : next;
     };
-    child.stdout!.on('data', c => { out = keep(out, c); });
+    child.stdout!.on('data', c => {
+      out = keep(out, c);
+      if (collectStdout && answer.length < ANSWER_MAX) answer += String(c);
+    });
     child.stderr!.on('data', c => { err = keep(err, c); });
 
     let timedOut = false;
@@ -90,7 +100,7 @@ export function spawnAgent(
         reject(new LessonGenerationError('engine-timeout', `${label} timed out after ${timeoutMs / 1000}s`, tail(out, err)));
         return;
       }
-      if (code === 0) { resolve(); return; }
+      if (code === 0) { resolve(answer); return; }
       const detail = tail(out, err);
       const kind = classifyOutput(detail) ?? 'engine-failed';
       reject(new LessonGenerationError(kind, `${label} exited ${code}`, detail));

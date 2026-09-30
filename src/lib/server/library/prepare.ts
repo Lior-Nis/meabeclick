@@ -7,7 +7,7 @@
  * booking's lesson, so everything downstream — the editor, the preview,
  * versions — treats it as the ordinary lesson it is.
  */
-import { createLesson, finishLesson } from '../db.ts';
+import { createLesson, finishLesson, handle } from '../db.ts';
 import { generateLesson, validateLesson, type LessonPlan, type LessonRequest } from '../lesson/prep.ts';
 import { publish, publishDraftOnly, messageForFailure } from '../lesson/queue.ts';
 import { templateById, type PlanTemplate, type TemplateSkill } from '../plans/templates.ts';
@@ -22,6 +22,10 @@ export { masterSlug, isLibrarySlug } from './slug.ts';
 
 export interface PrepareDeps {
   generate?: (req: LessonRequest) => Promise<LessonPlan>;
+  /** Who made the plan, when it is not this server's Codex: an import from
+   *  the tutor's machine (/api/library/import). Recorded in lesson_engines
+   *  so the gate does not count it as a Codex run. */
+  engine?: 'claude' | 'opencode';
 }
 
 function findSkill(template: PlanTemplate, skillKey: string): { skill: TemplateSkill; context: string } | null {
@@ -39,15 +43,15 @@ const levelOf = (t: PlanTemplate): string => t.grades?.[0] ?? t.track;
 
 /** Prepares one skill's master. Resolves with where it stands; never
  *  rejects for an engine failure — that is a recorded status. */
-export async function prepareSkill(templateId: string, skillKey: string, deps: PrepareDeps = {}): Promise<LibraryItem> {
+/** What the engine is asked for a skill's master — here and on the tutor's
+ *  machine alike (scripts/library-local.mjs), so an imported lesson answers
+ *  the same request a preparation here would have sent. */
+export function libraryRequest(templateId: string, skillKey: string) {
   const template = templateById(templateId);
   if (!template) throw new Error(`no template ${templateId}`);
   const found = findSkill(template, skillKey);
   if (!found) throw new Error(`no skill ${skillKey} in ${templateId}`);
-  const { generate = generateLesson } = deps;
-
-  const slug = masterSlug(templateId, skillKey);
-  const meta = {
+  return {
     subject: template.subject,
     level: levelOf(template),
     student: '',
@@ -55,7 +59,18 @@ export async function prepareSkill(templateId: string, skillKey: string, deps: P
     request: `${found.skill.title} (${found.context})`,
     durationMin: 90,
   };
-  createLesson({ slug, student: LIBRARY_STUDENT, subject: meta.subject, level: meta.level, topic: found.skill.title, lessonAt: null });
+}
+
+export async function prepareSkill(templateId: string, skillKey: string, deps: PrepareDeps = {}): Promise<LibraryItem> {
+  const meta = libraryRequest(templateId, skillKey);
+  const { generate = generateLesson } = deps;
+
+  const slug = masterSlug(templateId, skillKey);
+  createLesson({ slug, student: LIBRARY_STUDENT, subject: meta.subject, level: meta.level, topic: meta.skill, lessonAt: null });
+  if (deps.engine) {
+    handle().prepare(`INSERT INTO lesson_engines (lesson_slug, engine, at) VALUES (?, ?, ?)`)
+      .run(slug, deps.engine, new Date().toISOString());
+  }
   setItem({ templateId, skillKey, slug, status: 'preparing' });
 
   try {
