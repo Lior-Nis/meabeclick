@@ -49,6 +49,18 @@ once published (#125): a changed game needs a new data id and a new link,
 which is its own feature. Homework already has its own editor on the
 dashboard.
 
+*Amended 2026-09-30, for library masters only*
+(docs/superpowers/specs/2026-09-28-prepared-library-design.md). A master
+is never played by a child, and each booking copied from it writes its own
+game files and homework rows from the master's published plan. So on a
+master (`lib-…`) the editor also edits the quiz's questions (text,
+options, the marked answer, explanation, hint) and the homework (task,
+answer key). An edit reaches the bookings copied after it; copies already
+made keep what they got. A master's publish runs `validateLesson`, the
+check every copy gets at booking, and is refused with its problems instead
+of producing held copies. A draft is not checked. A student's own lesson is
+unchanged: the server refuses question or homework edits for it.
+
 **D6. Internal notes.** A "notes for me" field is stored in the version's
 `teacher_only` column. It is never rendered into slides and never served
 to a family. That is step 4 of the task.

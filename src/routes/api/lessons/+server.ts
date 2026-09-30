@@ -38,7 +38,7 @@
 import { json } from '@sveltejs/kit';
 import { apiAuthDenied } from '$server/auth.ts';
 import { readLessons } from '$server/db.ts';
-import { isLibrarySlug } from '$server/library/prepare.ts';
+import { isLibrarySlug } from '$server/library/slug.ts';
 import { resolveStudent, studentRefById } from '$server/results.ts';
 import { gameUrl, lessonUrl } from '$server/urls.ts';
 import type { RequestHandler } from './$types';

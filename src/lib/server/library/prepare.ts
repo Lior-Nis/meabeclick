@@ -13,19 +13,12 @@ import { publish, publishDraftOnly, messageForFailure } from '../lesson/queue.ts
 import { templateById, type PlanTemplate, type TemplateSkill } from '../plans/templates.ts';
 import { singleton } from '../singleton.ts';
 import { setItem, itemFor, type LibraryItem } from './store.ts';
+import { masterSlug } from './slug.ts';
 
 /** What `lessons.student` says for a master: it is nobody's lesson. */
 export const LIBRARY_STUDENT = 'ספרייה';
 
-const SLUG_PREFIX = 'lib-';
-const segment = (s: string): string => s.toLowerCase().replace(/[^a-z0-9]+/g, '-').replace(/^-+|-+$/g, '');
-
-/** `lib-<template>-<skill>-<time>`: a legal path segment that says what it is. */
-export function masterSlug(templateId: string, skillKey: string, now: number = Date.now()): string {
-  return `${SLUG_PREFIX}${segment(templateId)}-${segment(skillKey)}-${now.toString(36)}`;
-}
-
-export const isLibrarySlug = (slug: string): boolean => slug.startsWith(SLUG_PREFIX);
+export { masterSlug, isLibrarySlug } from './slug.ts';
 
 export interface PrepareDeps {
   generate?: (req: LessonRequest) => Promise<LessonPlan>;

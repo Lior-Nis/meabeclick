@@ -7,6 +7,7 @@ import { requireAuth } from '$server/auth.ts';
 import { readLessons } from '$server/db.ts';
 import { history, hasUnpublishedEdits } from '$server/materials.ts';
 import { editBase, formPlan } from '$server/lesson/editing.ts';
+import { isLibrarySlug } from '$server/library/slug.ts';
 import type { PageServerLoad } from './$types';
 
 /** Versions sent to the page. Each carries its whole plan, so an unbounded
@@ -38,6 +39,9 @@ export const load: PageServerLoad = async (event) => {
 
   return {
     slug,
+    /* A master's check questions and homework are editable too: no child
+       has played it, and the next booking copies what is published. */
+    isMaster: isLibrarySlug(slug),
     seedVersion: base?.version ?? null,
     pendingRegeneration: base?.pendingRegeneration ?? null,
     lesson: { title: lesson.title, topic: lesson.topic, student: lesson.student, subject: lesson.subject, level: lesson.level },

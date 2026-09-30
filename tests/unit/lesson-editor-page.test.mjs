@@ -60,3 +60,31 @@ test('history says which version the student sees now, and is bounded', () => {
   assert.match(server, /HISTORY_LIMIT = 30/);
   assert.match(server, /formPlan\(/);
 });
+
+/* A library master's check questions and homework (tests/unit/library-editing.test.mjs). */
+
+test("a master offers its check questions and homework; a student's lesson does not", () => {
+  assert.match(server, /isMaster: isLibrarySlug\(slug\)/);
+  assert.match(page, /\{#if data\.isMaster\}/);
+  assert.match(page, /<h2>שאלות בדיקה<\/h2>/);
+  assert.match(page, /<h2>שיעורי בית<\/h2>/);
+  // Sent only from a master, and questions only when the plan has a quiz.
+  assert.match(page, /data\.isMaster \?/);
+  assert.match(page, /quiz !== null \? \{ quiz:/);
+});
+
+test('the right answer is picked from the options, not typed', () => {
+  assert.match(page, /type="radio"/);
+  assert.match(page, /name="answer-\{i\}"/);
+  assert.match(page, /aria-label="התשובה הנכונה: אפשרות \{k \+ 1\}"/);
+});
+
+test('the answer key is marked as hers, and publishing a master says where it goes', () => {
+  assert.match(page, /תשובון — רק לך/);
+  assert.match(page, /פורסם בספרייה/);
+  assert.match(page, /שיעורים שכבר נשלחו לא משתנים/);
+});
+
+test("a master's live version is the one the library copies, not one a student sees", () => {
+  assert.match(page, /data\.isMaster \? '· בשימוש בספרייה עכשיו' : '· מוצגת לתלמיד\/ה עכשיו'/);
+});
