@@ -25,7 +25,11 @@
     failed:    { label: 'נכשל', cls: 'failed' },
   };
 
-  const working = $derived(view.topics.some(t => t.skills.some(s => s.item && ['queued', 'preparing'].includes(s.item.status))));
+  const working = $derived(
+    view.topics.some(t => t.skills.some(s => s.item && ['queued', 'preparing'].includes(s.item.status)))
+    || view.due.some(d => d.item && ['queued', 'preparing'].includes(d.item.status)),
+  );
+  const dueKey = (d: (typeof view.due)[number]) => `due:${d.templateId}/${d.skillKey}`;
 
   async function refresh() {
     try {
@@ -39,13 +43,15 @@
     return () => clearInterval(id);
   });
 
-  async function prepare(body: { topic?: string; skill?: string }, key: string) {
+  /** `template` is the skill's own: a due skill can be on a template other
+   *  than the one on screen. */
+  async function prepare(template: string, body: { topic?: string; skill?: string }, key: string) {
     busy[key] = true;
     error = '';
     try {
       const r = await fetch('/api/library/prepare', {
         method: 'POST', headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ template: view.template.id, ...body }),
+        body: JSON.stringify({ template, ...body }),
       });
       if (r.status === 401) { location.href = '/login?next=/app/library'; return; }
       if (!r.ok) error = (await r.json().catch(() => ({}))).error || 'ההכנה לא התחילה';
@@ -71,6 +77,38 @@
     עריכה כאן משנה את השיעורים הבאים; עריכה בשיעור של תלמיד/ה משנה רק אצלו/ה.
   </p>
 
+  <section class="due" aria-label="הבאים בתור אצל התלמידים">
+    <h2>הבאים בתור אצל התלמידים</h2>
+    {#if view.due.length === 0}
+      <p class="note">אין עדיין תלמידים עם תכנית. אחרי שנפתחת תכנית בכרטיס התלמיד/ה, המיומנות של השיעור הבא שלו/ה תופיע כאן.</p>
+    {:else}
+      <p class="note">המיומנות שהשיעור הבא של כל תלמיד/ה יתמקד בה. כשהיא מוכנה, השיעור נבנה מהספרייה בלי לחכות ליצירה.</p>
+      <ul>
+        {#each view.due as d (d.templateId + d.skillKey)}
+          {@const st = d.item ? STATUS[d.item.status] : null}
+          <li>
+            <div class="skill">
+              <span class="title">{d.skillTitle}</span>
+              <span class="chip {st?.cls ?? 'none'}">{st?.label ?? 'טרם הוכן'}</span>
+            </div>
+            <p class="who">{d.students.join(', ')} · {d.track}</p>
+            {#if d.item?.problem}<p class="problem">{d.item.problem}</p>{/if}
+            <div class="actions">
+              {#if d.item?.status === 'ready' && d.item.slug}
+                <a href="/lessons/{d.item.slug}" target="_blank" rel="noopener">צפייה</a>
+                <a href="/app/lessons/{d.item.slug}/edit">עריכה</a>
+              {:else if !d.item || !['queued', 'preparing'].includes(d.item.status)}
+                <button class="btn" disabled={busy[dueKey(d)]} onclick={() => prepare(d.templateId, { skill: d.skillKey }, dueKey(d))}>
+                  {busy[dueKey(d)] ? 'מתחילים…' : d.item ? 'הכנה מחדש' : 'הכנה'}
+                </button>
+              {/if}
+            </div>
+          </li>
+        {/each}
+      </ul>
+    {/if}
+  </section>
+
   <nav class="templates" aria-label="תכנית">
     {#each view.templates as t (t.id)}
       <a href="/app/library?template={t.id}" class:active={t.id === view.template.id} data-sveltekit-reload>{t.track}</a>
@@ -87,7 +125,7 @@
         <button
           class="btn"
           disabled={busy[topic.key] || readyCount(topic) === topic.skills.length}
-          onclick={() => prepare({ topic: topic.key }, topic.key)}
+          onclick={() => prepare(view.template.id, { topic: topic.key }, topic.key)}
         >{busy[topic.key] ? 'מתחילים…' : 'הכנת הנושא'}</button>
       </header>
       <ul>
@@ -105,7 +143,7 @@
                 <a href="/app/lessons/{s.item.slug}/edit">עריכה</a>
               {/if}
               {#if s.item && !['queued', 'preparing'].includes(s.item.status)}
-                <button class="link" disabled={busy[s.key]} onclick={() => prepare({ skill: s.key }, s.key)}>הכנה מחדש</button>
+                <button class="link" disabled={busy[s.key]} onclick={() => prepare(view.template.id, { skill: s.key }, s.key)}>הכנה מחדש</button>
               {/if}
             </div>
           </li>
@@ -126,6 +164,10 @@
     color: var(--text-primary); text-decoration: none; font-weight: 700; font-size: .9rem;
   }
   .templates a.active { background: var(--accent); border-color: var(--accent); color: #fff; }
+  .due { background: var(--bg-card); border: 2px solid var(--accent); border-radius: 16px; padding: 14px 16px; margin-bottom: 18px; }
+  .due h2 { font-size: 1.1rem; font-weight: 800; margin: 0; }
+  .note { color: var(--text-muted); font-size: .9rem; line-height: 1.6; margin: 6px 0 0; }
+  .who { color: var(--text-muted); font-size: .85rem; margin: 4px 0 0; }
   .topic { background: var(--bg-card); border: 1px solid var(--border); border-radius: 16px; padding: 14px 16px; margin-bottom: 14px; }
   .topic header { display: flex; align-items: center; gap: 10px; flex-wrap: wrap; }
   .topic h2 { font-size: 1.1rem; font-weight: 800; margin: 0; flex: 1; }
