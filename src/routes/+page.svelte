@@ -27,24 +27,26 @@
     .reduce((acc, part, i, all) =>
       i === 0 ? part : i === all.length - 1 ? `${acc} ו${part}` : `${acc}, ${part}`, '');
 
+  /* Each picture shows what its card says, drawn at 4:3 for the box it is
+     shown in (static/images/features/, Todoist 6hfrX4QGqF76c6pH). */
   const heroFeatures = [
     {
       kind: 'slides',
-      image: '/images/slides/slide-01.svg',
+      image: '/images/features/personal-learning.svg',
       eyebrow: 'למידה אישית',
       title: 'לומדים בדיוק את מה שצריך עכשיו',
       copy: 'תוכן ברור שנבנה סביב הרמה, הקצב והמטרות של כל תלמיד.'
     },
     {
       kind: 'games',
-      image: '/images/games/g-errorhunt.svg',
+      image: '/images/features/practice-game.svg',
       eyebrow: 'תרגול שמרגיש כמו משחק',
       title: 'מתרגלים, מקבלים משוב ומתקדמים',
       copy: 'משחקים קצרים שעוזרים להפוך הבנה לתרגול אמיתי.'
     },
     {
       kind: 'progress',
-      image: '/images/slides/slide-04.svg',
+      image: '/images/features/parent-progress.svg',
       eyebrow: 'תמונה ברורה להורים',
       title: 'רואים התקדמות ויודעים מה הצעד הבא',
       copy: 'כל שיעור מתחבר לתכנית הלמידה ולמטרה הבאה של התלמיד.'
@@ -265,11 +267,8 @@
         <AutoCarousel axis="x" speed={22} gap="16px" padding="8px 42px" label="איך נראית הלמידה במאה בקליק">
           {#each heroFeatures as feature (feature.kind)}
             <article class="hero-feature-card">
-              <div class="hero-feature-art" class:progress-art={feature.kind === 'progress'}>
+              <div class="hero-feature-art">
                 <img src={feature.image} alt="" aria-hidden="true">
-                {#if feature.kind === 'progress'}
-                  <div class="hero-feature-progress"><span style="width: 72%"></span></div>
-                {/if}
               </div>
               <div class="hero-feature-copy">
                 <span class="hero-feature-eyebrow">{feature.eyebrow}</span>
@@ -1965,8 +1964,10 @@ h1, h2, h3, h4 {
   font-size: 0.76rem;
   font-weight: 600;
 }
+/* Height follows the tallest card: a fixed height cut the text of any
+   card that needed one more line. */
 .hero-feature-carousel :global(.ac) {
-  height: 224px;
+  height: auto;
   direction: ltr;
 }
 .hero-feature-carousel :global(.ac-viewport) {
@@ -1989,32 +1990,17 @@ h1, h2, h3, h4 {
   box-shadow: 0 7px 24px rgba(15, 23, 42, 0.08);
 }
 .hero-feature-art {
-  position: relative;
-  min-height: 206px;
-  overflow: hidden;
-  background: #DBEAFE;
+  display: flex;
+  align-items: center;
+  justify-content: center;
+  min-height: 190px;
+  padding: 10px;
+  /* The pictures' own background, so the space `contain` leaves around
+     one is the picture's, not a band of another colour. */
+  background: #EFF6FF;
 }
-.hero-feature-art::after {
-  content: '';
-  position: absolute;
-  inset: 0;
-  background: linear-gradient(145deg, rgba(30, 58, 138, 0.08), transparent 60%);
-  pointer-events: none;
-}
-.hero-feature-art img { width: 100%; height: 100%; object-fit: cover; display: block; }
-.hero-feature-art.progress-art { background: #CCFBF1; }
-.hero-feature-progress {
-  position: absolute;
-  right: 14%;
-  left: 14%;
-  bottom: 18%;
-  height: 9px;
-  overflow: hidden;
-  border-radius: 99px;
-  background: rgba(255,255,255,0.72);
-  box-shadow: 0 2px 8px rgba(15, 23, 42, 0.12);
-}
-.hero-feature-progress span { display: block; height: 100%; border-radius: inherit; background: #0F766E; }
+/* Whole, never cropped: `cover` showed a third of each picture on a phone. */
+.hero-feature-art img { width: 100%; height: 100%; max-height: 230px; object-fit: contain; display: block; }
 .hero-feature-copy {
   display: flex;
   flex-direction: column;
@@ -2030,9 +2016,10 @@ h1, h2, h3, h4 {
   .hero-feature-carousel { grid-column: 1 / 4; grid-row: 3; width: 100%; }
   .hero-feature-heading { margin-top: 1rem; font-size: 0.9rem; }
   .hero-feature-count { font-size: 0.68rem; }
-  .hero-feature-carousel :global(.ac) { height: 194px; }
-  .hero-feature-card { flex-basis: 88%; grid-template-columns: 38% 1fr; }
-  .hero-feature-art { min-height: 176px; }
+  /* Picture above the text, at full width: a side column left it a third
+     of a narrow, tall box. */
+  .hero-feature-card { flex-basis: 84%; grid-template-columns: 1fr; }
+  .hero-feature-art { min-height: 0; aspect-ratio: 16 / 9; padding: 8px 8px 0; }
   .hero-feature-copy { padding: 1rem; }
   .hero-feature-copy h3 { font-size: 1.05rem; }
   .hero-feature-copy p { font-size: 0.82rem; line-height: 1.5; }
