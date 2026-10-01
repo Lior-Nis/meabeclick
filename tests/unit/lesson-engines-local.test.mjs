@@ -117,3 +117,25 @@ test('a local engine gets a longer budget than the server\'s Codex, and it can b
   await withEnv({ LESSON_ENGINE: 'opencode', LESSON_TIMEOUT_MINUTES: '30' }, () => assert.equal(lessonTimeoutMs(), 30 * 60_000));
   await withEnv({ LESSON_TIMEOUT_MINUTES: 'soon' }, () => assert.equal(lessonTimeoutMs(), 5 * 60_000, 'nonsense is ignored'));
 });
+
+/* Found on 2026-10-01: the local batch's first lesson imported, and then
+   Claude Code ran out of credits. Its message was not a known quota
+   phrase, so each of the next 62 lessons was tried and failed as a
+   generic engine failure. */
+test("Claude Code's out-of-credits message is a quota failure", async () => {
+  const { classifyOutput } = await import('../../src/lib/server/lesson/engine.ts');
+  assert.equal(classifyOutput("stdout: You're out of usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage?from=cc_cli_limit_message, to continue."), 'engine-quota');
+});
+
+test('the local batch stops at the first engine that is out of usage, instead of trying every lesson', async () => {
+  const { execFile } = await import('node:child_process');
+  const s = await stub(`echo x >> "${'$'}{0%/*}/calls.txt"; printf "You're out of usage credits. Switch to another model, to continue."; exit 1`);
+  const out = await new Promise((resolve) => execFile('node', ['--no-warnings', 'scripts/library-local.mjs',
+    '--template', 'math-4u', '--skill', 'func.basics.linquad', '--skill', 'func.basics.graph', '--dry-run', '--out', s.dir],
+    { env: { ...process.env, CLAUDE_BIN: s.script } }, (err, stdout, stderr) => resolve({ code: err?.code ?? 0, text: stdout + stderr })));
+  const calls = (await readFile(join(s.dir, 'calls.txt'), 'utf8')).trim().split('\n').length;
+  assert.equal(calls, 1, 'one attempt, then stop');
+  assert.match(out.text, /out of usage/i);
+  assert.match(out.text, /func\.basics\.graph/, 'it says which lessons it did not try');
+  assert.notEqual(out.code, 0);
+});
