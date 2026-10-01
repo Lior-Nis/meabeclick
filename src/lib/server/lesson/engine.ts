@@ -66,6 +66,19 @@ export type LessonFailureKind =
   /** Something came back, in the wrong shape. */
   | 'bad-output';
 
+/**
+ * What the tutor reads when the engine itself is unavailable — not this
+ * lesson's fault, every generation fails the same way until it is back.
+ * Here, not in queue.ts with the other messages, so engine-health.ts can
+ * find the lessons they failed without importing the queue (which imports
+ * the spawn that reports to it).
+ */
+export const ENGINE_DOWN_MESSAGES = {
+  'engine-missing': 'מנוע יצירת השיעורים אינו מותקן על השרת — יש לבדוק את ההתקנה',
+  'engine-auth':    'פג תוקף החיבור למנוע יצירת השיעורים — יש לחדש את ההרשאה בשרת',
+  'engine-quota':   'נגמרה המכסה ליצירת שיעורים אוטומטית — השיעור לא נוצר. אפשר לנסות שוב מאוחר יותר',
+} as const;
+
 export class LessonGenerationError extends Error {
   readonly kind: LessonFailureKind;
   /**

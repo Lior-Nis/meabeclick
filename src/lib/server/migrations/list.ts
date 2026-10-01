@@ -23,6 +23,7 @@ import { sql as sql022 } from './022_homework_answer.ts';
 import { sql as sql023 } from './023_library_items.ts';
 import { sql as sql024 } from './024_library_uses.ts';
 import { sql as sql025 } from './025_lesson_engines.ts';
+import { sql as sql026 } from './026_engine_status.ts';
 
 export interface Migration {
   version: number;
@@ -61,4 +62,5 @@ export const MIGRATIONS: Migration[] = [
   { version: 23, name: '023_library_items', sql: sql023 },
   { version: 24, name: '024_library_uses', sql: sql024 },
   { version: 25, name: '025_lesson_engines', sql: sql025 },
+  { version: 26, name: '026_engine_status', sql: sql026 },
 ];

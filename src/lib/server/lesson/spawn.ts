@@ -33,6 +33,7 @@
  */
 import { spawn } from 'node:child_process';
 import { LessonGenerationError, classifyOutput } from './engine.ts';
+import { noteEngineFailure, noteEngineSuccess } from './engine-health.ts';
 
 /** How much of each stream is kept. The TAIL, not the head: a CLI's fatal
  *  message is its last word, and Codex's stdout is a whole transcript whose
@@ -91,6 +92,7 @@ export function spawnAgent(
       // runtime image" mistake the Dockerfile warns about, so it gets its own
       // kind rather than hiding inside a generic failure.
       const kind = (spawnErr as NodeJS.ErrnoException).code === 'ENOENT' ? 'engine-missing' : 'engine-failed';
+      noteEngineFailure(label, kind, '');
       reject(new LessonGenerationError(kind, `failed to start ${label}: ${spawnErr.message}`, `${bin} ${args.join(' ')}`));
     });
 
@@ -100,9 +102,12 @@ export function spawnAgent(
         reject(new LessonGenerationError('engine-timeout', `${label} timed out after ${timeoutMs / 1000}s`, tail(out, err)));
         return;
       }
-      if (code === 0) { resolve(answer); return; }
+      /* Every run says whether the engine is there (engine-health.ts): the
+         dashboard tells the tutor it is down, and until when. */
+      if (code === 0) { noteEngineSuccess(label); resolve(answer); return; }
       const detail = tail(out, err);
       const kind = classifyOutput(detail) ?? 'engine-failed';
+      noteEngineFailure(label, kind, detail);
       reject(new LessonGenerationError(kind, `${label} exited ${code}`, detail));
     });
 
