@@ -90,7 +90,7 @@ const IMPORT = `set -a; . /home/meabeclick/mea-beclick/.cron-key.env; set +a; `
 
 const items = dryRun ? {} : await productionItems();
 let sent = 0;
-for (const skill of keys) {
+for (const [i, skill] of keys.entries()) {
   const status = items[skill];
   if (status === 'ready' && !force) { console.log(`${skill}: already ready in production, skipped`); continue; }
   if (status === 'queued' || status === 'preparing') { console.log(`${skill}: being prepared in production, skipped`); continue; }
@@ -101,6 +101,14 @@ for (const skill of keys) {
     plan = await generateLesson(libraryRequest(template, skill));
   } catch (err) {
     console.log(`${skill}: ${engine} failed (${err.kind ?? 'error'}): ${err.message}`);
+    /* Out of usage, or signed out: every lesson after this one would fail
+       the same way. Stop, and say what was not tried. */
+    if (err.kind === 'engine-quota' || err.kind === 'engine-auth') {
+      const what = err.kind === 'engine-quota' ? 'is out of usage' : 'is not signed in';
+      console.log(`stopped: ${engine} ${what}. Not tried: ${keys.slice(i + 1).join(', ') || '(none)'}`);
+      console.log(`done: ${sent} imported. Plans kept in ${out}`);
+      process.exit(1);
+    }
     continue;
   }
   const file = join(out, `${template}--${skill}.json`);

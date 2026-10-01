@@ -177,6 +177,7 @@ const QUOTA_PHRASES = [
   "you've hit your usage limit",   // Codex, verbatim
   'usage limit',
   'out of credits',
+  'out of usage credits',          // Claude Code, verbatim (2026-10-01)
   'purchase more credits',
   'rate limit',
   'too many requests',
