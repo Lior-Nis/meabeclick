@@ -33,7 +33,7 @@ import { autopilotCovers } from '../../subjects.ts';
 import { libraryPlanFor, recordUse } from '../library/use.ts';
 import { transliterate } from '../enroll.ts';
 import {
-  LessonGenerationError, engineHasCredentials, type LessonFailureKind,
+  LessonGenerationError, engineHasCredentials, ENGINE_DOWN_MESSAGES, type LessonFailureKind,
 } from './engine.ts';
 
 const MAX_PER_DAY = 20;          // a runaway form must not run up an API bill
@@ -192,9 +192,7 @@ export function triggerForBooking(booking: Booking, opts: TriggerOpts = {}): Tri
  * looking at, or that the answer was "renew a subscription".
  */
 const FAILURE_MESSAGES: Record<LessonFailureKind, string> = {
-  'engine-missing': 'מנוע יצירת השיעורים אינו מותקן על השרת — יש לבדוק את ההתקנה',
-  'engine-auth':    'פג תוקף החיבור למנוע יצירת השיעורים — יש לחדש את ההרשאה בשרת',
-  'engine-quota':   'נגמרה המכסה ליצירת שיעורים אוטומטית — השיעור לא נוצר. אפשר לנסות שוב מאוחר יותר',
+  ...ENGINE_DOWN_MESSAGES,
   'engine-timeout': 'יצירת השיעור ארכה זמן רב מדי ונעצרה — אפשר לנסות שוב',
   'engine-failed':  'מנוע יצירת השיעורים נכשל — יש לבדוק את יומן השרת',
   'no-output':      'מנוע יצירת השיעורים לא החזיר שיעור — יש לבדוק את יומן השרת',

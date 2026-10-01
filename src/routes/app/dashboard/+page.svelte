@@ -3,6 +3,7 @@
   import FormulaText from '$lib/components/FormulaText.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
   import ReportQueue from '$lib/components/ReportQueue.svelte';
+  import EngineNotice from '$lib/components/EngineNotice.svelte';
   import LearningPlanTree from '$lib/components/LearningPlanTree.svelte';
   import { tutorNames } from '$lib/tutors.ts';
   import type { TutorHomework } from '$lib/tutor-homework.ts';
@@ -837,6 +838,7 @@
 
 <div class="page">
   <ReportQueue lessons={pageData.pendingReports} />
+  <EngineNotice alert={pageData.engineAlert} />
 
   {#if calendarFailures.length}
     <div class="cf-banner">

@@ -17,6 +17,7 @@ import { lessonsAwaitingReport } from '$server/reports/store.ts';
 import { planForEnrollment, planData, lastLessonAt } from '$server/plans/store.ts';
 import { buildTree } from '$server/plans/view.ts';
 import type { PageServerLoad } from './$types';
+import { engineAlert } from '$server/lesson/engine-health.ts';
 
 export const load: PageServerLoad = async (event) => {
   requireAuth(event);
@@ -45,5 +46,9 @@ export const load: PageServerLoad = async (event) => {
     const { nodes, prereqs, events } = planData(plan.id);
     return [student.code, { planId: plan.id, topics: buildTree(nodes, prereqs, events, lastLessonAt(student.id)) }];
   }));
-  return { roster: rows, learningPlans, pendingReports: lessonsAwaitingReport(since, now.toISOString()) };
+  return {
+    roster: rows, learningPlans, pendingReports: lessonsAwaitingReport(since, now.toISOString()),
+    /* Null while the engine is up; see engine-health.ts. */
+    engineAlert: engineAlert(now),
+  };
 };
