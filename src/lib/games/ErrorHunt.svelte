@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/error-hunt.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
@@ -65,7 +66,7 @@
   </div>
   <div class="progress-outer"><div class="progress-inner" style="width: {((idx + 1) / rounds.length) * 100}%"></div></div>
 
-  <div class="prompt">{rounds[idx].problem}</div>
+  <div class="prompt"><FormulaText text={rounds[idx].problem} /></div>
   <div class="hint">איפה נפלה הטעות? לחצו על השורה השגויה 🔍</div>
   <div>
     {#each steps as s, i (i)}
@@ -77,14 +78,14 @@
         onclick={() => choose(i)}
       >
         <span class="step-num">{i + 1}</span>
-        <span class="step-txt">{s.text}{#if s.state === 'found'}<span class="mark">✓</span>{:else if s.state === 'missed'}<span class="mark">✗</span>{/if}</span>
+        <span class="step-txt"><FormulaText text={s.text} />{#if s.state === 'found'}<span class="mark">✓</span>{:else if s.state === 'missed'}<span class="mark">✗</span>{/if}</span>
       </button>
     {/each}
   </div>
   {#key idx}
     <RoundHint hint={rounds[idx]?.hint} locked={answered} onuse={() => hintsUsed++} />
   {/key}
-  {#if whyText}<div class="why"><strong>שורה {rounds[idx].badStep + 1}:</strong> {whyText}</div>{/if}
+  {#if whyText}<div class="why"><strong>שורה {rounds[idx].badStep + 1}:</strong> <FormulaText text={whyText} /></div>{/if}
   {#if answered}
     <div style="text-align:center">
       <button class="btn" onclick={next}>{idx + 1 < rounds.length ? 'הבא ←' : 'סיום 🏁'}</button>

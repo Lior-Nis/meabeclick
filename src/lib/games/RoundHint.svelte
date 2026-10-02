@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * One round's hint, on demand — shared by the round-based templates.
    *
@@ -25,7 +26,7 @@
 {#if hint}
   <div class="help-row">
     <button class="help-btn" onclick={reveal} disabled={!hint || locked || !!shown}>💡 רמז</button>
-    {#if shown}<span class="help-text">{shown}</span>{/if}
+    {#if shown}<span class="help-text"><FormulaText text={shown} /></span>{/if}
   </div>
 {/if}
 

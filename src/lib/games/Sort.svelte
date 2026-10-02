@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/sort.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
@@ -73,7 +74,7 @@
 
   <div class="prompt">לאיזו קבוצה זה שייך? 🗂️</div>
   <div class="hint">קראו את הפריט ובחרו את הקבוצה המתאימה</div>
-  <div class="item-card">{items[idx].text}</div>
+  <div class="item-card"><FormulaText text={items[idx].text} /></div>
   <div class="cats">
     {#each catBtns as b (b.name)}
       <button
@@ -82,7 +83,7 @@
         class:wrong={b.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(b)}
-      >{b.name}{#if b.state === 'right'}<span class="mark">✓</span>{:else if b.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
+      ><FormulaText text={b.name} />{#if b.state === 'right'}<span class="mark">✓</span>{:else if b.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#if whyHtml}<div class="why">{@html whyHtml}</div>{/if}

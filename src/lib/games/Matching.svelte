@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/matching.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
@@ -129,7 +130,7 @@
     <button class="help-btn" onclick={revealHint} disabled={!hintAvailable}>
       💡 רמז
     </button>
-    {#if shownHint}<span class="help-text">{shownHint}</span>{/if}
+    {#if shownHint}<span class="help-text"><FormulaText text={shownHint} /></span>{/if}
   </div>
   <div class="cols">
     <div>
@@ -142,7 +143,7 @@
           class:miss={c.state === 'miss'}
           disabled={c.state === 'done'}
           onclick={() => pick(c)}
-        >{c.text}{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
+        ><FormulaText text={c.text} />{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
       {/each}
     </div>
     <div>
@@ -155,11 +156,11 @@
           class:miss={c.state === 'miss'}
           disabled={c.state === 'done'}
           onclick={() => pick(c)}
-        >{c.text}{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
+        ><FormulaText text={c.text} />{#if c.state === 'done'}<span class="mark">✓</span>{:else if c.state === 'miss'}<span class="mark">✗</span>{/if}</button>
       {/each}
     </div>
   </div>
-  {#if whyText}<div class="why">{whyText}</div>{/if}
+  {#if whyText}<div class="why"><FormulaText text={whyText} /></div>{/if}
 {/if}
 
 <style>

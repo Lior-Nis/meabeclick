@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/speed-drill.html. This is where tracked bug
    * 6hJh337GrfGQj5Hq is actually fixed: the old localStorage read/write
@@ -100,7 +101,7 @@
   </div>
   <div class="progress-outer"><div class="progress-inner" style="width: {((seconds - left) / seconds) * 100}%"></div></div>
 
-  <div class="q">{cur.q}</div>
+  <div class="q"><FormulaText text={cur.q} /></div>
   <div class="grid">
     {#each opts as o (o.text)}
       <button
@@ -109,7 +110,7 @@
         class:wrong={o.state === 'wrong'}
         disabled={answering}
         onclick={() => answer(o)}
-      >{o.text}{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
+      ><FormulaText text={o.text} />{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
 {/if}

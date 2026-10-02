@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/number-line.html — touch behaviour is load-bearing here
    * (played on phones), so `touch-action: none`, the `pointerdown`/
@@ -197,7 +198,7 @@
   {#key idx}
     <RoundHint hint={rounds[idx]?.hint} locked={answered} onuse={() => hintsUsed++} />
   {/key}
-  {#if whyText}<div class="why">{whyText}</div>{/if}
+  {#if whyText}<div class="why"><FormulaText text={whyText} /></div>{/if}
 {/if}
 
 <style>

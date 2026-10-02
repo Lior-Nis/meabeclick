@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/sequence.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, verdict, type GameEngineContext, type GameData } from './engine.ts';
@@ -73,7 +74,7 @@
     {#each ordered as s (s.origIdx)}
       <div class="step placed">
         <span class="num">{(s.placedOrder ?? 0) + 1}</span>
-        <span>{s.text}</span>
+        <span><FormulaText text={s.text} /></span>
       </div>
     {/each}
   </div>
@@ -83,7 +84,7 @@
     {#each unplaced as s (s.origIdx)}
       <button class="step" class:miss={s.state === 'miss'} onclick={() => choose(s)}>
         <span class="num">{s.state === 'miss' ? '✗' : '?'}</span>
-        <span>{s.text}</span>
+        <span><FormulaText text={s.text} /></span>
       </button>
     {/each}
   </div>

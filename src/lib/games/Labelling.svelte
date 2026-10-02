@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/labelling.html. `data.svg` is tutor-authored inline SVG
    * markup, inserted with `{@html}` — same trust level games/game.js
@@ -139,7 +140,7 @@
   <div class="diagram" bind:this={diagramEl}>{@html svgMarkup}</div>
   <div class="labels">
     {#each labelBtns as b (b.id + b.label)}
-      <button class="label" class:used={b.used} class:flash={b.flash} onclick={() => selectLabel(b)}>{b.label}</button>
+      <button class="label" class:used={b.used} class:flash={b.flash} onclick={() => selectLabel(b)}><FormulaText text={b.label} /></button>
     {/each}
   </div>
 {/if}
