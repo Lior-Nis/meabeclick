@@ -143,3 +143,47 @@ test('a replace never deletes homework the family can already see', () => {
   assert.equal(L.replaceHeld(bookingId, student.id, [{ task: 'late', nodeId: skills[0].id }], after), false);
   assert.deepEqual(L.homeworkForStudent(student.id, { now: after }).map(h => h.task), ['planned']);
 });
+
+/* While the engine is down (production's Codex, 30.9–12.10), every report's
+   generation fails. A covered skill with a ready library lesson already has
+   homework written for exactly that skill, with its answer key — so the
+   child gets that, not the homework planned before the lesson. */
+function master(skillKey, homework) {
+  const now = new Date().toISOString();
+  const slug = `lib-demo-${skillKey.replace(/\./g, '-')}-${seq}`;
+  handle().prepare(`INSERT OR REPLACE INTO library_items (template_id, skill_key, slug, status, updated_at) VALUES ('demo', ?, ?, 'ready', ?)`).run(skillKey, slug, now);
+  handle().prepare(`INSERT INTO lesson_materials (lesson_slug, kind, version, content, origin, published_at, created_at) VALUES (?, 'plan', 1, ?, 'generated', ?, ?)`)
+    .run(slug, JSON.stringify({ title: 't', gradeContext: 'c', slides: [], examples: [], homework, games: {} }), now, now);
+}
+
+test('when generation fails, a covered skill\'s library lesson supplies the homework, with its answer key', async () => {
+  const { student, bookingId, skills } = lesson();
+  master('t.b.b', [{ task: 'מנה מהספרייה 1', why: 'w', answer: 'ק1' }, { task: 'מנה מהספרייה 2', why: 'w', answer: 'ק2' }]);
+  const told = [];
+  const outcome = await afterReport(
+    { bookingId, note: null, nodeIds: [skills[1].id] },
+    { generate: async () => { throw new Error('engine down'); }, notify: (t) => { told.push(t); } },
+  );
+  assert.equal(outcome, 'replaced-from-library');
+  assert.deepEqual(visible(student), ['מנה מהספרייה 1', 'מנה מהספרייה 2']);
+  const rows = L.homeworkForStudent(student.id);
+  assert.ok(rows.every(r => r.node_id === skills[1].id), 'linked to the skill it practises');
+  assert.deepEqual(handle().prepare(`SELECT answer FROM homework WHERE student_id = ? ORDER BY id`).all(student.id).map(r => r.answer), ['ק1', 'ק2']);
+  assert.equal(told.length, 1);
+  assert.match(told[0], /מהספרייה/);
+  assert.doesNotMatch(told[0], /⚠️/, 'not an alarm: the child got homework for what was taught');
+});
+
+test('from the library: at most five tasks across the covered skills, and only skills with a ready lesson', async () => {
+  const { student, bookingId, skills } = lesson();
+  master('t.b.a', [1, 2, 3, 4].map(n => ({ task: `חזקות ${n}`, why: 'w' })));
+  master('t.b.b', [1, 2, 3, 4].map(n => ({ task: `מנה ${n}`, why: 'w' })));
+  const outcome = await afterReport(
+    { bookingId, note: null, nodeIds: [skills[0].id, skills[1].id] },
+    { generate: async () => { throw new Error('engine down'); } },
+  );
+  assert.equal(outcome, 'replaced-from-library');
+  const tasks = visible(student);
+  assert.equal(tasks.length, 5);
+  assert.ok(tasks.some(t => t.startsWith('חזקות')) && tasks.some(t => t.startsWith('מנה')), 'both skills get some');
+});
