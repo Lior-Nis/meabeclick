@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/graph-match.html. `plot()` still builds a raw SVG
    * string — it's just markup (viewBox/line/polyline), no user text, so
@@ -123,7 +124,7 @@
   </div>
   <div class="progress-outer"><div class="progress-inner" style="width: {((idx + 1) / rounds.length) * 100}%"></div></div>
 
-  <div class="prompt">{rounds[idx].prompt}</div>
+  <div class="prompt"><FormulaText text={rounds[idx].prompt} /></div>
   <div class="main-graph">
     <div class="cap">{rounds[idx].mainLabel || 'f(x)'}</div>
     <!-- eslint-disable-next-line svelte/no-at-html-tags -->
@@ -138,7 +139,7 @@
         disabled={answered}
         onclick={() => choose(o)}
       >
-        <div class="lbl">{o.label}.{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</div>
+        <div class="lbl"><FormulaText text={o.label} />.{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</div>
         <!-- eslint-disable-next-line svelte/no-at-html-tags -->
         {@html o.svg}
       </button>
@@ -147,7 +148,7 @@
   {#key idx}
     <RoundHint hint={rounds[idx]?.hint} locked={answered} onuse={() => hintsUsed++} />
   {/key}
-  {#if whyText}<div class="why">{whyText}</div>{/if}
+  {#if whyText}<div class="why"><FormulaText text={whyText} /></div>{/if}
   {#if answered}
     <div style="text-align:center">
       <button class="btn" onclick={next}>{idx + 1 < rounds.length ? 'הבא ←' : 'סיום 🏁'}</button>

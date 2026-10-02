@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/two-truths.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, offersHints, verdict, type GameEngineContext, type GameData } from './engine.ts';
@@ -73,13 +74,13 @@
         class:wrong={it.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(it)}
-      >{#if it.state === 'correct'}<span class="tag lie">שקר</span>{/if}{it.text}{#if it.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
+      >{#if it.state === 'correct'}<span class="tag lie">שקר</span>{/if}<FormulaText text={it.text} />{#if it.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#key idx}
     <RoundHint hint={rounds[idx]?.hint} locked={answered} onuse={() => hintsUsed++} />
   {/key}
-  {#if whyText}<div class="why">{whyText}</div>{/if}
+  {#if whyText}<div class="why"><FormulaText text={whyText} /></div>{/if}
   {#if answered}
     <div style="text-align:center">
       <button class="btn" onclick={next}>{idx + 1 < rounds.length ? 'הבא ←' : 'סיום 🏁'}</button>

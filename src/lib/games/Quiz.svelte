@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/quiz.html. `data` is unchecked JSON off disk (same trust
    * level games/game.js always had for it) — the casts below are the one
@@ -64,7 +65,7 @@
   </div>
   <div class="progress-outer"><div class="progress-inner" style="width: {((idx + 1) / questions.length) * 100}%"></div></div>
 
-  <div class="q-text">{questions[idx].q}</div>
+  <div class="q-text"><FormulaText text={questions[idx].q} /></div>
   <div>
     {#each opts as o (o.text)}
       <button
@@ -73,13 +74,13 @@
         class:wrong={o.state === 'wrong'}
         disabled={answered}
         onclick={() => choose(o)}
-      >{o.text}{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
+      ><FormulaText text={o.text} />{#if o.state === 'correct'}<span class="mark">✓</span>{:else if o.state === 'wrong'}<span class="mark">✗</span>{/if}</button>
     {/each}
   </div>
   {#key idx}
     <RoundHint hint={questions[idx]?.hint} locked={answered} onuse={() => hintsUsed++} />
   {/key}
-  {#if whyText}<div class="why">{whyText}</div>{/if}
+  {#if whyText}<div class="why"><FormulaText text={whyText} /></div>{/if}
   {#if answered}
     <div style="text-align:center">
       <button class="btn" onclick={next}>{idx + 1 < questions.length ? 'הבא ←' : 'סיום 🏁'}</button>

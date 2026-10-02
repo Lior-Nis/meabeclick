@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /**
    * Port of games/memory.html — the one template that had forked away
    * from games/game.js entirely (its own timer, its own scoring, its own
@@ -124,7 +125,7 @@
           onclick={() => flip(c)}
         >
           <span class="face back">?</span>
-          <span class="face front">{c.text}{#if c.matched}<span class="mark">✓</span>{:else if c.wrong}<span class="mark">✗</span>{/if}</span>
+          <span class="face front"><FormulaText text={c.text} />{#if c.matched}<span class="mark">✓</span>{:else if c.wrong}<span class="mark">✗</span>{/if}</span>
         </button>
       </div>
     {/each}

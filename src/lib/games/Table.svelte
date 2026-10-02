@@ -1,4 +1,5 @@
 <script lang="ts">
+  import FormulaText from '$lib/components/FormulaText.svelte';
   /** Port of games/table.html. */
   import { getContext } from 'svelte';
   import { GAME_CONTEXT_KEY, type GameEngineContext, type GameData } from './engine.ts';
@@ -96,13 +97,13 @@
       <thead>
         <tr>
           <th></th>
-          {#each cols as c}<th>{c}</th>{/each}
+          {#each cols as c}<th><FormulaText text={c} /></th>{/each}
         </tr>
       </thead>
       <tbody>
         {#each rows as r, ri (ri)}
           <tr>
-            <td class="rowlabel">{r.label}</td>
+            <td class="rowlabel"><FormulaText text={r.label} /></td>
             {#each r.cells as cell, ci (ci)}
               {@const b = cellBlank(ri, ci)}
               <td>
