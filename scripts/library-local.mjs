@@ -88,6 +88,9 @@ const IMPORT = `set -a; . /home/meabeclick/mea-beclick/.cron-key.env; set +a; `
   + `curl -sS -X POST -H "X-Cron-Key: $CRON_KEY" -H "Content-Type: application/json" --data-binary @- `
   + `-w '\\n%{http_code}' http://127.0.0.1:3000/api/library/import`;
 
+/** How long to wait before retrying a failed upload: about a deploy's restart. */
+const RETRY_MS = Number(process.env.LIBRARY_RETRY_MS) || 30_000;
+
 const items = dryRun ? {} : await productionItems();
 let sent = 0;
 for (const [i, skill] of keys.entries()) {
@@ -118,7 +121,21 @@ for (const [i, skill] of keys.entries()) {
   if (problems.length) { console.log(`${skill}: held here, not sent (${secs}s): ${problems.join(' · ')}  [${file}]`); continue; }
   if (dryRun) { console.log(`${skill}: passes the check (${secs}s), not sent: dry run  [${file}]`); continue; }
 
-  const reply = await onBox(IMPORT, JSON.stringify({ template, skill, plan, engine }));
+  /* Retried once: a deploy restarting production mid-batch made curl fail
+     to connect, and the unhandled rejection ended the whole batch. A plan
+     that still cannot be sent is kept in --out and reported, and the
+     batch goes on. */
+  const body = JSON.stringify({ template, skill, plan, engine });
+  let reply = null;
+  for (let attempt = 1; attempt <= 2 && reply === null; attempt++) {
+    try {
+      reply = await onBox(IMPORT, body);
+    } catch (err) {
+      if (attempt === 1) await new Promise(r => setTimeout(r, RETRY_MS));
+      else console.log(`${skill}: upload failed (${err.message}); the plan is kept in ${file}`);
+    }
+  }
+  if (reply === null) continue;
   const lines = reply.trim().split('\n');
   const code = lines.pop();
   console.log(`${skill}: ${code === '200' ? 'imported, ready' : `refused ${code}`} (${secs}s) ${code === '200' ? '' : lines.join(' ')}`);
