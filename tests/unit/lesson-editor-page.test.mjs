@@ -88,3 +88,38 @@ test('the answer key is marked as hers, and publishing a master says where it go
 test("a master's live version is the one the library copies, not one a student sees", () => {
   assert.match(page, /data\.isMaster \? '· בשימוש בספרייה עכשיו' : '· מוצגת לתלמיד\/ה עכשיו'/);
 });
+
+/* A master's other games (tests/unit/library-editing-games.test.mjs). */
+
+test("a master's two truths, error hunt, sequence and matching each get a section", () => {
+  for (const h of ['<h2>שתי אמיתות ושקר</h2>', '<h2>ציד טעויות</h2>', '<h2>סידור רצף</h2>', '<h2>משחק התאמה</h2>']) {
+    assert.ok(page.includes(h), h);
+  }
+  for (const k of ['twoTruths', 'errorHunt', 'sequence', 'matching']) {
+    assert.match(page, new RegExp(`${k} !== null \\? \\{ ${k}:`), `${k} is sent only when the plan has it`);
+  }
+});
+
+test('the lie and the wrong step are picked, not typed', () => {
+  assert.match(page, /name="lie-\{i\}"/);
+  assert.match(page, /aria-label="המשפט השקרי: משפט \{k \+ 1\}"/);
+  assert.match(page, /name="bad-\{i\}"/);
+  assert.match(page, /aria-label="השלב השגוי: שלב \{k \+ 1\}"/);
+});
+
+test('games the editor does not cover are named, not hidden', () => {
+  assert.match(server, /otherGames:/);
+  assert.match(page, /\{#if data\.otherGames\.length\}/);
+  assert.match(page, /נשארים כפי שנוצרו/);
+});
+
+test('an uncovered game is named by its Hebrew title from the registry', () => {
+  assert.match(server, /getRegistry\(\)\.templates\[TEMPLATE_FILES\[k\] \?\? k\]\?\.title/);
+});
+
+test('every text field lays itself out by its own first letter, so a formula reads left to right', () => {
+  // «2:3 = x:9» in a right-to-left input displayed as «x:9 = 2:3».
+  const fields = [...page.matchAll(/<(input|textarea)\b[^>]*>/g)].map(m => m[0]).filter(t => !/type="(radio|hidden)"/.test(t));
+  assert.ok(fields.length > 20);
+  for (const f of fields) assert.match(f, /dir="auto"/, f);
+});

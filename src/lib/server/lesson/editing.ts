@@ -14,12 +14,24 @@
  */
 import {
   renderSlides, validateLesson, type HomeworkItem, type LessonPlan, type QuizGame, type Slide, type WorkedExample,
+  type TwoTruthsGame, type ErrorHuntGame, type MatchingGame,
 } from './prep.ts';
 import { readLessons, inTransaction } from '../db.ts';
 import { addMaterial, history, type MaterialRow } from '../materials.ts';
 import { isLibrarySlug } from '../library/slug.ts';
 
 type QuizQuestion = QuizGame['questions'][number];
+type TwoTruthsRound = TwoTruthsGame['rounds'][number];
+type ErrorHuntRound = ErrorHuntGame['rounds'][number];
+type MatchPair = MatchingGame['pairs'][number];
+
+/** The games a master's editor offers, beyond its quiz: the four most of
+ *  the library's masters have (two truths in every one). The rest —
+ *  graphs, labelling, tables — stay as generated. */
+export const EDITABLE_GAMES = {
+  quiz: 'חידון', twoTruths: 'שתי אמיתות ושקר', errorHunt: 'ציד טעויות', sequence: 'סידור רצף', matching: 'משחק התאמה',
+} as const;
+type EditableGame = keyof typeof EDITABLE_GAMES;
 
 export interface PlanEdit {
   title: string;
@@ -32,6 +44,10 @@ export interface PlanEdit {
    *  plan's own", which is what every edit of a student's lesson (and
    *  every Drive edit) sends. */
   quiz?: QuizQuestion[];
+  twoTruths?: TwoTruthsRound[];
+  errorHunt?: ErrorHuntRound[];
+  sequence?: string[];
+  matching?: MatchPair[];
   homework?: HomeworkItem[];
 }
 
@@ -122,6 +138,66 @@ function check(input: unknown): Result {
     }
   }
 
+  /* The other games. As with the quiz, a field left empty is refused,
+     never dropped: dropping a statement or a step would move the marked
+     lie or wrong step onto a different one. */
+  const rows = (v: unknown, name: string, min: number): Record<string, unknown>[] | string => {
+    if (!Array.isArray(v) || v.length < min) return `ב${name} צריך לפחות ${min}`;
+    if (v.length > MAX_ITEMS) return `יותר מדי ב${name} — עד ${MAX_ITEMS}`;
+    return v.map(x => (x && typeof x === 'object' ? x as Record<string, unknown> : {}));
+  };
+  const markedIn = (n: unknown, count: number) => Number.isInteger(n) && (n as number) >= 0 && (n as number) < count;
+
+  if (raw.twoTruths !== undefined) {
+    const rs = rows(raw.twoTruths, 'שתי אמיתות ושקר', 1);
+    if (typeof rs === 'string') return { ok: false, error: rs };
+    edit.twoTruths = [];
+    for (const [i, r] of rs.entries()) {
+      const statements = Array.isArray(r.statements) ? r.statements.map(text) : [];
+      if (statements.length !== 3) return { ok: false, error: `בסבב ${i + 1} של שתי אמיתות ושקר צריך בדיוק שלושה משפטים` };
+      const blank = statements.findIndex(s => !s);
+      if (blank >= 0) return { ok: false, error: `במשפט ${blank + 1} של סבב ${i + 1} אין טקסט` };
+      if (!markedIn(r.lieIndex, 3)) return { ok: false, error: `בסבב ${i + 1} לא סומן המשפט השקרי` };
+      edit.twoTruths.push({ statements, lieIndex: r.lieIndex as number, why: text(r.why), hint: text(r.hint) });
+    }
+  }
+
+  if (raw.errorHunt !== undefined) {
+    const rs = rows(raw.errorHunt, 'ציד טעויות', 1);
+    if (typeof rs === 'string') return { ok: false, error: rs };
+    edit.errorHunt = [];
+    for (const [i, r] of rs.entries()) {
+      const problem = text(r.problem);
+      if (!problem) return { ok: false, error: `לסבב ${i + 1} של ציד טעויות אין תרגיל` };
+      const steps = Array.isArray(r.steps) ? r.steps.map(text) : [];
+      if (steps.length < 2) return { ok: false, error: `בסבב ${i + 1} של ציד טעויות צריך לפחות שני שלבים` };
+      if (steps.length > MAX_ITEMS) return { ok: false, error: `יותר מדי שלבים בסבב ${i + 1}` };
+      const blank = steps.findIndex(s => !s);
+      if (blank >= 0) return { ok: false, error: `בשלב ${blank + 1} של סבב ${i + 1} אין טקסט` };
+      if (!markedIn(r.badStep, steps.length)) return { ok: false, error: `בסבב ${i + 1} לא סומן השלב השגוי` };
+      edit.errorHunt.push({ problem, steps, badStep: r.badStep as number, why: text(r.why), hint: text(r.hint) });
+    }
+  }
+
+  if (raw.sequence !== undefined) {
+    if (!Array.isArray(raw.sequence) || raw.sequence.length < 3) return { ok: false, error: 'בסידור רצף צריך לפחות שלושה שלבים' };
+    if (raw.sequence.length > MAX_ITEMS) return { ok: false, error: `יותר מדי שלבים בסידור רצף — עד ${MAX_ITEMS}` };
+    const steps = raw.sequence.map(text);
+    if (steps.some(s => !s)) return { ok: false, error: 'בסידור רצף יש שלב בלי טקסט' };
+    edit.sequence = steps;
+  }
+
+  if (raw.matching !== undefined) {
+    const rs = rows(raw.matching, 'משחק התאמה', 3);
+    if (typeof rs === 'string') return { ok: false, error: rs };
+    edit.matching = [];
+    for (const [i, r] of rs.entries()) {
+      const left = text(r.left), right = text(r.right);
+      if (!left || !right) return { ok: false, error: `בזוג ${i + 1} של משחק ההתאמה חסר צד` };
+      edit.matching.push({ left, right, hint: text(r.hint) });
+    }
+  }
+
   if (raw.homework !== undefined) {
     if (!Array.isArray(raw.homework)) return { ok: false, error: 'שיעורי בית לא תקינים' };
     if (raw.homework.length > MAX_ITEMS) return { ok: false, error: `יותר מדי משימות — עד ${MAX_ITEMS}` };
@@ -151,6 +227,10 @@ export function formPlan(raw: unknown): {
   /** Null when the plan has no quiz: there is nothing to edit, and the
    *  editor must not offer to create one. */
   quiz: { q: string; options: string[]; answer: number; why: string; hint: string }[] | null;
+  twoTruths: { statements: string[]; lieIndex: number; why: string; hint: string }[] | null;
+  errorHunt: { problem: string; steps: string[]; badStep: number; why: string; hint: string }[] | null;
+  sequence: string[] | null;
+  matching: { left: string; right: string; hint: string }[] | null;
   homework: { task: string; why: string; answer: string }[];
 } {
   const r = (raw && typeof raw === 'object' ? raw : {}) as Record<string, unknown>;
@@ -159,6 +239,10 @@ export function formPlan(raw: unknown): {
   const obj = (v: unknown) => (v && typeof v === 'object' ? v as Record<string, unknown> : {});
   const games = obj(r.games);
   const quiz = games.quiz && typeof games.quiz === 'object' ? obj(games.quiz) : null;
+  /** A game the plan has, shaped for the form; null when it has none. */
+  const game = <T,>(key: string, shape: (g: Record<string, unknown>) => T): T | null =>
+    games[key] && typeof games[key] === 'object' ? shape(obj(games[key])) : null;
+  const index = (v: unknown) => (Number.isInteger(v) ? v as number : 0);
   return {
     title: str(r.title),
     slides: (Array.isArray(r.slides) ? r.slides : []).map(obj)
@@ -169,6 +253,16 @@ export function formPlan(raw: unknown): {
       q: str(q.q), options: list(q.options), why: str(q.why), hint: str(q.hint),
       answer: Number.isInteger(q.answer) ? q.answer as number : 0,
     })) : null,
+    twoTruths: game('twoTruths', g => (Array.isArray(g.rounds) ? g.rounds : []).map(obj).map(x => ({
+      statements: list(x.statements), lieIndex: index(x.lieIndex), why: str(x.why), hint: str(x.hint),
+    }))),
+    errorHunt: game('errorHunt', g => (Array.isArray(g.rounds) ? g.rounds : []).map(obj).map(x => ({
+      problem: str(x.problem), steps: list(x.steps), badStep: index(x.badStep), why: str(x.why), hint: str(x.hint),
+    }))),
+    sequence: game('sequence', g => list(g.steps)),
+    matching: game('matching', g => (Array.isArray(g.pairs) ? g.pairs : []).map(obj).map(x => ({
+      left: str(x.left), right: str(x.right), hint: str(x.hint),
+    }))),
     homework: (Array.isArray(r.homework) ? r.homework : []).map(obj)
       .map(h => ({ task: str(h.task), why: str(h.why), answer: str(h.answer) })),
   };
@@ -179,7 +273,17 @@ export function formPlan(raw: unknown): {
  *  edit carries them — and everything else kept as it was. */
 export function applyEdit(base: LessonPlan, edit: PlanEdit): LessonPlan {
   const plan: LessonPlan = { ...base, title: edit.title, slides: edit.slides, examples: edit.examples };
-  if (edit.quiz && base.games?.quiz) plan.games = { ...base.games, quiz: { ...base.games.quiz, questions: edit.quiz } };
+  const g = base.games;
+  if (g && (edit.quiz || edit.twoTruths || edit.errorHunt || edit.sequence || edit.matching)) {
+    plan.games = {
+      ...g,
+      ...(edit.quiz && g.quiz ? { quiz: { ...g.quiz, questions: edit.quiz } } : {}),
+      ...(edit.twoTruths && g.twoTruths ? { twoTruths: { ...g.twoTruths, rounds: edit.twoTruths } } : {}),
+      ...(edit.errorHunt && g.errorHunt ? { errorHunt: { ...g.errorHunt, rounds: edit.errorHunt } } : {}),
+      ...(edit.sequence && g.sequence ? { sequence: { ...g.sequence, steps: edit.sequence } } : {}),
+      ...(edit.matching && g.matching ? { matching: { ...g.matching, pairs: edit.matching } } : {}),
+    };
+  }
   if (edit.homework) plan.homework = edit.homework;
   return plan;
 }
@@ -225,13 +329,14 @@ export function editedPlan(slug: string, rawEdit: unknown):
   { plan: LessonPlan; teacherOnly: string | null } | { error: string; status: number } {
   const edit = normalizeEdit(rawEdit);
   if (!edit.ok) return { error: edit.error, status: 400 };
-  const { quiz, homework } = edit.edit;
-  if ((quiz || homework) && !isLibrarySlug(slug)) {
-    return { error: 'שאלות בדיקה ושיעורי בית אפשר לערוך רק בשיעור מהספרייה — בשיעור של תלמיד/ה הם כבר נשלחו', status: 400 };
+  const games = (Object.keys(EDITABLE_GAMES) as EditableGame[]).filter(k => edit.edit[k]);
+  if ((games.length || edit.edit.homework) && !isLibrarySlug(slug)) {
+    return { error: 'שאלות בדיקה, משחקים ושיעורי בית אפשר לערוך רק בשיעור מהספרייה — בשיעור של תלמיד/ה הם כבר נשלחו', status: 400 };
   }
   const base = editBase(slug);
   if (!base) return { error: 'לשיעור הזה אין גרסה שאפשר לערוך', status: 409 };
-  if (quiz && !base.plan.games?.quiz) return { error: 'בשיעור הזה אין חידון', status: 400 };
+  const missing = games.find(k => !base.plan.games?.[k]);
+  if (missing) return { error: `בשיעור הזה אין ${EDITABLE_GAMES[missing]}`, status: 400 };
   return { plan: applyEdit(base.plan, edit.edit), teacherOnly: edit.edit.teacherOnly };
 }
 
