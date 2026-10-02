@@ -20,6 +20,9 @@
   type ExampleForm = { problem: string; steps: string; answer: string };
   type QuestionForm = { q: string; options: string[]; answer: number; why: string; hint: string };
   type HomeworkForm = { task: string; why: string; answer: string };
+  type TruthsForm = { statements: string[]; lieIndex: number; why: string; hint: string };
+  type HuntForm = { problem: string; steps: string[]; badStep: number; why: string; hint: string };
+  type PairForm = { left: string; right: string; hint: string };
 
   const ORIGIN: Record<string, string> = { generated: 'נוצר', edited: 'נערך', restored: 'שוחזר' };
 
@@ -29,6 +32,11 @@
   /** Null when the plan has no quiz — there is nothing to edit then. */
   let quiz = $state<QuestionForm[] | null>(null);
   let homework = $state<HomeworkForm[]>([]);
+  /* A master's other games, each null when the plan has none. */
+  let twoTruths = $state<TruthsForm[] | null>(null);
+  let errorHunt = $state<HuntForm[] | null>(null);
+  let sequence = $state<string[] | null>(null);
+  let matching = $state<PairForm[] | null>(null);
   let teacherOnly = $state('');
   let loadedVersion = $state<number | null>(null);
 
@@ -49,6 +57,10 @@
     examples = v.plan.examples.map(e => ({ problem: e.problem, steps: e.steps.join('\n'), answer: e.answer }));
     quiz = v.plan.quiz ? v.plan.quiz.map(q => ({ ...q, options: [...q.options] })) : null;
     homework = v.plan.homework.map(h => ({ ...h }));
+    twoTruths = v.plan.twoTruths ? v.plan.twoTruths.map(r => ({ ...r, statements: [...r.statements] })) : null;
+    errorHunt = v.plan.errorHunt ? v.plan.errorHunt.map(r => ({ ...r, steps: [...r.steps] })) : null;
+    sequence = v.plan.sequence ? [...v.plan.sequence] : null;
+    matching = v.plan.matching ? v.plan.matching.map(p => ({ ...p })) : null;
     teacherOnly = v.teacherOnly ?? '';
     loadedVersion = v.version;
     previewShown = false;
@@ -90,12 +102,22 @@
       ...(data.isMaster ? {
         homework: homework.map(h => ({ ...h })),
         ...(quiz !== null ? { quiz: quiz.map(q => ({ ...q, options: [...q.options] })) } : {}),
+        ...(twoTruths !== null ? { twoTruths: twoTruths.map(r => ({ ...r, statements: [...r.statements] })) } : {}),
+        ...(errorHunt !== null ? { errorHunt: errorHunt.map(r => ({ ...r, steps: [...r.steps] })) } : {}),
+        ...(sequence !== null ? { sequence: [...sequence] } : {}),
+        ...(matching !== null ? { matching: matching.map(p => ({ ...p })) } : {}),
       } : {}),
     };
   }
 
   /** Removing the marked option leaves none marked, for her to choose
    *  again, rather than silently marking whichever slid into its place. */
+  /** Removing the marked wrong step leaves none marked, like an option. */
+  function removeStep(r: HuntForm, k: number) {
+    r.steps = r.steps.filter((_, j) => j !== k);
+    r.badStep = r.badStep === k ? -1 : r.badStep > k ? r.badStep - 1 : r.badStep;
+  }
+
   function removeOption(q: QuestionForm, k: number) {
     q.options = q.options.filter((_, j) => j !== k);
     q.answer = q.answer === k ? -1 : q.answer > k ? q.answer - 1 : q.answer;
@@ -166,15 +188,15 @@
       <p class="state">יש טיוטה שעוד לא פורסמה. התלמיד/ה רואה את הגרסה האחרונה שפורסמה.</p>
     {/if}
 
-    <label class="field">כותרת השיעור<input bind:value={title} /></label>
+    <label class="field">כותרת השיעור<input dir="auto" bind:value={title} /></label>
 
     <h2>שקפים</h2>
     {#each slides as s, i (i)}
       <fieldset class="card">
         <legend>שקף {i + 1}</legend>
-        <label class="field">כותרת<input bind:value={s.heading} /></label>
-        <label class="field">נקודות — שורה לכל נקודה<textarea rows="4" bind:value={s.bullets}></textarea></label>
-        <label class="field">הערה על השקף (מוצגת לתלמיד/ה)<input bind:value={s.note} /></label>
+        <label class="field">כותרת<input dir="auto" bind:value={s.heading} /></label>
+        <label class="field">נקודות — שורה לכל נקודה<textarea dir="auto" rows="4" bind:value={s.bullets}></textarea></label>
+        <label class="field">הערה על השקף (מוצגת לתלמיד/ה)<input dir="auto" bind:value={s.note} /></label>
         <div class="row">
           <button type="button" onclick={() => (slides = move(slides, i, -1))} disabled={i === 0} aria-label="הזזת השקף למעלה">↑</button>
           <button type="button" onclick={() => (slides = move(slides, i, 1))} disabled={i === slides.length - 1} aria-label="הזזת השקף למטה">↓</button>
@@ -188,9 +210,9 @@
     {#each examples as e, i (i)}
       <fieldset class="card">
         <legend>דוגמה {i + 1}</legend>
-        <label class="field">תרגיל<input bind:value={e.problem} /></label>
-        <label class="field">שלבים — שורה לכל שלב<textarea rows="3" bind:value={e.steps}></textarea></label>
-        <label class="field">תשובה<input bind:value={e.answer} /></label>
+        <label class="field">תרגיל<input dir="auto" bind:value={e.problem} /></label>
+        <label class="field">שלבים — שורה לכל שלב<textarea dir="auto" rows="3" bind:value={e.steps}></textarea></label>
+        <label class="field">תשובה<input dir="auto" bind:value={e.answer} /></label>
         <div class="row">
           <button type="button" onclick={() => (examples = move(examples, i, -1))} disabled={i === 0} aria-label="הזזת הדוגמה למעלה">↑</button>
           <button type="button" onclick={() => (examples = move(examples, i, 1))} disabled={i === examples.length - 1} aria-label="הזזת הדוגמה למטה">↓</button>
@@ -207,20 +229,20 @@
         {#each quiz as q, i (i)}
           <fieldset class="card">
             <legend>שאלה {i + 1}</legend>
-            <label class="field">שאלה<input bind:value={q.q} /></label>
+            <label class="field">שאלה<input dir="auto" bind:value={q.q} /></label>
             <fieldset class="options">
               <legend>אפשרויות — סמנו את הנכונה</legend>
               {#each q.options as _, k (k)}
                 <div class="option">
                   <input type="radio" name="answer-{i}" value={k} bind:group={q.answer} aria-label="התשובה הנכונה: אפשרות {k + 1}" />
-                  <input bind:value={q.options[k]} aria-label="אפשרות {k + 1}" />
+                  <input dir="auto" bind:value={q.options[k]} aria-label="אפשרות {k + 1}" />
                   <button type="button" class="danger" onclick={() => removeOption(q, k)} disabled={q.options.length <= 2} aria-label="הסרת אפשרות {k + 1}">✕</button>
                 </div>
               {/each}
               <button type="button" class="add" onclick={() => (q.options = [...q.options, ''])}>+ אפשרות</button>
             </fieldset>
-            <label class="field">הסבר — מוצג אחרי שעונים<input bind:value={q.why} /></label>
-            <label class="field">רמז — מוצג רק למי שמבקש<input bind:value={q.hint} /></label>
+            <label class="field">הסבר — מוצג אחרי שעונים<input dir="auto" bind:value={q.why} /></label>
+            <label class="field">רמז — מוצג רק למי שמבקש<input dir="auto" bind:value={q.hint} /></label>
             <div class="row">
               <button type="button" onclick={() => (quiz = move(quiz!, i, -1))} disabled={i === 0} aria-label="הזזת השאלה למעלה">↑</button>
               <button type="button" onclick={() => (quiz = move(quiz!, i, 1))} disabled={i === quiz!.length - 1} aria-label="הזזת השאלה למטה">↓</button>
@@ -231,12 +253,108 @@
         <button type="button" class="add" onclick={() => (quiz = [...quiz!, { q: '', options: ['', ''], answer: -1, why: '', hint: '' }])}>+ שאלה</button>
       {/if}
 
+      {#if twoTruths !== null}
+        <h2>שתי אמיתות ושקר</h2>
+        <p class="meta">בכל סבב שלושה משפטים, ואחד מהם שקרי. סמנו אותו.</p>
+        {#each twoTruths as r, i (i)}
+          <fieldset class="card">
+            <legend>סבב {i + 1}</legend>
+            <fieldset class="options">
+              <legend>משפטים — סמנו את השקרי</legend>
+              {#each r.statements as _, k (k)}
+                <div class="option">
+                  <input type="radio" name="lie-{i}" value={k} bind:group={r.lieIndex} aria-label="המשפט השקרי: משפט {k + 1}" />
+                  <input dir="auto" bind:value={r.statements[k]} aria-label="משפט {k + 1}" />
+                </div>
+              {/each}
+            </fieldset>
+            <label class="field">הסבר — למה זה שקר<input dir="auto" bind:value={r.why} /></label>
+            <label class="field">רמז — מוצג רק למי שמבקש<input dir="auto" bind:value={r.hint} /></label>
+            <div class="row">
+              <button type="button" onclick={() => (twoTruths = move(twoTruths!, i, -1))} disabled={i === 0} aria-label="הזזת הסבב למעלה">↑</button>
+              <button type="button" onclick={() => (twoTruths = move(twoTruths!, i, 1))} disabled={i === twoTruths!.length - 1} aria-label="הזזת הסבב למטה">↓</button>
+              <button type="button" class="danger" onclick={() => (twoTruths = twoTruths!.filter((_, k) => k !== i))} disabled={twoTruths!.length <= 1}>הסרת סבב</button>
+            </div>
+          </fieldset>
+        {/each}
+        <button type="button" class="add" onclick={() => (twoTruths = [...twoTruths!, { statements: ['', '', ''], lieIndex: -1, why: '', hint: '' }])}>+ סבב</button>
+      {/if}
+
+      {#if errorHunt !== null}
+        <h2>ציד טעויות</h2>
+        <p class="meta">פתרון בשלבים שיש בו שלב שגוי אחד. סמנו אותו.</p>
+        {#each errorHunt as r, i (i)}
+          <fieldset class="card">
+            <legend>סבב {i + 1}</legend>
+            <label class="field">תרגיל<input dir="auto" bind:value={r.problem} /></label>
+            <fieldset class="options">
+              <legend>שלבי הפתרון — סמנו את השגוי</legend>
+              {#each r.steps as _, k (k)}
+                <div class="option">
+                  <input type="radio" name="bad-{i}" value={k} bind:group={r.badStep} aria-label="השלב השגוי: שלב {k + 1}" />
+                  <input dir="auto" bind:value={r.steps[k]} aria-label="שלב {k + 1}" />
+                  <button type="button" class="danger" onclick={() => removeStep(r, k)} disabled={r.steps.length <= 2} aria-label="הסרת שלב {k + 1}">✕</button>
+                </div>
+              {/each}
+              <button type="button" class="add" onclick={() => (r.steps = [...r.steps, ''])}>+ שלב</button>
+            </fieldset>
+            <label class="field">הסבר — מה השגיאה<input dir="auto" bind:value={r.why} /></label>
+            <label class="field">רמז — מוצג רק למי שמבקש<input dir="auto" bind:value={r.hint} /></label>
+            <div class="row">
+              <button type="button" onclick={() => (errorHunt = move(errorHunt!, i, -1))} disabled={i === 0} aria-label="הזזת הסבב למעלה">↑</button>
+              <button type="button" onclick={() => (errorHunt = move(errorHunt!, i, 1))} disabled={i === errorHunt!.length - 1} aria-label="הזזת הסבב למטה">↓</button>
+              <button type="button" class="danger" onclick={() => (errorHunt = errorHunt!.filter((_, k) => k !== i))} disabled={errorHunt!.length <= 1}>הסרת סבב</button>
+            </div>
+          </fieldset>
+        {/each}
+        <button type="button" class="add" onclick={() => (errorHunt = [...errorHunt!, { problem: '', steps: ['', ''], badStep: -1, why: '', hint: '' }])}>+ סבב</button>
+      {/if}
+
+      {#if sequence !== null}
+        <h2>סידור רצף</h2>
+        <p class="meta">השלבים בסדר הנכון. המשחק מערבב אותם, והתלמיד/ה מסדר/ת.</p>
+        <fieldset class="card">
+          <legend>שלבים</legend>
+          {#each sequence as _, k (k)}
+            <div class="option">
+              <span class="num">{k + 1}</span>
+              <input dir="auto" bind:value={sequence[k]} aria-label="שלב {k + 1}" />
+              <button type="button" onclick={() => (sequence = move(sequence!, k, -1))} disabled={k === 0} aria-label="הזזת השלב למעלה">↑</button>
+              <button type="button" onclick={() => (sequence = move(sequence!, k, 1))} disabled={k === sequence!.length - 1} aria-label="הזזת השלב למטה">↓</button>
+              <button type="button" class="danger" onclick={() => (sequence = sequence!.filter((_, j) => j !== k))} disabled={sequence!.length <= 3} aria-label="הסרת שלב {k + 1}">✕</button>
+            </div>
+          {/each}
+          <button type="button" class="add" onclick={() => (sequence = [...sequence!, ''])}>+ שלב</button>
+        </fieldset>
+      {/if}
+
+      {#if matching !== null}
+        <h2>משחק התאמה</h2>
+        <p class="meta">כל זוג הוא שני צדדים שמתאימים זה לזה.</p>
+        {#each matching as p, i (i)}
+          <fieldset class="card">
+            <legend>זוג {i + 1}</legend>
+            <label class="field">צד אחד<input dir="auto" bind:value={p.left} /></label>
+            <label class="field">הצד המתאים<input dir="auto" bind:value={p.right} /></label>
+            <label class="field">רמז — מוצג רק למי שמבקש<input dir="auto" bind:value={p.hint} /></label>
+            <div class="row">
+              <button type="button" class="danger" onclick={() => (matching = matching!.filter((_, k) => k !== i))} disabled={matching!.length <= 3}>הסרת זוג</button>
+            </div>
+          </fieldset>
+        {/each}
+        <button type="button" class="add" onclick={() => (matching = [...matching!, { left: '', right: '', hint: '' }])}>+ זוג</button>
+      {/if}
+
+      {#if data.otherGames.length}
+        <p class="meta">{data.otherGames.join(', ')} — נשארים כפי שנוצרו, ואי אפשר לערוך אותם כאן.</p>
+      {/if}
+
       <h2>שיעורי בית</h2>
       {#each homework as h, i (i)}
         <fieldset class="card">
           <legend>משימה {i + 1}</legend>
-          <label class="field">משימה<textarea rows="2" bind:value={h.task}></textarea></label>
-          <label class="field">🔑 תשובון — רק לך, לא מוצג לתלמיד/ה ולא להורים<textarea rows="2" bind:value={h.answer}></textarea></label>
+          <label class="field">משימה<textarea dir="auto" rows="2" bind:value={h.task}></textarea></label>
+          <label class="field">🔑 תשובון — רק לך, לא מוצג לתלמיד/ה ולא להורים<textarea dir="auto" rows="2" bind:value={h.answer}></textarea></label>
           <div class="row">
             <button type="button" onclick={() => (homework = move(homework, i, -1))} disabled={i === 0} aria-label="הזזת המשימה למעלה">↑</button>
             <button type="button" onclick={() => (homework = move(homework, i, 1))} disabled={i === homework.length - 1} aria-label="הזזת המשימה למטה">↓</button>
@@ -247,7 +365,7 @@
       <button type="button" class="add" onclick={() => (homework = [...homework, { task: '', why: '', answer: '' }])}>+ משימה</button>
     {/if}
 
-    <label class="field">הערות לעצמי — לא מוצגות לתלמיד/ה ולא להורים<textarea rows="3" bind:value={teacherOnly}></textarea></label>
+    <label class="field">הערות לעצמי — לא מוצגות לתלמיד/ה ולא להורים<textarea dir="auto" rows="3" bind:value={teacherOnly}></textarea></label>
 
     <div class="actions">
       <button type="button" onclick={showPreview} disabled={busy}>תצוגה מקדימה</button>
@@ -310,6 +428,7 @@
     border: 1px solid var(--border); border-radius: var(--r-sm); background: var(--bg-card); color: var(--text-primary);
   }
   .option button { flex: none; min-width: 44px; padding: 0; }
+  .num { flex: none; width: 24px; text-align: center; font-weight: 700; color: var(--text-muted); }
   .row, .actions { display: flex; gap: 8px; flex-wrap: wrap; }
   .actions { margin: 20px 0 8px; }
   button {

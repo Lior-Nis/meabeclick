@@ -6,7 +6,9 @@ import { error } from '@sveltejs/kit';
 import { requireAuth } from '$server/auth.ts';
 import { readLessons } from '$server/db.ts';
 import { history, hasUnpublishedEdits } from '$server/materials.ts';
-import { editBase, formPlan } from '$server/lesson/editing.ts';
+import { editBase, formPlan, EDITABLE_GAMES } from '$server/lesson/editing.ts';
+import { TEMPLATE_FILES } from '$server/lesson/prep.ts';
+import { getRegistry } from '$server/lesson/registry.ts';
 import { isLibrarySlug } from '$server/library/slug.ts';
 import type { PageServerLoad } from './$types';
 
@@ -42,6 +44,12 @@ export const load: PageServerLoad = async (event) => {
     /* A master's check questions and homework are editable too: no child
        has played it, and the next booking copies what is published. */
     isMaster: isLibrarySlug(slug),
+    /* The plan's games the editor does not cover (graphs, labelling,
+       tables…), by their Hebrew names, so the page can say they stay as
+       generated rather than leave them out silently. */
+    otherGames: Object.keys(base?.plan.games ?? {})
+      .filter(k => !(k in EDITABLE_GAMES))
+      .map(k => getRegistry().templates[TEMPLATE_FILES[k] ?? k]?.title ?? k),
     seedVersion: base?.version ?? null,
     pendingRegeneration: base?.pendingRegeneration ?? null,
     lesson: { title: lesson.title, topic: lesson.topic, student: lesson.student, subject: lesson.subject, level: lesson.level },
