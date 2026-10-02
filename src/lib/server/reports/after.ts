@@ -17,10 +17,11 @@
  * does is recoverable by the 24h fallback, which needs nothing from here.
  */
 import { enrollmentsForStudent } from '../entities.ts';
-import { heldHomeworkForBooking, releaseHeld, replaceHeld } from '../lessons.ts';
+import { heldHomeworkForBooking, lessonsForStudent, releaseHeld, replaceHeld } from '../lessons.ts';
 import { nodeInPlan, planForEnrollment } from '../plans/store.ts';
 import { generateTaughtHomework, type TaughtSkill, type TaughtTask } from '../lesson/homework.ts';
 import { libraryPlanFor } from '../library/use.ts';
+import { attachTaughtGames } from '../library/report-games.ts';
 import { bookingForReport } from './store.ts';
 
 export type AfterReportOutcome = 'none' | 'released' | 'replaced' | 'replaced-from-library' | 'released-after-failure';
@@ -49,6 +50,25 @@ export function libraryHomework(templateId: string, skills: TaughtSkill[]): Taug
   return out;
 }
 
+/** Library games for the covered skills, into this booking's lesson (see
+ *  library/report-games.ts). On every filing, whatever happens to the
+ *  homework, and never in its way: a failure here is only logged. */
+async function gamesForWhatWasTaught(bookingId: number, nodeIds: number[]): Promise<void> {
+  if (!nodeIds.length) return;
+  try {
+    const booking = bookingForReport(bookingId);
+    if (!booking?.enrollment_id) return;
+    const plan = planForEnrollment(booking.enrollment_id);
+    const lesson = lessonsForStudent(booking.student_id).find(l => l.lesson_at === booking.start);
+    if (!plan || !lesson) return;
+    const skills = [...new Set(nodeIds)].map(id => nodeInPlan(plan.id, id))
+      .filter(n => n?.kind === 'skill').map(n => ({ key: n!.key, nodeId: n!.id }));
+    await attachTaughtGames({ lessonSlug: lesson.slug, studentId: booking.student_id, templateId: plan.template_id, skills });
+  } catch (err) {
+    console.error(`[after-report] games for booking ${bookingId}: ${(err as Error).message}`);
+  }
+}
+
 export async function afterReport(
   input: { bookingId: number; note: string | null; nodeIds: number[] },
   deps: {
@@ -58,6 +78,8 @@ export async function afterReport(
   } = {},
 ): Promise<AfterReportOutcome> {
   const { generate = generateTaughtHomework, notify, now = new Date().toISOString() } = deps;
+
+  await gamesForWhatWasTaught(input.bookingId, input.nodeIds);
 
   if (!heldHomeworkForBooking(input.bookingId, now).length) return 'none';
   if (!input.nodeIds.length) {
