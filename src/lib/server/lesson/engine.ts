@@ -191,6 +191,9 @@ const QUOTA_PHRASES = [
   'usage limit',
   'out of credits',
   'out of usage credits',          // Claude Code, verbatim (2026-10-01)
+  'hit your session limit',        // Claude Code on a subscription (2026-10-03), «You've…»
+  'hit your weekly limit',
+  'hit your limit',
   'purchase more credits',
   'rate limit',
   'too many requests',
