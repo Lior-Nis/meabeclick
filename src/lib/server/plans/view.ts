@@ -232,6 +232,25 @@ export function nextTargetSkill(tree: TopicView[]): { id: number; title: string 
   return null;
 }
 
+/**
+ * The skills a student will need next, nearest first — for preparing the
+ * library ahead (/api/library/due, scripts/library-local.mjs --due), not
+ * for choosing a lesson. Today's target first (nextTargetSkill, the choice
+ * a booking makes), then every other visible skill not yet mastered, in
+ * plan order — blocked ones included, unlike the target: a prerequisite
+ * unmet today is exactly the lesson after.
+ */
+export function upcomingSkills(tree: TopicView[], n: number): { id: number; key: string; title: string }[] {
+  const visible = tree
+    .filter(t => t.visibility !== 'hidden')
+    .flatMap(t => t.branches.filter(b => b.visibility !== 'hidden'))
+    .flatMap(b => b.skills)
+    .filter(s => s.visibility !== 'hidden' && !SATISFIED.includes(s.status));
+  const first = nextTargetSkill(tree);
+  const ordered = first ? [visible.find(s => s.id === first.id)!, ...visible.filter(s => s.id !== first.id)] : visible;
+  return ordered.filter(Boolean).slice(0, Math.max(0, n)).map(s => ({ id: s.id, key: s.key, title: s.title }));
+}
+
 export function buildTree(
   nodes: NodeRow[],
   prereqs: PrereqRow[],
