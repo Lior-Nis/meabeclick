@@ -11,6 +11,8 @@ import { targetSkillFor } from '../lesson/targeting.ts';
 import { templateById } from '../plans/templates.ts';
 import { firstName } from '../../names.ts';
 import { itemFor, type LibraryItem } from './store.ts';
+import { planData, lastLessonAt } from '../plans/store.ts';
+import { buildTree, upcomingSkills } from '../plans/view.ts';
 
 export interface DueSkill {
   templateId: string;
@@ -48,4 +50,24 @@ export function dueNext(): DueSkill[] {
   /* What still needs preparing first; among those, the most students. */
   return [...due.values()].sort((a, b) =>
     Number(a.item?.status === 'ready') - Number(b.item?.status === 'ready') || b.students.length - a.students.length);
+}
+
+/**
+ * Every skill some student will need within their next `ahead` skills
+ * (plans/view.ts upcomingSkills), once, with whether the library has it
+ * ready — what the tutor's machine prepares ahead (scripts/library-local.mjs
+ * --due). Skills only, never students: the box's cron key reads it.
+ */
+export function dueAhead(ahead: number): { templateId: string; skillKey: string; ready: boolean }[] {
+  const plans = handle().prepare(`SELECT p.id, p.template_id, e.student_id FROM plans p JOIN enrollments e ON e.id = p.enrollment_id ORDER BY p.id`)
+    .all() as { id: number; template_id: string; student_id: number }[];
+  const seen = new Map<string, { templateId: string; skillKey: string; ready: boolean }>();
+  for (const p of plans) {
+    const { nodes, prereqs, events } = planData(p.id);
+    for (const s of upcomingSkills(buildTree(nodes, prereqs, events, lastLessonAt(p.student_id)), ahead)) {
+      const id = `${p.template_id}/${s.key}`;
+      if (!seen.has(id)) seen.set(id, { templateId: p.template_id, skillKey: s.key, ready: itemFor(p.template_id, s.key)?.status === 'ready' });
+    }
+  }
+  return [...seen.values()];
 }
