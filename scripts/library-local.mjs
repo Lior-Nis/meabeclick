@@ -124,7 +124,11 @@ for (const [i, job] of todo.entries()) {
   try {
     plan = await generateLesson(libraryRequest(tpl, skill));
   } catch (err) {
-    console.log(`${name}: ${engine} failed (${err.kind ?? 'error'}): ${err.message}`);
+    /* The engine's last words too: «claude exited 1» alone, 31 times,
+       hid that the subscription had hit its limit (2026-10-03). This is
+       the operator's own terminal, where the server would log it. */
+    const said = String(err.detail ?? '').trim().split('\n').pop().slice(-300);
+    console.log(`${name}: ${engine} failed (${err.kind ?? 'error'}): ${err.message}${said ? ` — ${said}` : ''}`);
     /* Out of usage, or signed out: every lesson after this one would fail
        the same way. Stop, and say what was not tried. */
     if (err.kind === 'engine-quota' || err.kind === 'engine-auth') {

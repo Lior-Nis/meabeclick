@@ -127,6 +127,29 @@ test("Claude Code's out-of-credits message is a quota failure", async () => {
   assert.equal(classifyOutput("stdout: You're out of usage credits. Switch to another model, or manage usage credits at claude.ai/settings/usage?from=cc_cli_limit_message, to continue."), 'engine-quota');
 });
 
+/* Found 2026-10-03: the batch for the rest of 4 units and grade 9 ran into
+   the subscription's limit after 23 lessons, and Claude Code said so in
+   words no phrase matched — so the other 31 were each tried and failed as
+   «claude exited 1». Its limit messages, verbatim from that day's session. */
+test("Claude Code's session and weekly limits are quota failures", async () => {
+  const { classifyOutput } = await import('../../src/lib/server/lesson/engine.ts');
+  assert.equal(classifyOutput("stdout: You've hit your session limit · resets 7:10pm (Asia/Jerusalem)"), 'engine-quota');
+  assert.equal(classifyOutput("stdout: You’ve hit your weekly limit · resets Oct 7, 9am"), 'engine-quota');
+  assert.equal(classifyOutput("stdout: You've hit your limit · resets 5pm"), 'engine-quota');
+});
+
+/* That day the log said only «claude exited 1», 31 times, and the reason
+   was nowhere: an engine failure the script does not recognise now shows
+   the engine's own last words. */
+test('an engine failure the batch does not recognise is logged with what the engine said', async () => {
+  const { execFile } = await import('node:child_process');
+  const s = await stub(`printf "Something new went wrong on line 7"; exit 1`);
+  const out = await new Promise((resolve) => execFile('node', ['--no-warnings', 'scripts/library-local.mjs',
+    '--template', 'math-4u', '--skill', 'func.basics.linquad', '--dry-run', '--out', s.dir],
+    { env: { ...process.env, CLAUDE_BIN: s.script } }, (err, stdout, stderr) => resolve({ code: err?.code ?? 0, text: stdout + stderr })));
+  assert.match(out.text, /func\.basics\.linquad: claude failed \(engine-failed\).*Something new went wrong on line 7/);
+});
+
 test('the local batch stops at the first engine that is out of usage, instead of trying every lesson', async () => {
   const { execFile } = await import('node:child_process');
   const s = await stub(`echo x >> "${'$'}{0%/*}/calls.txt"; printf "You're out of usage credits. Switch to another model, to continue."; exit 1`);
