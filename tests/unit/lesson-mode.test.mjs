@@ -16,9 +16,10 @@ const { isLessonMode, lessonPlace, meetUrl, MODE_LABEL } = await import('../../s
 const { OFFICE_ADDRESS, OFFICE_NAV_LINK } = await import('../../src/lib/contact.ts');
 const { bookingEvent } = await import('../../src/lib/server/booking-event.ts');
 const E = await import('../../src/lib/server/entities.ts');
-const { completeSetup } = await import('../../src/lib/server/tutor-setup.ts');
 const R = await import('../../src/lib/server/reminders.ts');
 const { handle } = await import('../../src/lib/server/db.ts');
+/** A teacher's room, as a finished setup (tutor-setup.ts) leaves it. */
+const setRoom = (id, url) => handle().prepare(`UPDATE teachers SET meet_url = ? WHERE id = ?`).run(url, id);
 
 const ROOM = 'https://meet.google.com/abc-defg-hij';
 
@@ -116,8 +117,8 @@ test('the database refuses any mode but the two', () => {
 test("the room is the lesson's teacher's; with no teacher on it, the default teacher's", () => {
   const [first] = E.listTeachers();
   const other = E.createTeacher({ name: 'שלישית' });
-  completeSetup(first.id, ROOM, null);
-  completeSetup(other.id, 'https://meet.google.com/zzz-zzzz-zzz', null);
+  setRoom(first.id, ROOM);
+  setRoom(other.id, 'https://meet.google.com/zzz-zzzz-zzz');
   assert.equal(E.lessonTeacher(other.id).meet_url, 'https://meet.google.com/zzz-zzzz-zzz');
   assert.equal(E.lessonTeacher(null).id, E.defaultTeacher().id);
   assert.equal(E.lessonTeacher(null).meet_url, ROOM);
@@ -127,7 +128,7 @@ test('the reminder carries the mode and the room', () => {
   const NOW = '2027-03-01T09:00:00.000Z';
   const start = new Date(Date.parse(NOW) + 20 * 3600e3).toISOString();
   const [first] = E.listTeachers();
-  completeSetup(first.id, ROOM, null);
+  setRoom(first.id, ROOM);
   const { student, enr } = seed(first.id);
   const id = E.reserveBooking({ studentId: student.id, enrollmentId: enr.id, start, end: start, durationMin: 45, mode: 'online' });
   const due = R.pendingReminders(NOW).find((b) => b.id === id);

@@ -108,3 +108,25 @@ test('a room that comes back open to anyone is refused, so families always knock
   await assert.rejects(G.connectRoom(CLIENT, 'c', g.fetchImpl), (e) => e.step === 'room');
   assert.equal(g.calls.at(-1).url, 'https://oauth2.googleapis.com/revoke');
 });
+
+/** A Google that never answers: only giving up on the request ends it. */
+// A real stalled request holds a socket open; this holds a timer, since
+// AbortSignal.timeout's own timer does not keep the process alive.
+const hangs = (url, init) => new Promise((_, reject) => {
+  const alive = setTimeout(() => {}, 10_000);
+  init?.signal?.addEventListener('abort', () => { clearTimeout(alive); reject(init.signal.reason); });
+});
+
+test('a Google call that hangs is given up after the time limit', { timeout: 3000 }, async () => {
+  const started = Date.now();
+  await assert.rejects(G.connectRoom(CLIENT, 'c', hangs, 50));
+  assert.ok(Date.now() - started < 2000, 'waited far past the limit');
+});
+
+test('a revoke that hangs does not hold the room hostage past the time limit', { timeout: 3000 }, async () => {
+  const g = fakeGoogle();
+  const revokeHangs = (url, init) => String(url).includes('/revoke') ? hangs(url, init) : g.fetchImpl(url, init);
+  const started = Date.now();
+  assert.equal((await G.connectRoom(CLIENT, 'c', revokeHangs, 50)).meetUrl, ROOM);
+  assert.ok(Date.now() - started < 2000);
+});

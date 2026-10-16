@@ -123,3 +123,59 @@ test('the Meet box left unticked: back to the page with its own message; the cod
   assert.equal(E.getTeacher(t.id).meet_url, null);
   assert.equal(S.teacherForCode(code, NOW).id, t.id);
 });
+
+/* ── Races, found by the branch review of #47 ─────────────────────────── */
+
+test('a link re-sent while Google is answering: no room saved, and the newer link keeps working', async () => {
+  const { t, code, cookie, state } = started('מורה 10');
+  let newer;
+  const g = fakeGoogle();
+  const racing = async (url, init) => {
+    if (String(url).includes('meet.googleapis.com')) newer = S.mintSetupCode(t.id, NOW); // the owner taps again
+    return g.fetchImpl(url, init);
+  };
+  const r = await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, racing, NOW);
+  assert.deepEqual(r, { location: `/app/tutor-setup/${code}`, cookie: null });
+  assert.equal(E.getTeacher(t.id).meet_url, null);
+  assert.equal(S.teacherForCode(newer, NOW).id, t.id);
+});
+
+test('a second callback after the first saved the room shows success, and calls Google no more', async () => {
+  const { t, cookie, state } = started('מורה 11');
+  await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, fakeGoogle().fetchImpl, NOW);
+  const g = fakeGoogle();
+  // The reloaded tab still carries the started cookie: the first answer never reached it.
+  const again = await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, g.fetchImpl, NOW);
+  assert.equal(again.location, F.DONE_PATH);
+  assert.deepEqual(S.readSetupCookie(again.cookie, NOW), { kind: 'done', teacherId: t.id });
+  assert.equal(g.calls.length, 0);
+});
+
+test('a second callback whose code exchange loses the race still ends on success once the first saved', async () => {
+  const { t, code, cookie, state } = started('מורה 12');
+  const firstSaves = async (url) => {
+    // The first request finishes while this one is exchanging the same, now spent, code.
+    S.completeSetup(t.id, code, ROOM, 'tutor@example.com');
+    return new Response(JSON.stringify({ error: 'invalid_grant' }), { status: 400 });
+  };
+  const r = await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, firstSaves, NOW);
+  assert.equal(r.location, F.DONE_PATH);
+  assert.deepEqual(S.readSetupCookie(r.cookie, NOW), { kind: 'done', teacherId: t.id });
+});
+
+test('a failure saving the room is logged as that, not as Google', async (t) => {
+  const { t: teacher, code, cookie, state } = started('מורה 13');
+  const { handle } = await import('../../src/lib/server/db.ts');
+  handle().exec(`CREATE TRIGGER no_save BEFORE UPDATE OF meet_url ON teachers WHEN NEW.id = ${teacher.id}
+                 BEGIN SELECT RAISE(ABORT, 'disk full'); END`);
+  const warn = t.mock.method(console, 'warn', () => {});
+  try {
+    const r = await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, fakeGoogle().fetchImpl, NOW);
+    assert.deepEqual(r, { location: `/app/tutor-setup/${code}?e=google`, cookie: null });
+    const logged = warn.mock.calls.map((c) => String(c.arguments[0])).join('\n');
+    assert.match(logged, /saving the room failed/);
+    assert.doesNotMatch(logged, /google unreachable/);
+  } finally {
+    handle().exec(`DROP TRIGGER no_save`);
+  }
+});
