@@ -53,7 +53,7 @@ test('anything that is not a live code finds nobody', () => {
 test('completeSetup saves the room and the account, and uses the code up', () => {
   const t = E.createTeacher({ name: 'מורה ד' });
   const code = S.mintSetupCode(t.id, NOW);
-  S.completeSetup(t.id, ROOM, 'tutor@example.com');
+  assert.equal(S.completeSetup(t.id, code, ROOM, 'tutor@example.com'), true);
   const row = E.getTeacher(t.id);
   assert.equal(row.meet_url, ROOM);
   assert.equal(row.meet_account, 'tutor@example.com');
@@ -89,4 +89,23 @@ test('the done cookie outlives a discarded tab: 30 days, and its cookie options 
   const url = new URL('https://site.example/x');
   assert.equal(S.setupCookieOptions(url, done).maxAge, 30 * 24 * 3600);
   assert.equal(S.setupCookieOptions(url, S.mintStartedCookie(3, 'A'.repeat(43), 'n', NOW)).maxAge, 900);
+});
+
+test('completeSetup refuses a link that was replaced meanwhile, and leaves the newer one working', () => {
+  const t = E.createTeacher({ name: 'מורה ה' });
+  const old = S.mintSetupCode(t.id, NOW);
+  const newer = S.mintSetupCode(t.id, NOW);
+  assert.equal(S.completeSetup(t.id, old, ROOM, 'tutor@example.com'), false);
+  assert.equal(E.getTeacher(t.id).meet_url, null);
+  assert.equal(S.teacherForCode(newer, NOW).id, t.id);
+});
+
+test('setupFinished: the link was used up and a room saved', () => {
+  const t = E.createTeacher({ name: 'מורה ו' });
+  const code = S.mintSetupCode(t.id, NOW);
+  assert.equal(S.setupFinished(t.id), false, 'a live link is not finished');
+  S.completeSetup(t.id, code, ROOM, null);
+  assert.equal(S.setupFinished(t.id), true);
+  S.mintSetupCode(t.id, NOW);
+  assert.equal(S.setupFinished(t.id), false, 'a newer link is out: not this setup');
 });

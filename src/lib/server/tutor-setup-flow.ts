@@ -6,7 +6,7 @@
  * docs/superpowers/specs/2026-10-16-tutor-meet-setup-design.md.
  */
 import {
-  teacherForCode, newNonce, mintStartedCookie, mintDoneCookie, readSetupCookie, completeSetup,
+  teacherForCode, newNonce, mintStartedCookie, mintDoneCookie, readSetupCookie, completeSetup, setupFinished,
 } from './tutor-setup.ts';
 import { consentUrl, connectRoom, GoogleStepError, type WebClient } from './google-meet-setup.ts';
 
@@ -37,19 +37,41 @@ export async function finishSetup(
   if (c?.kind === 'done') return { location: DONE_PATH, cookie: input.cookie ?? null };
   if (!c || !client || !input.state || input.state !== c.nonce) return { location: DONE_PATH, cookie: null };
 
-  // The owner may have sent a newer link meanwhile; the old page then says expired.
+  const done: Step = { location: DONE_PATH, cookie: mintDoneCookie(c.teacherId, now) };
+
+  // The code no longer works. Either a second request for this same setup
+  // (a tab reloaded while the first ran) and the first saved the room, or
+  // the owner sent a newer link and the old page now says expired.
   const teacher = teacherForCode(c.code, now);
-  if (!teacher || teacher.id !== c.teacherId) return { location: page(c.code), cookie: null };
+  if (!teacher || teacher.id !== c.teacherId) {
+    return setupFinished(c.teacherId) ? done : { location: page(c.code), cookie: null };
+  }
 
   if (input.error || !input.authCode) return { location: `${page(c.code)}?e=denied`, cookie: null };
 
+  let room: Awaited<ReturnType<typeof connectRoom>>;
   try {
-    const room = await connectRoom(client, input.authCode, fetchImpl);
-    completeSetup(teacher.id, room.meetUrl, room.account);
-    return { location: DONE_PATH, cookie: mintDoneCookie(teacher.id, now) };
+    room = await connectRoom(client, input.authCode, fetchImpl);
   } catch (err) {
+    // The same race from the other side: this request's exchange of the
+    // shared one-time code lost to a request that has since saved the room.
+    if (setupFinished(teacher.id)) return done;
     console.warn(`[tutor-setup] ${err instanceof GoogleStepError ? err.message : 'google unreachable'}`);
     const why = err instanceof GoogleStepError && err.step === 'scope' ? 'scope' : 'google';
     return { location: `${page(c.code)}?e=${why}`, cookie: null };
   }
+
+  let saved: boolean;
+  try {
+    saved = completeSetup(teacher.id, c.code, room.meetUrl, room.account);
+  } catch (err) {
+    // Google made the room; the database did not keep it. Not Google's fault.
+    console.warn(`[tutor-setup] saving the room failed: ${err instanceof Error ? err.message : 'unknown'}`);
+    return { location: `${page(c.code)}?e=google`, cookie: null };
+  }
+  if (!saved) {
+    console.warn('[tutor-setup] a newer link was sent during setup; this room was not saved');
+    return { location: page(c.code), cookie: null };
+  }
+  return done;
 }

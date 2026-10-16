@@ -71,11 +71,15 @@ export function emailFromIdToken(idToken: unknown): string | null {
   }
 }
 
+/** Each call's limit. Without one a stalled Google kept the tutor's tab
+ *  spinning for undici's five minutes; calendar.ts uses the same 15 s. */
+const CALL_TIMEOUT_MS = 15_000;
+
 export async function connectRoom(
-  client: WebClient, authCode: string, fetchImpl: typeof fetch = fetch,
+  client: WebClient, authCode: string, fetchImpl: typeof fetch = fetch, timeoutMs = CALL_TIMEOUT_MS,
 ): Promise<{ meetUrl: string; account: string | null }> {
   const t = await fetchImpl(TOKEN, {
-    method: 'POST',
+    method: 'POST', signal: AbortSignal.timeout(timeoutMs),
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
     body: new URLSearchParams({
       code: authCode, client_id: client.clientId, client_secret: client.clientSecret,
@@ -93,7 +97,7 @@ export async function connectRoom(
       throw new GoogleStepError('scope', t.status);
     }
     const r = await fetchImpl(SPACES, {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(timeoutMs),
       headers: { Authorization: `Bearer ${tok.access_token}`, 'Content-Type': 'application/json' },
       // Google's default access, not a chosen one: a personal account may not
       // set accessType (403 "updateAccessType is not available to the user",
@@ -110,15 +114,15 @@ export async function connectRoom(
     if (space.config?.accessType === 'OPEN') throw new GoogleStepError('room', r.status);
     return { meetUrl: url, account: emailFromIdToken(tok.id_token) };
   } finally {
-    await revoke(tok.access_token, fetchImpl);
+    await revoke(tok.access_token, fetchImpl, timeoutMs);
   }
 }
 
 /** Best effort: the token dies within the hour anyway. */
-async function revoke(token: string, fetchImpl: typeof fetch): Promise<void> {
+async function revoke(token: string, fetchImpl: typeof fetch, timeoutMs: number): Promise<void> {
   try {
     const r = await fetchImpl(REVOKE, {
-      method: 'POST',
+      method: 'POST', signal: AbortSignal.timeout(timeoutMs),
       headers: { 'Content-Type': 'application/x-www-form-urlencoded' },
       body: new URLSearchParams({ token }),
     });

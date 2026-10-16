@@ -52,11 +52,25 @@ export function setupLink(code: string): string {
   return `${site}/app/tutor-setup/${code}`;
 }
 
-/** The room is saved and the link used up, in one statement. */
-export function completeSetup(teacherId: number, meetUrl: string, account: string | null): void {
-  handle().prepare(`UPDATE teachers
-    SET meet_url = ?, meet_account = ?, setup_hash = NULL, setup_expires = NULL WHERE id = ?`)
-    .run(meetUrl, account, teacherId);
+/** The room is saved and the link used up, in one statement — but only if
+ *  this is still the teacher's link. The owner may send a newer one during
+ *  the second or two Google takes; then nothing is saved (false) and the
+ *  newer link keeps working. */
+export function completeSetup(teacherId: number, code: string, meetUrl: string, account: string | null): boolean {
+  const done = handle().prepare(`UPDATE teachers
+    SET meet_url = ?, meet_account = ?, setup_hash = NULL, setup_expires = NULL
+    WHERE id = ? AND setup_hash = ?`)
+    .run(meetUrl, account, teacherId, hashCode(code));
+  return Number(done.changes) === 1;
+}
+
+/** A setup that finished: its link used up (not replaced, which leaves a
+ *  newer hash) and a room saved. What a second request for the same setup
+ *  — a tab reloaded while the first was running — should report. */
+export function setupFinished(teacherId: number): boolean {
+  const t = handle().prepare(`SELECT setup_hash, meet_url FROM teachers WHERE id = ?`)
+    .get(teacherId) as { setup_hash: string | null; meet_url: string | null } | undefined;
+  return !!t && t.setup_hash === null && t.meet_url !== null;
 }
 
 /* ── The setup cookie ─────────────────────────────────────────────── */
