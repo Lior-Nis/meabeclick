@@ -14,7 +14,7 @@ const idToken = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString('b
 /** A fake Google: one canned answer per endpoint, every call recorded. */
 function fakeGoogle({
   token = { status: 200, body: { access_token: 'at-1', scope: GRANTED, id_token: idToken({ email: 'tutor@example.com' }) } },
-  room = { status: 200, body: { meetingUri: ROOM, config: { accessType: 'RESTRICTED' } } },
+  room = { status: 200, body: { meetingUri: ROOM, config: { accessType: 'TRUSTED' } } },
   revoke = { status: 200, body: {} },
 } = {}) {
   const calls = [];
@@ -46,7 +46,7 @@ test('the consent URL asks for the account and the room permission only, online'
   });
 });
 
-test('connectRoom exchanges, creates a knock-only room, revokes, and returns room and account', async () => {
+test('connectRoom exchanges, creates a room with Google\'s default access, revokes, and returns room and account', async () => {
   const g = fakeGoogle();
   assert.deepEqual(await G.connectRoom(CLIENT, 'auth-code', g.fetchImpl), { meetUrl: ROOM, account: 'tutor@example.com' });
   assert.deepEqual(g.calls.map((c) => c.url), [
@@ -59,7 +59,9 @@ test('connectRoom exchanges, creates a knock-only room, revokes, and returns roo
   assert.equal(ex.get('grant_type'), 'authorization_code');
   assert.equal(ex.get('redirect_uri'), CLIENT.redirectUri);
   assert.equal(g.calls[1].init.headers.Authorization, 'Bearer at-1');
-  assert.deepEqual(JSON.parse(g.calls[1].init.body), { config: { accessType: 'RESTRICTED' } });
+  // A personal account may not set accessType (403 "updateAccessType is not
+  // available to the user", spike 2026-10-16); its default is TRUSTED.
+  assert.deepEqual(JSON.parse(g.calls[1].init.body), {});
   assert.equal(new URLSearchParams(String(g.calls[2].init.body)).get('token'), 'at-1');
 });
 
@@ -99,4 +101,10 @@ test('a token without the Meet permission (box left unticked) is a scope failure
   const g = fakeGoogle({ token: { status: 200, body: { access_token: 'at-1', scope: 'openid https://www.googleapis.com/auth/userinfo.email' } } });
   await assert.rejects(G.connectRoom(CLIENT, 'c', g.fetchImpl), (e) => e instanceof G.GoogleStepError && e.step === 'scope');
   assert.deepEqual(g.calls.map((c) => c.url), ['https://oauth2.googleapis.com/token', 'https://oauth2.googleapis.com/revoke']);
+});
+
+test('a room that comes back open to anyone is refused, so families always knock', async () => {
+  const g = fakeGoogle({ room: { status: 200, body: { meetingUri: ROOM, config: { accessType: 'OPEN' } } } });
+  await assert.rejects(G.connectRoom(CLIENT, 'c', g.fetchImpl), (e) => e.step === 'room');
+  assert.equal(g.calls.at(-1).url, 'https://oauth2.googleapis.com/revoke');
 });

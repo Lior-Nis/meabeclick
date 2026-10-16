@@ -95,14 +95,19 @@ export async function connectRoom(
     const r = await fetchImpl(SPACES, {
       method: 'POST',
       headers: { Authorization: `Bearer ${tok.access_token}`, 'Content-Type': 'application/json' },
-      // Families knock and the tutor admits them: the link never changes, so
-      // a family that keeps it must not walk into another child's lesson.
-      body: JSON.stringify({ config: { accessType: 'RESTRICTED' } }),
+      // Google's default access, not a chosen one: a personal account may not
+      // set accessType (403 "updateAccessType is not available to the user",
+      // measured 2026-10-16), and its default came back TRUSTED — everyone
+      // not invited knocks, and these rooms invite no one.
+      body: '{}',
     });
     if (!r.ok) throw new GoogleStepError('room', r.status);
-    const space = await r.json() as { meetingUri?: string };
+    const space = await r.json() as { meetingUri?: string; config?: { accessType?: string } };
     const url = meetUrl(space.meetingUri);
     if (!url || new URL(url).hostname !== 'meet.google.com') throw new GoogleStepError('room', r.status);
+    // The link never changes, so a family that keeps it must not walk into
+    // another child's lesson. A tutor whose Meet default is "open" gets no room.
+    if (space.config?.accessType === 'OPEN') throw new GoogleStepError('room', r.status);
     return { meetUrl: url, account: emailFromIdToken(tok.id_token) };
   } finally {
     await revoke(tok.access_token, fetchImpl);

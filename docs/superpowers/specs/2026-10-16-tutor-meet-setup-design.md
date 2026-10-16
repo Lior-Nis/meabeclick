@@ -66,6 +66,15 @@ building. If the room comes back but `accessType` does not hold, report that
 too: knocking might still be the free-account default, and that gets checked
 by hand before choosing.
 
+**Result, 2026-10-16** (personal `@gmail.com` account, the new web client in
+the `meabeclick-site` project). Run 1, with `accessType: RESTRICTED`, got
+403 `PERMISSION_DENIED`: "updateAccessType is not available to the user".
+Run 2, with an empty body, got 200, a `meetingUri`, and Google's default
+`accessType: TRUSTED`. For a personal account that means everyone not
+invited knocks, and these rooms invite no one. So D3 stands with one change:
+the room is created with Google's default access, and a room that comes back
+`OPEN` is refused, so nothing is saved that would let a family walk in.
+
 ## How it works
 
 ### The setup link
@@ -139,7 +148,9 @@ Then:
 2. Exchange `code` at `https://oauth2.googleapis.com/token`. Read `email`
    from the returned `id_token` payload. It came straight from Google's
    token endpoint over TLS, so it needs no signature check.
-3. `POST https://meet.googleapis.com/v2/spaces` with `accessType: RESTRICTED`.
+3. `POST https://meet.googleapis.com/v2/spaces` with an empty body (Google's
+   default access; see the spike's result). A room that comes back `OPEN` is
+   refused like any other room failure.
 4. Revoke the access token at `https://oauth2.googleapis.com/revoke`. Failing
    to revoke is logged but not fatal, because the token expires within the hour anyway.
 5. In one statement, set `meet_url` = `meetingUri`, `meet_account` = email,
