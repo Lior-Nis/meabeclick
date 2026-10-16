@@ -40,6 +40,8 @@ const BLOCKED = [
   // The Drive login (the backups' and the lesson sync's): a test must never
   // create folders in the business's real Drive.
   'GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REFRESH_TOKEN',
+  // The tutor-setup web client: a test that wants it passes made-up values.
+  'GOOGLE_WEB_CLIENT_ID', 'GOOGLE_WEB_CLIENT_SECRET',
 ];
 
 const MAX_PORT_ATTEMPTS = 3;
