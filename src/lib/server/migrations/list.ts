@@ -25,6 +25,7 @@ import { sql as sql024 } from './024_library_uses.ts';
 import { sql as sql025 } from './025_lesson_engines.ts';
 import { sql as sql026 } from './026_engine_status.ts';
 import { sql as sql027 } from './027_lesson_mode.ts';
+import { sql as sql028 } from './028_tutor_setup.ts';
 
 export interface Migration {
   version: number;
@@ -65,4 +66,5 @@ export const MIGRATIONS: Migration[] = [
   { version: 25, name: '025_lesson_engines', sql: sql025 },
   { version: 26, name: '026_engine_status', sql: sql026 },
   { version: 27, name: '027_lesson_mode', sql: sql027 },
+  { version: 28, name: '028_tutor_setup', sql: sql028 },
 ];
