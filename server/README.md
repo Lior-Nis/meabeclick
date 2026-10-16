@@ -775,6 +775,36 @@ and exits 0; if Drive is down or the token is revoked it says that and exits
 0. The local backup has already succeeded by then, and a Drive outage marking
 the job failed would only train everyone to ignore it.
 
+### Tutor Meet rooms (setup links)
+
+A tutor connects their own Google Meet room from a setup link the dashboard
+mints ("מורים" card → "שליחת קישור הגדרה"). They sign in with Google once.
+The app creates a knock-only room *as the tutor* and saves it as
+`teachers.meet_url`, then revokes the permission. Nothing Google-side is
+stored. See `docs/superpowers/specs/2026-10-16-tutor-meet-setup-design.md`.
+
+**Setup, once**, in the same Cloud project as the Drive backups:
+
+1. APIs & Services → Library → **Google Meet REST API** → Enable.
+2. Credentials → Create credentials → OAuth client ID → **Web application**.
+   - Authorized redirect URI: `https://meabeclick.com/app/tutor-setup/callback`
+     (`SITE_URL` + `/app/tutor-setup/callback`, exactly).
+   - If the console asks for it, add `meabeclick.com` under the consent
+     screen's Authorized domains.
+3. Put the client's two values in `.env` (chmod 600, never committed):
+
+   ```
+   GOOGLE_WEB_CLIENT_ID=…
+   GOOGLE_WEB_CLIENT_SECRET=…
+   ```
+
+   Recreate the container so it reads them (see Deploy).
+
+Unset, the feature is off: the dashboard card says so and offers no link.
+The scope `meetings.space.created` is *sensitive*. Until Google verifies
+the app, a tutor sees an "unverified app" screen once, and the setup page
+tells them how to pass it.
+
 ### Vision metrics
 
 `scripts/vision-metrics.mjs` prints the PRODUCT.md targets (active students,
