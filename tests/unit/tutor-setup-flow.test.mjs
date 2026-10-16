@@ -17,12 +17,12 @@ const ROOM = 'https://meet.google.com/abc-defg-hij';
 const NOW = Date.parse('2027-01-10T10:00:00Z');
 const idToken = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
 
-function fakeGoogle({ room = { status: 200, body: { meetingUri: ROOM } } } = {}) {
+function fakeGoogle({ room = { status: 200, body: { meetingUri: ROOM } }, scope = 'openid https://www.googleapis.com/auth/meetings.space.created' } = {}) {
   const calls = [];
   const fetchImpl = async (url) => {
     calls.push(String(url));
     const u = String(url);
-    const pick = u.includes('/token') ? { status: 200, body: { access_token: 'at', id_token: idToken({ email: 'tutor@example.com' }) } }
+    const pick = u.includes('/token') ? { status: 200, body: { access_token: 'at', scope, id_token: idToken({ email: 'tutor@example.com' }) } }
       : u.includes('meet.googleapis.com') ? room : { status: 200, body: {} };
     return new Response(JSON.stringify(pick.body), { status: pick.status });
   };
@@ -113,4 +113,13 @@ test('no cookie, a wrong state, or no client ends on the done page as not comple
     assert.deepEqual(await F.finishSetup(input, client, g.fetchImpl, NOW), { location: F.DONE_PATH, cookie: null });
   }
   assert.equal(g.calls.length, 0);
+});
+
+test('the Meet box left unticked: back to the page with its own message; the code still works', async () => {
+  const { t, code, cookie, state } = started('מורה 9');
+  const g = fakeGoogle({ scope: 'openid' });
+  const r = await F.finishSetup({ cookie, state, authCode: 'ac', error: null }, CLIENT, g.fetchImpl, NOW);
+  assert.deepEqual(r, { location: `/app/tutor-setup/${code}?e=scope`, cookie: null });
+  assert.equal(E.getTeacher(t.id).meet_url, null);
+  assert.equal(S.teacherForCode(code, NOW).id, t.id);
 });

@@ -1573,7 +1573,7 @@ Why as the tutor: on a free Google account only a meeting's creator can admit so
 Spec: docs/superpowers/specs/2026-10-16-tutor-meet-setup-design.md
 Plan: docs/superpowers/plans/2026-10-16-tutor-meet-setup.md
 
-**Spike (personal Google account):** `spaces.create` answered `<status>` with `accessType=<value>`. In a private window, a visitor `<knocked / walked in>`. Copy the probe's printed lines here verbatim.
+**Spike (personal Google account):** `spaces.create` answered `<status>` with `accessType=<value>`. In a private window, a visitor `<knocked / walked in>`. Copy the probe's printed lines here, with the meetingUri redacted to `meet.google.com/xxx-xxxx-xxx`: the repo is public.
 
 **Changes**
 - **Migration 028:** `teachers.setup_hash`, `setup_expires`, `meet_account`.

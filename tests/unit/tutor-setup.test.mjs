@@ -81,3 +81,12 @@ test('cookie options: scoped to the setup pages, secure only over https', () => 
   assert.deepEqual(o, { path: '/app/tutor-setup', httpOnly: true, sameSite: 'lax', secure: true, maxAge: 900 });
   assert.equal(S.setupCookieOptions(new URL('http://127.0.0.1:5000/x')).secure, false);
 });
+
+test('the done cookie outlives a discarded tab: 30 days, and its cookie options say so', () => {
+  const done = S.mintDoneCookie(3, NOW);
+  assert.deepEqual(S.readSetupCookie(done, NOW + 29 * DAY), { kind: 'done', teacherId: 3 });
+  assert.equal(S.readSetupCookie(done, NOW + 30 * DAY), null);
+  const url = new URL('https://site.example/x');
+  assert.equal(S.setupCookieOptions(url, done).maxAge, 30 * 24 * 3600);
+  assert.equal(S.setupCookieOptions(url, S.mintStartedCookie(3, 'A'.repeat(43), 'n', NOW)).maxAge, 900);
+});

@@ -22,6 +22,9 @@ const SECRET = process.env.SESSION_SECRET || randomBytes(32).toString('hex');
 export const SETUP_TTL_MS = 7 * 24 * 60 * 60 * 1000;
 export const SETUP_COOKIE = 'maab_tutor_setup';
 export const COOKIE_TTL_MS = 15 * 60 * 1000;
+/** The done cookie only names the teacher, and a phone may restore the
+ *  "מוכן ✓" tab hours later: it must still say success, not "not completed". */
+export const DONE_TTL_MS = 30 * 24 * 60 * 60 * 1000;
 const CODE_RE = /^[A-Za-z0-9_-]{43}$/;
 
 const hashCode = (code: string): string => createHash('sha256').update(code).digest('hex');
@@ -77,7 +80,7 @@ export function mintStartedCookie(teacherId: number, code: string, nonce: string
 /** Replaces the started cookie once the room is saved. A reloaded tab then
  *  shows success instead of replaying Google's one-time code. */
 export function mintDoneCookie(teacherId: number, now = Date.now()): string {
-  return seal(`d.${teacherId}.-.-.${now + COOKIE_TTL_MS}`);
+  return seal(`d.${teacherId}.-.-.${now + DONE_TTL_MS}`);
 }
 
 /** Signature first, expiry second, both before anything is trusted. */
@@ -100,10 +103,13 @@ export function readSetupCookie(value: string | null | undefined, now = Date.now
 
 /** `secure` follows the request's scheme, as the login cookie's does
  *  (src/routes/api/login/+server.ts). Lax, because Google's redirect back
- *  is a cross-site top-level navigation and Strict would withhold it. */
-export function setupCookieOptions(url: URL) {
+ *  is a cross-site top-level navigation and Strict would withhold it.
+ *  Max-Age follows the value being set: a done cookie lives as long as it
+ *  verifies, a started one for the 15 minutes of the trip to Google. */
+export function setupCookieOptions(url: URL, value?: string) {
   return {
     path: '/app/tutor-setup', httpOnly: true as const, sameSite: 'lax' as const,
-    secure: url.protocol === 'https:', maxAge: COOKIE_TTL_MS / 1000,
+    secure: url.protocol === 'https:',
+    maxAge: (value?.startsWith('d.') ? DONE_TTL_MS : COOKIE_TTL_MS) / 1000,
   };
 }

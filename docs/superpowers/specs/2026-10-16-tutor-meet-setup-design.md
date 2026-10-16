@@ -119,7 +119,9 @@ page changes nothing, so WhatsApp's link preview cannot use a link up.
   `SESSION_SECRET` like the family tokens, under its own prefix. It carries
   the code itself, not its hash, so a failure can send the tutor back to
   their own setup page with the button. After success it is replaced by
-  `d.teacherId.-.-.expiry`, which is what the done page reads.
+  `d.teacherId.-.-.expiry`, which is what the done page reads. The done
+  cookie lives 30 days, not 15 minutes: it names only the teacher, and a
+  phone may restore the "מוכן ✓" tab hours later.
 
 **Callback.** A `d` cookie means the setup already finished (a reloaded
 tab), so it goes straight to the done page and calls nothing. Otherwise it
@@ -145,6 +147,11 @@ Then:
 6. Replace the cookie with the `d` cookie and redirect to the done page, which shows "מוכן ✓":
    - the room link and a "פתיחת החדר" button;
    - "החדר נפתח בחשבון <email>. היכנסו ל-Meet עם החשבון הזה כדי שתוכלו להכניס משפחות."
+
+If the token lacks the Meet permission (Google's consent screen can show a
+checkbox per permission, and the tutor left it unticked), go back to the
+setup page with "ההרשאה ל-Google Meet לא סומנה" and the button, without
+calling `spaces.create`.
 
 If step 2 or 3 fails, or the room's link is not an `https://meet.google.com/`
 address, go back to the setup page with "משהו השתבש מול Google, נסו שוב בעוד

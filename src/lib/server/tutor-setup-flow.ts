@@ -49,6 +49,7 @@ export async function finishSetup(
     return { location: DONE_PATH, cookie: mintDoneCookie(teacher.id, now) };
   } catch (err) {
     console.warn(`[tutor-setup] ${err instanceof GoogleStepError ? err.message : 'google unreachable'}`);
-    return { location: `${page(c.code)}?e=google`, cookie: null };
+    const why = err instanceof GoogleStepError && err.step === 'scope' ? 'scope' : 'google';
+    return { location: `${page(c.code)}?e=${why}`, cookie: null };
   }
 }

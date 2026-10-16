@@ -19,7 +19,8 @@ const SPACES = 'https://meet.googleapis.com/v2/spaces';
 
 /** The account's email (to show which account owns the room), and rooms
  *  this app creates — nothing else of the tutor's. */
-export const SCOPES = 'openid email https://www.googleapis.com/auth/meetings.space.created';
+const MEET_SCOPE = 'https://www.googleapis.com/auth/meetings.space.created';
+export const SCOPES = `openid email ${MEET_SCOPE}`;
 export const CALLBACK_PATH = '/app/tutor-setup/callback';
 
 export interface WebClient { clientId: string; clientSecret: string; redirectUri: string }
@@ -44,10 +45,13 @@ export function consentUrl(client: WebClient, state: string): string {
 
 /* Plain fields, not constructor parameter properties: node --test loads
    this file by stripping types, and strip-only mode refuses those. */
+/** 'scope': the tutor left Google's Meet checkbox unticked, so the token
+ *  cannot make a room. Its own step, because the tutor's fix differs. */
+export type GoogleStep = 'token' | 'scope' | 'room';
 export class GoogleStepError extends Error {
-  readonly step: 'token' | 'room';
+  readonly step: GoogleStep;
   readonly status: number;
-  constructor(step: 'token' | 'room', status: number) {
+  constructor(step: GoogleStep, status: number) {
     super(`google ${step} failed: ${status}`);
     this.step = step;
     this.status = status;
@@ -79,10 +83,15 @@ export async function connectRoom(
     }),
   });
   if (!t.ok) throw new GoogleStepError('token', t.status);
-  const tok = await t.json() as { access_token?: string; id_token?: string };
+  const tok = await t.json() as { access_token?: string; id_token?: string; scope?: string };
   if (!tok.access_token) throw new GoogleStepError('token', t.status);
 
   try {
+    // Google's consent screen may list each permission with its own
+    // checkbox; a token without the Meet one would only fail at the room.
+    if (typeof tok.scope === 'string' && !tok.scope.split(' ').includes(MEET_SCOPE)) {
+      throw new GoogleStepError('scope', t.status);
+    }
     const r = await fetchImpl(SPACES, {
       method: 'POST',
       headers: { Authorization: `Bearer ${tok.access_token}`, 'Content-Type': 'application/json' },

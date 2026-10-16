@@ -7,11 +7,13 @@ import assert from 'node:assert/strict';
 const G = await import('../../src/lib/server/google-meet-setup.ts');
 const CLIENT = { clientId: 'cid.example', clientSecret: 'shh', redirectUri: 'https://site.example/app/tutor-setup/callback' };
 const ROOM = 'https://meet.google.com/abc-defg-hij';
+// What Google's token response lists when the tutor allowed everything.
+const GRANTED = 'openid https://www.googleapis.com/auth/userinfo.email https://www.googleapis.com/auth/meetings.space.created';
 const idToken = (claims) => `h.${Buffer.from(JSON.stringify(claims)).toString('base64url')}.sig`;
 
 /** A fake Google: one canned answer per endpoint, every call recorded. */
 function fakeGoogle({
-  token = { status: 200, body: { access_token: 'at-1', id_token: idToken({ email: 'tutor@example.com' }) } },
+  token = { status: 200, body: { access_token: 'at-1', scope: GRANTED, id_token: idToken({ email: 'tutor@example.com' }) } },
   room = { status: 200, body: { meetingUri: ROOM, config: { accessType: 'RESTRICTED' } } },
   revoke = { status: 200, body: {} },
 } = {}) {
@@ -91,4 +93,10 @@ test('revoke failing does not lose the room', async () => {
 test('the account is read from the id_token, and its absence is not an error', () => {
   assert.equal(G.emailFromIdToken(idToken({ email: 'a@example.com' })), 'a@example.com');
   for (const bad of [undefined, '', 'x', 'h.%%%.s', idToken({})]) assert.equal(G.emailFromIdToken(bad), null);
+});
+
+test('a token without the Meet permission (box left unticked) is a scope failure: no room, token revoked', async () => {
+  const g = fakeGoogle({ token: { status: 200, body: { access_token: 'at-1', scope: 'openid https://www.googleapis.com/auth/userinfo.email' } } });
+  await assert.rejects(G.connectRoom(CLIENT, 'c', g.fetchImpl), (e) => e instanceof G.GoogleStepError && e.step === 'scope');
+  assert.deepEqual(g.calls.map((c) => c.url), ['https://oauth2.googleapis.com/token', 'https://oauth2.googleapis.com/revoke']);
 });

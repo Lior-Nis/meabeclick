@@ -14,8 +14,7 @@ export const GET: RequestHandler = async ({ url, cookies }) => {
   const step = await finishSetup({
     cookie: cookies.get(SETUP_COOKIE), state: q.get('state'), authCode: q.get('code'), error: q.get('error'),
   }, webClientFromEnv());
-  const options = setupCookieOptions(url);
-  if (step.cookie) cookies.set(SETUP_COOKIE, step.cookie, options);
-  else cookies.delete(SETUP_COOKIE, { path: options.path });
+  if (step.cookie) cookies.set(SETUP_COOKIE, step.cookie, setupCookieOptions(url, step.cookie));
+  else cookies.delete(SETUP_COOKIE, { path: setupCookieOptions(url).path });
   redirect(303, step.location);
 };

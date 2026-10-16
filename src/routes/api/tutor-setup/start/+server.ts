@@ -10,6 +10,6 @@ import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = ({ url, cookies }) => {
   const step = startSetup(url.searchParams.get('code'), webClientFromEnv());
-  if (step.cookie) cookies.set(SETUP_COOKIE, step.cookie, setupCookieOptions(url));
+  if (step.cookie) cookies.set(SETUP_COOKIE, step.cookie, setupCookieOptions(url, step.cookie));
   redirect(303, step.location);
 };

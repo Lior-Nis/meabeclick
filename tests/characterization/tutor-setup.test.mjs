@@ -97,6 +97,7 @@ test('callback: denied keeps the link; a bad state or no cookie ends as not comp
     const back = await html(`${baseUrl}/app/tutor-setup/${code}?e=denied`);
     assert.match(back, /לא אישרתם/);
     assert.match(back, /התחברות עם Google/);
+    assert.match(await html(`${baseUrl}/app/tutor-setup/${code}?e=scope`), /סמנו את התיבה של Google Meet/);
 
     const wrong = await fetch(`${baseUrl}/app/tutor-setup/callback?code=x&state=other`,
       { redirect: 'manual', headers: { cookie: setup } });

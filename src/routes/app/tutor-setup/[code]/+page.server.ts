@@ -16,6 +16,6 @@ export const load: PageServerLoad = ({ params, url }) => {
     name: teacher.name,
     start: `/api/tutor-setup/start?code=${params.code}`,
     hasRoom: !!teacher.meet_url,
-    problem: e === 'denied' || e === 'google' ? e : null,
+    problem: e === 'denied' || e === 'google' || e === 'scope' ? e : null,
   };
 };
