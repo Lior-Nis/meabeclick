@@ -21,3 +21,10 @@ export const TUTOR_PHONE_DISPLAY = '0546969891';
  *  booking confirmation and in the after-lesson email; typed nowhere else
  *  (tests/unit/paybox.test.mjs). */
 export const PAYBOX_LINK = 'https://links.payboxapp.com/k247i3oUN6b';
+
+/** Where every in-person lesson happens, and only there: never at the
+ *  student's home (Lior, 2026-10-16). Printed by the booking page, the
+ *  emails, the calendar event and the terms; typed nowhere else. */
+export const OFFICE_ADDRESS = 'שלמה אפשטיין 10, קרית גת';
+/** Waze to the office: on a phone it opens the app, elsewhere the web map. */
+export const OFFICE_NAV_LINK = `https://waze.com/ul?q=${encodeURIComponent(OFFICE_ADDRESS)}&navigate=yes`;

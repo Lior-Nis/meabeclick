@@ -152,7 +152,7 @@ test('the header phone link uses contact.ts and sends cta_click with target "pho
 });
 
 test('booking/+page.svelte reuses TUTOR_PHONE from contact.ts instead of its own literal', () => {
-  assert.match(booking, /import \{ TUTOR_PHONE \} from '\$lib\/contact\.ts'/);
+  assert.match(booking, /import \{[^}]*\bTUTOR_PHONE\b[^}]*\} from '\$lib\/contact\.ts'/);
   assert.doesNotMatch(booking, /const TUTOR_PHONE = '972546969891'/,
     'booking must no longer declare its own TUTOR_PHONE literal');
 });

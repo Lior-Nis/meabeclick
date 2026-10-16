@@ -28,6 +28,8 @@
  * it is.
  */
 import { handle } from './db.ts';
+import { lessonTeacher } from './entities.ts';
+import type { LessonMode } from '../lesson-mode.ts';
 
 /** 'after-report' is the family's "lesson reported" email (notices.ts). */
 export type ReminderKind = 'before-lesson' | 'after-report';
@@ -121,10 +123,12 @@ export function reminderFor(bookingId: number, kind: ReminderKind): ReminderRow 
  */
 export function pendingReminders(nowIso: string): (RemindableBooking & {
   studentName: string; email: string | null; subject: string | null; duration: number | null;
+  mode: LessonMode | null; meetUrl: string | null;
 })[] {
   const rows = handle().prepare(`
     SELECT b.id AS id, b.start AS start, b.status AS status, b.duration AS duration,
-           s.name AS studentName, a.email AS email, e.subject AS subject
+           s.name AS studentName, a.email AS email, e.subject AS subject,
+           b.mode AS mode, e.teacher_id AS teacherId
     FROM bookings_v2 b
     JOIN students_v2 s ON s.id = b.student_id
     JOIN accounts a    ON a.id = s.account_id
@@ -136,8 +140,13 @@ export function pendingReminders(nowIso: string): (RemindableBooking & {
       )
   `).all() as unknown as (RemindableBooking & {
     studentName: string; email: string | null; subject: string | null; duration: number | null;
+    mode: LessonMode | null; teacherId: number | null;
   })[];
 
   const due = new Set(dueForReminder(rows, nowIso).map(b => b.id));
-  return rows.filter(r => due.has(r.id));
+  /* The room is looked up only for what is due, and through lessonTeacher
+     so a reminder and the booking email can never name different rooms. */
+  return rows.filter(r => due.has(r.id)).map(({ teacherId, ...r }) => ({
+    ...r, meetUrl: r.mode === 'online' ? lessonTeacher(teacherId)?.meet_url ?? null : null,
+  }));
 }

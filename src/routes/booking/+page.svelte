@@ -7,7 +7,8 @@
   import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
   import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
-  import { TUTOR_PHONE } from '$lib/contact.ts';
+  import { TUTOR_PHONE, OFFICE_ADDRESS } from '$lib/contact.ts';
+  import { MODE_LABEL, type LessonMode } from '$lib/lesson-mode.ts';
   import { contactTutor } from '$lib/tutors.ts';
   import type { PageData } from './$types';
 
@@ -257,6 +258,14 @@
   let level = $state('');
   let phone = $state('');
   let email = $state('');
+  /* Online or in person (Todoist 6hmR35WgcWp7Mj2q). Asked, never assumed:
+     nothing is preselected, the way "מי לומד?" is not, because a family
+     sent to the wrong place is worse than one more tap. */
+  let mode = $state<LessonMode | null>(null);
+  function pickMode(m: LessonMode) {
+    mode = m;
+    errors = { ...errors, mode: undefined };
+  }
   /** "איך שמעתם עלינו?" — optional, never validated as required (see
    *  validatePane1/validatePane2 below), and never sent at all when blank
    *  (submitBooking). '' is "not answered", the same convention every
@@ -270,7 +279,7 @@
    *  a request the tutor confirms, not a confirmed lesson. */
   let bookedUnconfirmed = $state(false);
 
-  type FieldName = 'isSelf' | 'name' | 'level' | 'email' | 'phone';
+  type FieldName = 'isSelf' | 'name' | 'level' | 'email' | 'phone' | 'mode';
   let errors = $state<Partial<Record<FieldName, string>>>({});
 
   const learnerLabel = $derived(isSelf ? 'השם שלך' : 'שם התלמיד/ה');
@@ -284,15 +293,17 @@
     /* A known family who has not picked yet gets one message about the one
        decision in front of them, rather than four field errors for fields
        the picker has not shown. */
+    const modeError = mode ? undefined : 'בחרו אונליין או פנים מול פנים';
     if (knownFamily && !editingDetails && !chosen) {
-      errors = { ...errors, isSelf: 'בחרו מי לומד' };
+      errors = { ...errors, isSelf: 'בחרו מי לומד', mode: modeError };
       return false;
     }
 
     if (isSelf === null) next.isSelf = 'בחרו מי לומד';
     if (!name.trim()) next.name = isSelf ? 'צריך את השם שלך' : 'צריך את שם התלמיד/ה';
     if (!level) next.level = 'בחרו כיתה או רמה';
-    errors = { ...errors, ...next, ...clearedOf(['isSelf', 'name', 'level'], next) };
+    if (modeError) next.mode = modeError;
+    errors = { ...errors, ...next, ...clearedOf(['isSelf', 'name', 'level', 'mode'], next) };
     return !Object.keys(next).length;
   }
 
@@ -324,7 +335,11 @@
 
   function focusFirstError() {
     requestAnimationFrame(() => {
-      sheetEl?.querySelector<HTMLElement>('[aria-invalid="true"]')?.focus();
+      const field = sheetEl?.querySelector<HTMLElement>('[aria-invalid="true"]');
+      /* A choice between cards has no field to focus. Its message may sit
+         below the fold of the sheet, so it is scrolled to instead. */
+      if (field) field.focus();
+      else sheetEl?.querySelector<HTMLElement>('.field-error')?.scrollIntoView({ block: 'center' });
     });
   }
 
@@ -379,6 +394,9 @@
       ['📅', 'מועד', `${dateLabel} · ${timeLabel}`],
       ['⏱️', 'שיעור', `${plan.name} · ${plan.minutes} דקות`],
       ['💳', 'מחיר', formatPrice(plan.shekels)],
+      ['📍', 'איפה', mode === 'in_person'
+        ? `${MODE_LABEL.in_person} · ${OFFICE_ADDRESS}`
+        : `${MODE_LABEL.online} · Google Meet (הקישור יגיע במייל)`],
       ['👤', isSelf ? 'שם' : 'תלמיד/ה', name.trim()],
       ['📖', 'מקצוע', subject],
       ['🎓', 'כיתה / רמה', level],
@@ -430,6 +448,7 @@
           start: selectedSlot!.start,
           end: selectedSlot!.end,
           durationMin: selectedPlan!.minutes,
+          mode,
           ...(attrib ? { attribution: attrib } : {}),
           ...(heardFrom ? { heardFrom } : {}),
         }),
@@ -845,6 +864,32 @@
             placeholder="נושא למבחן, תרגיל שנתקעתם בו או בקשה להמשך"
           ></textarea>
           {/if}
+
+          <!-- Asked of every family, new or returning: where is per lesson,
+               not per child. In person is only ever at the office, so the
+               address is on the card rather than a third option. -->
+          <fieldset class="who where">
+            <legend>איפה לומדים?</legend>
+            <div class="who-cards">
+              <button
+                type="button" class="who-card" class:active={mode === 'online'}
+                aria-pressed={mode === 'online'} onclick={() => pickMode('online')}
+              >
+                <span class="who-emoji">💻</span>
+                <span class="who-label">{MODE_LABEL.online}</span>
+                <span class="who-sub">ב-Google Meet</span>
+              </button>
+              <button
+                type="button" class="who-card" class:active={mode === 'in_person'}
+                aria-pressed={mode === 'in_person'} onclick={() => pickMode('in_person')}
+              >
+                <span class="who-emoji">🏫</span>
+                <span class="who-label">{MODE_LABEL.in_person}</span>
+                <span class="who-sub">{OFFICE_ADDRESS}</span>
+              </button>
+            </div>
+            {#if errors.mode}<p class="field-error">{errors.mode}</p>{/if}
+          </fieldset>
         {:else}
           {#if data.known && !editingContact && email && phone}
             <!-- A returning family's details come from their account. Shown
@@ -1251,6 +1296,8 @@
   }
   .who-card.active { border-color: var(--accent); background: var(--accent-dim); color: var(--accent); }
   .who-emoji { font-size: 1.35rem; }
+  .where { margin-top: 1.1rem; }
+  .who-sub { font-size: 0.78rem; font-weight: 500; color: var(--text-muted); text-align: center; line-height: 1.35; }
 
   .sheet-body label {
     display: block;

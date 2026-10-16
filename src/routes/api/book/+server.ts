@@ -25,7 +25,7 @@ import { json, type Cookies } from '@sveltejs/kit';
 import crypto from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { flagCalendarFailure } from '$server/db.ts';
-import { reserveBooking, slotTaken, cancelBooking, findAccountByEmail, type AccountRow } from '$server/entities.ts';
+import { reserveBooking, slotTaken, cancelBooking, findAccountByEmail, lessonTeacher, type AccountRow } from '$server/entities.ts';
 import { holdBooking, pendingById, claimPending, confirmLink } from '$server/pending-bookings.ts';
 import { recordEvent, VISITOR_ID_RE } from '$server/marketing.ts';
 import { HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
@@ -36,12 +36,12 @@ import { accountLink } from '$server/family-auth.ts';
 import { triggerForBooking, sendWhatsApp, type Booking } from '$server/lesson/queue.ts';
 import { addLessonRequest } from '$server/requests.ts';
 import { readJson } from '$server/http.ts';
-import { planLabel, planFor, kindFor, agorot } from '$lib/plans.ts';
+import { planFor, kindFor, agorot } from '$lib/plans.ts';
 import { setFamilySession, verifyPendingToken } from '$server/family-auth.ts';
 import type { RequestHandler } from './$types';
 import { SUBJECT } from '$lib/subjects.ts';
-
-const TZ = 'Asia/Jerusalem';
+import { isLessonMode, lessonPlace, type LessonMode } from '$lib/lesson-mode.ts';
+import { bookingEvent } from '$server/booking-event.ts';
 
 interface BookBody {
   name?: string;
@@ -72,6 +72,9 @@ interface BookBody {
   };
   /** The optional "איך שמעתם עלינו?" self-report — see HEARD_FROM_VALUES. */
   heardFrom?: string;
+  /** Online or in person ($lib/lesson-mode.ts). Anything else is refused;
+   *  absent is accepted as "never said" — see POST. */
+  mode?: LessonMode;
 }
 
 /**
@@ -319,6 +322,11 @@ async function book(
   const { name, subject, phone, email, level, start, end, durationMin } = body;
   const requestText = resolveRequest(body);
 
+  /* The room is the lesson's teacher's: the enrollment's, or the default
+     teacher when there is no enrollment to ask (enrolment failed). */
+  const teacher = lessonTeacher(enrolled?.enrollment?.teacher_id ?? null);
+  const place = lessonPlace(body.mode ?? null, teacher?.meet_url ?? null);
+
   /* No fallback. A default calendar is a personal address in disguise: with
      CALENDAR_ID unset — a fresh box, a typo, an .env that did not load —
      every booking in the system silently lands on ONE person's calendar.
@@ -336,7 +344,7 @@ async function book(
   if (!calendarId) throw new Error('CALENDAR_ID is not set — refusing to guess which calendar a lesson belongs on');
   const sa = serviceAccount();
 
-  const booking = { name, subject, request: requestText, phone, email, level, start, durationMin };
+  const booking = { name, subject, request: requestText, phone, email, level, start, durationMin, place, tutorName: teacher?.name ?? null };
 
   /* Enrolment used to happen here. It now happens in POST, ahead of the
      reservation, because a booking row names a student — so the family has
@@ -413,21 +421,7 @@ async function book(
     const token = await getAccessToken(sa.email, sa.privateKey);
 
     // ── Build event ─────────────────────────────────────────────────────
-    const event = {
-      summary: `שיעור — ${name} — ${subject}`,
-      description: [
-        `👤 שם: ${name}`,
-        `📖 מקצוע: ${subject}`,
-        `❓ בקשה לשיעור: ${requestText || '—'}`,
-        `🎓 כיתה/רמה: ${level}`,
-        `📱 טלפון: ${phone}`,
-        `✉️ מייל: ${email || '—'}`,
-        `💳 ${planLabel(durationMin)}`,
-      ].join('\n'),
-      start: { dateTime: start, timeZone: TZ },
-      end: { dateTime: end, timeZone: TZ },
-      colorId: '6', // tangerine — visible at a glance
-    };
+    const event = bookingEvent({ name, subject, request: requestText, level, phone, email, start, end, durationMin }, place);
 
     const r = await fetch(
       `https://www.googleapis.com/calendar/v3/calendars/${encodeURIComponent(calendarId)}/events`,
@@ -485,6 +479,16 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
      and a student behind. */
   if (!isComplete(body)) {
     return json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  /* Online or in person, and nothing else: a lesson at the student's home
+     is not on offer, so a request for one is refused before anyone is
+     enrolled or any hour claimed. A request that does not say at all is
+     still booked, as "never said" (the tutor's copy shows it): a page
+     opened before this field existed, and a confirmation held before it,
+     must not cost a family their lesson. */
+  if (body.mode !== undefined && !isLessonMode(body.mode)) {
+    return json({ error: 'בחרו אם השיעור אונליין או פנים מול פנים' }, { status: 400 });
   }
 
   // Sanitized once, up front, and reused both for the booking row's own
@@ -650,6 +654,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
       durationMin: body.durationMin ?? null,
       sourceUtm,
       heardFrom,
+      mode: isLessonMode(body.mode) ? body.mode : null,
     });
     if (bookingId == null) {
       return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
