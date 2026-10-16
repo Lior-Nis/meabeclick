@@ -13,7 +13,10 @@
    *
    * Frontal lessons take place at the tutor's location (decision Q15), which
    * is why there is a clause about bringing and collecting a minor rather
-   * than one about a responsible adult being home.
+   * than one about a responsible adult being home. That location is one
+   * office, OFFICE_ADDRESS in src/lib/contact.ts, and never the student's
+   * home (Lior, 2026-10-16); there was never an Ashkelon one. Online lessons
+   * are on Google Meet, the teacher's own room (src/lib/lesson-mode.ts).
    *
    * There is deliberately NO ע.מ. number here: the business is not registered
    * yet (planned January 2027). An individual is still a legal person who can
@@ -22,11 +25,12 @@
    * clause near the top and the יצירת קשר box at the bottom.
    */
   import LegalPage from '$lib/components/LegalPage.svelte';
+  import { OFFICE_ADDRESS } from '$lib/contact.ts';
 </script>
 
 <LegalPage
   title="תקנון ותנאי שימוש"
-  updated="28 בספטמבר 2026"
+  updated="16 באוקטובר 2026"
   intro="התקנון הזה מסביר מה אנחנו מתחייבים לספק, מה מצופה מכם, איך עובדים התשלום והביטולים ומה הכלל לגבי חומרי הלימוד. כתבנו אותו בעברית פשוטה כדי שיהיה אפשר לקרוא אותו באמת, ולא רק לאשר אותו."
 >
   <h2>1. כללי</h2>
@@ -58,9 +62,9 @@
       שיעורים פרטיים לתלמידי כיתות א׳–י״ב, לפי המקצועות והרמות המוצגים באתר.
     </li>
     <li>
-      השיעורים מתקיימים <strong>פרונטלית</strong> במקום הלימוד שלנו
-      ב<strong>קרית גת</strong> וב<strong>אשקלון</strong>, או
-      <strong>אונליין</strong> בשיחת וידאו, לפי בחירתכם.
+      השיעורים מתקיימים <strong>פרונטלית</strong> במקום הלימוד שלנו,
+      <strong>{OFFICE_ADDRESS}</strong>, או <strong>אונליין</strong> בשיחת
+      וידאו ב-Google Meet, לפי בחירתכם בעת ההזמנה.
     </li>
     <li>
       אורכי השיעור והמחירים הם אלה המוצגים בדף ההזמנה באתר במועד ההזמנה.
@@ -71,13 +75,13 @@
     </li>
   </ul>
   <p>
-    <strong>שיעורים פרונטליים:</strong> הכתובת המדויקת נמסרת לכם בתיאום לפני
-    השיעור הראשון. כאשר התלמיד/ה קטין/ה, האחריות להבאתו/ה ולאיסופו/ה היא על
+    <strong>שיעורים פרונטליים:</strong> מתקיימים רק במקום הלימוד שלנו,
+    ולא בבית התלמיד/ה. כאשר התלמיד/ה קטין/ה, האחריות להבאתו/ה ולאיסופו/ה היא על
     המשפחה, ואחריותנו כלפיו/ה מתחילה ומסתיימת עם שעת השיעור.
   </p>
   <p>
-    <strong>שיעורים אונליין:</strong> נדרשים מצדכם חיבור אינטרנט תקין, מכשיר עם
-    מצלמה, מיקרופון ורמקול, וסביבה שקטה. תקלה בציוד או בחיבור מצד התלמיד/ה אינה
+    <strong>שיעורים אונליין:</strong> הקישור לשיעור נשלח אליכם במייל. נדרשים
+    מצדכם חיבור אינטרנט תקין, מכשיר עם מצלמה, מיקרופון ורמקול, וסביבה שקטה. תקלה בציוד או בחיבור מצד התלמיד/ה אינה
     מאריכה את השיעור; אם התקלה אצלנו, נשלים את הזמן שהוחמץ.
   </p>
 

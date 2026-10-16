@@ -26,6 +26,7 @@ import { PAYBOX_LINK, TUTOR_PHONE } from '../contact.ts';
 import { planLabel } from '../plans.ts';
 import { contactTutor } from '../tutors.ts';
 import { autopilotCovers } from '../subjects.ts';
+import { MODE_LABEL, placeLine, type LessonPlace } from '../lesson-mode.ts';
 
 const TZ = 'Asia/Jerusalem';
 
@@ -40,6 +41,11 @@ export interface BookingEmailInput {
   durationMin?: number | string;
   phone: string;
   email?: string | null;
+  /** Online or in person, and where (src/lib/lesson-mode.ts). Absent or
+   *  mode null: booked by a page that never asked. */
+  place?: LessonPlace | null;
+  /** Who teaches it: named in the tutor's copy when their Meet room is missing. */
+  tutorName?: string | null;
 }
 
 export interface EnrolledForEmail {
@@ -194,6 +200,37 @@ function linkBlock(href: string, label: string): string {
 }
 
 /**
+ * Where the lesson is, for a family: the Meet room to tap, the office and a
+ * way there, or the promise of a link when the teacher has no room yet.
+ * Nothing at all for a booking that never said; a guess would send a family
+ * to the wrong place. Used by the confirmation and by the reminder.
+ */
+function placeText(p: LessonPlace | null | undefined): string[] {
+  if (!p?.mode) return [];
+  if (p.mode === 'in_person') return [`📍 איפה: ${placeLine(p)}`, `ניווט: ${p.href}`];
+  return [`📍 איפה: ${p.label}`, p.href ? `הקישור לשיעור: ${p.href}` : NO_ROOM_YET];
+}
+
+const NO_ROOM_YET = 'את הקישור לשיעור ב-Google Meet נשלח לפני השיעור.';
+
+function placeBlock(p: LessonPlace | null | undefined): string {
+  if (!p?.mode) return '';
+  const box = (inner: string) => `
+    <div style="margin-top:16px;padding:14px 16px;border-radius:12px;background:#F0FDF4;border:1px solid #BBF7D0">${inner}</div>`;
+  if (p.mode === 'in_person') {
+    return box(`
+      <div style="font-weight:800;margin-bottom:4px">📍 ${esc(p.label)}</div>
+      <div style="color:#334155;line-height:1.7">${esc(p.where)}</div>
+      <a href="${esc(p.href)}" style="color:#2563EB;font-weight:700">🚗 ניווט ב-Waze</a>`);
+  }
+  return box(`
+    <div style="font-weight:800;margin-bottom:4px">💻 ${esc(p.label)}</div>
+    ${p.href
+      ? linkBlock(p.href, '💻 כניסה לשיעור')
+      : `<div style="color:#334155;line-height:1.7">${esc(NO_ROOM_YET)}</div>`}`);
+}
+
+/**
  * The tutor's copy — her working record of the booking.
  *
  * `inCalendar` false means she must add the lesson by hand, so the subject
@@ -209,6 +246,7 @@ export async function sendBookingEmail(
   if (!tx) return false;
 
   const to = process.env.BOOKING_EMAIL_TO || 'mea.beclick@gmail.com';
+  const place = b.place ?? { mode: null, label: 'לא צוין', where: null, href: null };
 
   const rows: [string, string][] = [
     ['👤 שם',           b.name],
@@ -216,6 +254,7 @@ export async function sendBookingEmail(
     ['🎓 כיתה / רמה',   b.level],
     ['❓ בקשה לשיעור',   b.request || '—'],
     ['📅 מועד',         whenLabel(b.start)],
+    ['📍 איפה',         placeLine(place)],
     ['💳 שיעור',        planLabel(b.durationMin)],
     ['📱 טלפון',        b.phone],
     ['✉️ מייל',         b.email || '—'],
@@ -230,11 +269,17 @@ export async function sendBookingEmail(
   /* Only maths is prepared automatically; any other lesson is the tutor's
      to prepare, and nothing else will tell her so. */
   const manual = autopilotCovers(b.subject) ? '' : '✋ לא מתמטיקה — השיעור לא מוכן אוטומטית. ההכנה ידנית.';
+  /* Online with no room on the teacher's row: the family was told the link
+     comes before the lesson, and only the tutor can send it. */
+  const noRoom = place.mode === 'online' && !place.href
+    ? `⚠️ אין קישור Meet של ${b.tutorName || 'המורה'} באתר — צריך לשלוח למשפחה קישור לפני השיעור`
+    : '';
 
   const text = rows.map(([k, v]) => `${k}: ${v}`).join('\n')
     + (enrolled ? `\n\n${status}\nהדף שלהם: ${enrolled.portalLink}` : '')
     + `\n\n${inCalendar ? '✅ נוסף ליומן אוטומטית' : '⚠️ לא נוסף ליומן — יש להוסיף ידנית'}`
-    + (manual ? `\n${manual}` : '');
+    + (manual ? `\n${manual}` : '')
+    + (noRoom ? `\n${noRoom}` : '');
 
   const html = shell(`
     <h2 style="color:#2563EB;margin:0 0 4px">📚 הזמנת שיעור חדשה</h2>
@@ -246,6 +291,7 @@ export async function sendBookingEmail(
       ${inCalendar ? '✅ נוסף ליומן אוטומטית' : '⚠️ לא נוסף ליומן — יש להוסיף ידנית'}
     </p>
     ${manual ? `<p style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#FFFBEB;color:#B45309;font-weight:700">${esc(manual)}</p>` : ''}
+    ${noRoom ? `<p style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#FFFBEB;color:#B45309;font-weight:700">${esc(noRoom)}</p>` : ''}
     ${enrolled ? `
     <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#EFF6FF;border:1px solid #BFDBFE">
       <div style="font-weight:800;margin-bottom:6px">${esc(status)}</div>
@@ -262,7 +308,7 @@ export async function sendBookingEmail(
   await tx.sendMail({
     from: process.env.GMAIL_USER,
     to,
-    subject: `📚 שיעור חדש — ${b.name} — ${b.subject}${inCalendar ? '' : ' (להוסיף ליומן!)'}`,
+    subject: `📚 שיעור חדש — ${b.name} — ${b.subject}${place.mode ? ` — ${MODE_LABEL[place.mode]}` : ''}${inCalendar ? '' : ' (להוסיף ליומן!)'}`,
     text,
     html,
   });
@@ -310,6 +356,7 @@ export async function sendFamilyBookingEmail(
     `${greeting}!`,
     '',
     ...rows.map(([k, v]) => `${k}: ${v}`),
+    ...placeText(b.place),
     '',
     'הדף האישי — שיעורים, שיעורי בית ומצגות:',
     enrolled.portalLink,
@@ -325,6 +372,7 @@ export async function sendFamilyBookingEmail(
     <h2 style="color:#2563EB;margin:0 0 4px">✅ ${esc(greeting)}</h2>
     <p style="color:#64748B;margin:0 0 16px">מאה בקליק · שיעורים פרטיים</p>
     ${rowsTable(rows)}
+    ${placeBlock(b.place)}
     <div style="margin-top:20px;padding:16px 18px;border-radius:14px;background:#EFF6FF;border:1px solid #BFDBFE">
       <div style="font-weight:800;font-size:17px;margin-bottom:4px">הדף האישי של ${esc(enrolled.student.name)}</div>
       <div style="color:#334155;font-size:14px;line-height:1.7">
@@ -532,6 +580,7 @@ export async function sendLessonReminderEmail(r: {
   subject: string | null;
   durationMin: number | null;
   tutorPhone?: string;
+  place?: LessonPlace | null;
 }): Promise<boolean> {
   if (!r.to) return false;
   const tx = transport();
@@ -549,6 +598,7 @@ export async function sendLessonReminderEmail(r: {
     'תזכורת לשיעור הקרוב',
     '',
     ...rows.map(([k, v]) => `${k}: ${v}`),
+    ...placeText(r.place),
     '',
     'צריך לשנות או לבטל? אפשר להודיע בוואטסאפ:',
     `https://wa.me/${phone}`,
@@ -558,6 +608,7 @@ export async function sendLessonReminderEmail(r: {
     <h2 style="color:#2563EB;margin:0 0 4px">⏰ תזכורת לשיעור הקרוב</h2>
     <p style="color:#64748B;margin:0 0 16px">מאה בקליק · שיעורים פרטיים</p>
     ${rowsTable(rows)}
+    ${placeBlock(r.place)}
     <p style="margin-top:20px;color:#64748B">
       צריך לשנות או לבטל?
       <a href="https://wa.me/${esc(phone)}" style="color:#2563EB">💬 הודיעו בוואטסאפ</a>

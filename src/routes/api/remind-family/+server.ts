@@ -25,6 +25,7 @@ import { json } from '@sveltejs/kit';
 import { authorizedCronRequest } from '$server/cron-auth.ts';
 import { sendLessonReminderEmail, sendCalendarReminderEmail } from '$server/email.ts';
 import { pendingReminders, claimReminder, finishReminder } from '$server/reminders.ts';
+import { lessonPlace } from '$lib/lesson-mode.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async ({ request }) => {
@@ -57,6 +58,8 @@ export const GET: RequestHandler = async ({ request }) => {
       const ok = await sendLessonReminderEmail({
         to: b.email, studentName: b.studentName, start: b.start,
         subject: b.subject, durationMin: b.duration,
+        // The day before is when a family needs the room or the address.
+        place: lessonPlace(b.mode, b.meetUrl),
       });
       if (ok) {
         finishReminder(b.id, 'before-lesson', 'sent', null);

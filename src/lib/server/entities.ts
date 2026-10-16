@@ -7,8 +7,13 @@
  * accessors are being retired.
  */
 import { handle } from './db.ts';
+import type { LessonMode } from '../lesson-mode.ts';
 
-export type TeacherRow = { id: number; name: string; phone: string | null; active: number };
+export type TeacherRow = {
+  id: number; name: string; phone: string | null; active: number;
+  /** The teacher's fixed Google Meet room (migration 027), or null. */
+  meet_url: string | null;
+};
 export type AccountRow = {
   id: number; name: string; phone: string | null;
   credential: string; is_self: number; created_at: string;
@@ -36,6 +41,18 @@ export function getTeacher(id: number): TeacherRow | null {
 
 export function listTeachers(): TeacherRow[] {
   return handle().prepare(`SELECT * FROM teachers ORDER BY id`).all() as TeacherRow[];
+}
+
+/** Sets a teacher's Meet room. By hand, on the server: the repo is public. */
+export function setTeacherMeetUrl(id: number, url: string | null): void {
+  handle().prepare(`UPDATE teachers SET meet_url = ? WHERE id = ?`).run(url, id);
+}
+
+/** Who teaches a lesson: its enrollment's teacher, or the default teacher
+ *  when the enrollment names none (enrollFromBooking assigns the default
+ *  anyway, so this is the same answer it would have given). */
+export function lessonTeacher(teacherId: number | null | undefined): TeacherRow | null {
+  return (teacherId != null ? getTeacher(teacherId) : null) ?? defaultTeacher();
 }
 
 /** The tutor everything is attributed to until per-teacher auth exists.
@@ -425,17 +442,19 @@ export function reserveBooking(b: {
   durationMin?: number | null;
   sourceUtm?: string | null;
   heardFrom?: string | null;
+  /** Online or in person (migration 027); null when the request never said. */
+  mode?: LessonMode | null;
 }): number | null {
   // Calls slotTaken rather than repeating its query, so the standalone
   // check and the one guarding this insert can never drift apart.
   if (slotTaken(b.start, b.end)) return null;
 
   const info = handle().prepare(`
-    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from)
-    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?)
+    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from, mode)
+    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)
   `).run(b.studentId, b.enrollmentId ?? null, b.start, b.end,
          b.durationMin ?? null, new Date().toISOString(),
-         b.sourceUtm ?? null, b.heardFrom ?? null);
+         b.sourceUtm ?? null, b.heardFrom ?? null, b.mode ?? null);
 
   return Number(info.lastInsertRowid);
 }
