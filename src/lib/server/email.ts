@@ -208,10 +208,15 @@ function linkBlock(href: string, label: string): string {
 function placeText(p: LessonPlace | null | undefined): string[] {
   if (!p?.mode) return [];
   if (p.mode === 'in_person') return [`📍 איפה: ${placeLine(p)}`, `ניווט: ${p.href}`];
-  return [`📍 איפה: ${p.label}`, p.href ? `הקישור לשיעור: ${p.href}` : NO_ROOM_YET];
+  return [`📍 איפה: ${p.label}`, ...(p.href ? [`הקישור לשיעור: ${p.href}`, JOIN_HINT] : [NO_ROOM_YET])];
 }
 
 const NO_ROOM_YET = 'את הקישור לשיעור ב-Google Meet נשלח לפני השיעור.';
+/* Measured 2026-10-16 on a free-account room: with the tutor in the call a
+   signed-out visitor is offered "Ask to join"; with nobody in it, the same
+   visitor is told "You can't join this video call". A family that arrives
+   early must read that as "not open yet", not as a broken link. */
+const JOIN_HINT = 'בכניסה מבקשים להצטרף, ומחכים שנכניס אתכם. אם כתוב שאי אפשר להצטרף, השיעור עוד לא נפתח: נסו שוב בעוד דקה.';
 
 function placeBlock(p: LessonPlace | null | undefined): string {
   if (!p?.mode) return '';
@@ -226,7 +231,8 @@ function placeBlock(p: LessonPlace | null | undefined): string {
   return box(`
     <div style="font-weight:800;margin-bottom:4px">💻 ${esc(p.label)}</div>
     ${p.href
-      ? linkBlock(p.href, '💻 כניסה לשיעור')
+      ? `${linkBlock(p.href, '💻 כניסה לשיעור')}
+    <div style="color:#334155;font-size:13px;line-height:1.7;margin-top:8px">${esc(JOIN_HINT)}</div>`
       : `<div style="color:#334155;line-height:1.7">${esc(NO_ROOM_YET)}</div>`}`);
 }
 

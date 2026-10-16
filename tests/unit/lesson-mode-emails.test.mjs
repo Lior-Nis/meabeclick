@@ -102,3 +102,25 @@ test('the reminder carries the room or the address', async () => {
   await sendLessonReminderEmail(r);
   assert.ok(!last().text.includes('📍'));
 });
+
+/* Measured 2026-10-16 on a free-account room: with the tutor in the call a
+   signed-out visitor is offered "Ask to join"; with nobody in it, the same
+   visitor gets "You can't join this video call". A family that arrives early
+   must read that as "not open yet", not as a broken link. */
+const JOIN_HINT = 'אם כתוב שאי אפשר להצטרף, השיעור עוד לא נפתח: נסו שוב בעוד דקה';
+
+test('online with a room: the confirmation and the reminder say how joining works, and what an early "can\'t join" means', async () => {
+  await sendFamilyBookingEmail({ ...booking, place: lessonPlace('online', ROOM) }, enrolled);
+  assert.ok(last().text.includes(JOIN_HINT), 'confirmation text');
+  assert.ok(last().html.includes(JOIN_HINT), 'confirmation html');
+  await sendLessonReminderEmail({ to: 'parent@example.com', studentName: 'דנה', start: booking.start, subject: 'מתמטיקה', durationMin: 45, place: lessonPlace('online', ROOM) });
+  assert.ok(last().text.includes(JOIN_HINT), 'reminder text');
+  assert.ok(last().html.includes(JOIN_HINT), 'reminder html');
+});
+
+test('no hint where there is nothing to join: in person, or online before a room exists', async () => {
+  await sendFamilyBookingEmail({ ...booking, place: lessonPlace('in_person', ROOM) }, enrolled);
+  assert.ok(!last().text.includes(JOIN_HINT));
+  await sendFamilyBookingEmail({ ...booking, place: lessonPlace('online', null) }, enrolled);
+  assert.ok(!last().text.includes(JOIN_HINT));
+});
