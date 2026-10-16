@@ -13,6 +13,11 @@ export type TeacherRow = {
   id: number; name: string; phone: string | null; active: number;
   /** The teacher's fixed Google Meet room (migration 027), or null. */
   meet_url: string | null;
+  /** The Google account that owns meet_url (migration 028). */
+  meet_account: string | null;
+  /** The newest setup link's code hash and expiry; see tutor-setup.ts. */
+  setup_hash: string | null;
+  setup_expires: string | null;
 };
 export type AccountRow = {
   id: number; name: string; phone: string | null;
@@ -41,11 +46,6 @@ export function getTeacher(id: number): TeacherRow | null {
 
 export function listTeachers(): TeacherRow[] {
   return handle().prepare(`SELECT * FROM teachers ORDER BY id`).all() as TeacherRow[];
-}
-
-/** Sets a teacher's Meet room. By hand, on the server: the repo is public. */
-export function setTeacherMeetUrl(id: number, url: string | null): void {
-  handle().prepare(`UPDATE teachers SET meet_url = ? WHERE id = ?`).run(url, id);
 }
 
 /** Who teaches a lesson: its enrollment's teacher, or the default teacher

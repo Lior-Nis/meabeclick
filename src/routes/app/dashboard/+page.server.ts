@@ -12,7 +12,8 @@
  * entirely rather than ported as dead code.
  */
 import { requireAuth } from '$server/auth.ts';
-import { roster, enrollmentsForStudent } from '$server/entities.ts';
+import { roster, enrollmentsForStudent, listTeachers, defaultTeacher } from '$server/entities.ts';
+import { webClientFromEnv } from '$server/google-meet-setup.ts';
 import { lessonsAwaitingReport } from '$server/reports/store.ts';
 import { planForEnrollment, planData, lastLessonAt } from '$server/plans/store.ts';
 import { buildTree } from '$server/plans/view.ts';
@@ -50,5 +51,12 @@ export const load: PageServerLoad = async (event) => {
     roster: rows, learningPlans, pendingReports: lessonsAwaitingReport(since, now.toISOString()),
     /* Null while the engine is up; see engine-health.ts. */
     engineAlert: engineAlert(now),
+    /* The "מורים" card. Only what it shows: never setup_hash. */
+    tutors: listTeachers().filter(t => t.active).map(t => ({
+      id: t.id, name: t.name, phone: t.phone, meetUrl: t.meet_url, account: t.meet_account,
+    })),
+    /* Bookings carry this tutor's room until a booking can name its tutor. */
+    tutorsDefaultId: defaultTeacher()?.id ?? null,
+    googleReady: webClientFromEnv() !== null,
   };
 };

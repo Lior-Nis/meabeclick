@@ -716,9 +716,12 @@ nothing else.
 **Setup, once.** Sign into the console as `mea.beclick@gmail.com` throughout
 — the account that consents is the account that owns the backups.
 
-1. **Project.** Use the one the Calendar service account already lives in
-   (`zeta-instrument-492312-k7`). Same project, so there is one place to
-   revoke everything.
+1. **Project.** The backup client was in fact created in
+   `plenary-network-508021-v7` (its client ID starts `770340101391-`), not
+   in the Calendar service account's `zeta-instrument-492312-k7`, which is
+   not under `mea.beclick@gmail.com` (checked 2026-10-16). New Google pieces
+   go in `meabeclick-site`, owned by `mea.beclick@gmail.com`; see "Tutor Meet
+   rooms" below.
 
 2. **Enable the Drive API.** APIs & Services → Library → "Google Drive API"
    → Enable.
@@ -774,6 +777,41 @@ run never leaves Drive emptier than it found it.
 and exits 0; if Drive is down or the token is revoked it says that and exits
 0. The local backup has already succeeded by then, and a Drive outage marking
 the job failed would only train everyone to ignore it.
+
+### Tutor Meet rooms (setup links)
+
+A tutor connects their own Google Meet room from a setup link the dashboard
+mints ("מורים" card → "שליחת קישור הגדרה"). They sign in with Google once.
+The app creates a knock-only room *as the tutor* and saves it as
+`teachers.meet_url`, then revokes the permission. Nothing Google-side is
+stored. See `docs/superpowers/specs/2026-10-16-tutor-meet-setup-design.md`.
+
+**Setup, once**, signed into the console as `mea.beclick@gmail.com`, in its
+project `meabeclick-site` (done 2026-10-16):
+
+1. APIs & Services → Library → **Google Meet REST API** → Enable.
+2. Google Auth Platform: Audience **External**, app name "מאה בקליק", support
+   and contact email `mea.beclick@gmail.com`, then Audience → **Publish app**
+   (In production), so tutors need not be listed as test users. Leave Data
+   Access empty: the scope is requested at run time.
+3. Credentials → Create credentials → OAuth client ID → **Web application**.
+   - Authorized redirect URI: `https://meabeclick.com/app/tutor-setup/callback`
+     (`SITE_URL` + `/app/tutor-setup/callback`, exactly).
+   - If the console asks for it, add `meabeclick.com` under the consent
+     screen's Authorized domains.
+4. Put the client's two values in `.env` (chmod 600, never committed):
+
+   ```
+   GOOGLE_WEB_CLIENT_ID=…
+   GOOGLE_WEB_CLIENT_SECRET=…
+   ```
+
+   Recreate the container so it reads them (see Deploy).
+
+Unset, the feature is off: the dashboard card says so and offers no link.
+The scope `meetings.space.created` is *sensitive*. Until Google verifies
+the app, a tutor sees an "unverified app" screen once, and the setup page
+tells them how to pass it.
 
 ### Vision metrics
 
