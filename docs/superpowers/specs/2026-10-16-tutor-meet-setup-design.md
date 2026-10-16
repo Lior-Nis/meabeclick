@@ -73,7 +73,8 @@ by hand before choosing.
 - `POST /api/teachers/[id]/setup-link` (dashboard session, `apiAuthDenied`)
   mints 32 random bytes as base64url and stores **only their SHA-256**, with
   an expiry 7 days ahead, on the teacher row. It returns
-  `${ORIGIN}/app/tutor-setup/<code>`.
+  `${SITE_URL}/app/tutor-setup/<code>`, built the way the family links are
+  (`enterLink` in `family-auth.ts`).
 - Minting replaces the previous code, so only the newest link works. Success
   clears it, so a link works once.
 - Looking a code up is: hash it, find the teacher whose `setup_hash` matches
@@ -92,36 +93,47 @@ ALTER TABLE teachers ADD COLUMN meet_account TEXT;   -- the Google account that 
 | Route | Auth | Does |
 |---|---|---|
 | `/app/tutor-setup/[code]` | the code | Hello, tutor's name, one sentence on what happens, a note about Google's warning screen ("לחצו 'מתקדם' ואז 'המשך'"), and the button. An invalid or expired code shows "הקישור פג תוקף או כבר נוצל, בקשו קישור חדש". |
-| `GET /api/tutor-setup/start?code=` | the code | Re-checks the code, sets the setup cookie, and redirects (302) to Google's consent URL. It is a plain link, not a form, because `form-action 'self'` in the CSP would block a form's redirect to Google. |
-| `/app/tutor-setup/callback` | the setup cookie | Its `load` finishes the flow (below) and renders success or a specific failure. |
+| `GET /api/tutor-setup/start?code=` | the code | Re-checks the code, sets the setup cookie, and redirects (303) to Google's consent URL. It is a plain link, not a form, because `form-action 'self'` in the CSP would block a form's redirect to Google. |
+| `GET /app/tutor-setup/callback` | the setup cookie | A `+server.ts` that finishes the flow (below) and redirects (303). It does not render, so a phone that reloads the tab does not replay Google's one-time code. |
+| `/app/tutor-setup/done` | the setup cookie | "מוכן ✓" with the room, or "החיבור לא הושלם" when there is no finished setup to show. |
 
 `/app` has no layout-level guard (the dashboard calls `requireAuth` itself),
-so these pages are public by default, which is what they need. `callback` is
-a static segment, so it wins over `[code]`.
+so these pages are public by default, which is what they need. `callback`
+and `done` are static segments, so they win over `[code]`. Opening the setup
+page changes nothing, so WhatsApp's link preview cannot use a link up.
 
 ### The Google round trip
 
 **Consent URL** (`https://accounts.google.com/o/oauth2/v2/auth`):
 - `client_id`: the new web client.
-- `redirect_uri`: `${ORIGIN}/app/tutor-setup/callback`.
+- `redirect_uri`: `${SITE_URL}/app/tutor-setup/callback`.
 - `response_type=code`, `scope=openid email meetings.space.created`.
 - `access_type=online`, so Google issues no refresh token.
 - `prompt=select_account consent`, so the tutor always picks the account explicitly.
 - `state`: a random nonce.
 
 **The "same phone" check.** `start` sets the cookie `maab_tutor_setup`:
-- **Flags:** httpOnly, Secure, SameSite=Lax (sent on Google's top-level
-  redirect back), Path `/app/tutor-setup/callback`, Max-Age 15 minutes.
-- **Value:** `teacherId.codeHash.nonce.expiry`, HMAC-signed with
-  `SESSION_SECRET` like the family tokens.
+- **Flags:** httpOnly, Secure over https, SameSite=Lax (sent on Google's
+  top-level redirect back), Path `/app/tutor-setup`, Max-Age 15 minutes.
+- **Value:** `s.teacherId.code.nonce.expiry`, HMAC-signed with
+  `SESSION_SECRET` like the family tokens, under its own prefix. It carries
+  the code itself, not its hash, so a failure can send the tutor back to
+  their own setup page with the button. After success it is replaced by
+  `d.teacherId.-.-.expiry`, which is what the done page reads.
 
-**Callback.** It requires all of the following, or shows "החיבור לא הושלם, פתחו שוב את הקישור":
+**Callback.** A `d` cookie means the setup already finished (a reloaded
+tab), so it goes straight to the done page and calls nothing. Otherwise it
+requires all of the following, or ends on "החיבור לא הושלם, פתחו שוב את הקישור":
 - the cookie verifies;
 - `state` equals the cookie's nonce;
-- the teacher's current `setup_hash` still equals the cookie's `codeHash` and has not expired.
+- the cookie's code still belongs to that teacher and has not expired. If
+  it does not (the owner sent a newer link meanwhile), the tutor goes back to
+  that setup page, which now says the link expired.
 
 Then:
-1. If Google returned `error` (for example `access_denied`), show "לא אישרתם, אפשר לנסות שוב" with the button. The code is **not** consumed.
+1. If Google returned `error` (for example `access_denied`), go back to the
+   setup page with "לא אישרתם, אפשר לנסות שוב" and the button. The code is
+   **not** consumed.
 2. Exchange `code` at `https://oauth2.googleapis.com/token`. Read `email`
    from the returned `id_token` payload. It came straight from Google's
    token endpoint over TLS, so it needs no signature check.
@@ -130,12 +142,13 @@ Then:
    to revoke is logged but not fatal, because the token expires within the hour anyway.
 5. In one statement, set `meet_url` = `meetingUri`, `meet_account` = email,
    and clear `setup_hash`/`setup_expires`.
-6. Delete the cookie and render "מוכן ✓":
+6. Replace the cookie with the `d` cookie and redirect to the done page, which shows "מוכן ✓":
    - the room link and a "פתיחת החדר" button;
    - "החדר נפתח בחשבון <email>. היכנסו ל-Meet עם החשבון הזה כדי שתוכלו להכניס משפחות."
 
-If step 2 or 3 fails, show "משהו השתבש מול Google, נסו שוב בעוד רגע" with
-the button. The code is not consumed. The log line carries the step and the
+If step 2 or 3 fails, or the room's link is not an `https://meet.google.com/`
+address, go back to the setup page with "משהו השתבש מול Google, נסו שוב בעוד
+רגע" and the button. The code is not consumed. The log line carries the step and the
 HTTP status only, never Google's body (it can echo request details, as
 `drive/api.ts` already notes).
 
