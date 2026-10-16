@@ -4,6 +4,7 @@
   import BrandMark from '$lib/components/BrandMark.svelte';
   import ReportQueue from '$lib/components/ReportQueue.svelte';
   import EngineNotice from '$lib/components/EngineNotice.svelte';
+  import TutorsCard from '$lib/components/TutorsCard.svelte';
   import LearningPlanTree from '$lib/components/LearningPlanTree.svelte';
   import { tutorNames } from '$lib/tutors.ts';
   import type { TutorHomework } from '$lib/tutor-homework.ts';
@@ -1226,6 +1227,14 @@
       {/each}
     {/if}
   </div>
+
+  <div class="sec-header" style="margin-top:2.2rem">
+    <div>
+      <div class="sec-label2">צוות</div>
+      <h2 class="sec-h2">מורים</h2>
+    </div>
+  </div>
+  <TutorsCard tutors={pageData.tutors} defaultId={pageData.tutorsDefaultId} googleReady={pageData.googleReady} />
 
   <div class="sec-header" style="margin-top:2.2rem">
     <div>

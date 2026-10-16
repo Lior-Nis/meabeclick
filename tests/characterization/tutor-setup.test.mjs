@@ -109,3 +109,32 @@ test('callback: denied keeps the link; a bad state or no cookie ends as not comp
     assert.equal(db.prepare(`SELECT meet_url FROM teachers WHERE id = 1`).get().meet_url, null);
   } finally { await stop(); }
 });
+
+// Only the server-rendered markup counts, not the hydration data island
+// (see dashboard-card.test.mjs).
+const markup = (h) => h.split(/<script nonce=/)[0];
+
+test('the dashboard lists the tutors with their room status and the link button', async () => {
+  const { baseUrl, dbPath, stop } = await startServer({ env: GOOGLE });
+  try {
+    const cookie = await login(baseUrl);
+    const db = new DatabaseSync(dbPath);
+    db.prepare(`UPDATE teachers SET meet_url = 'https://meet.google.com/aaa-bbbb-ccc', meet_account = 'tutor@example.com' WHERE id = 1`).run();
+    db.close();
+    const page = markup(await html(`${baseUrl}/app/dashboard`, { headers: { cookie } }));
+    assert.match(page, />מורים</);
+    assert.match(page, /✓ חדר Meet/);
+    assert.match(page, /tutor@example\.com/);
+    assert.match(page, /✗ אין חדר Meet/, 'the second seeded tutor has no room');
+    assert.match(page, /שליחת קישור הגדרה/);
+  } finally { await stop(); }
+});
+
+test('without the web client the dashboard says so and offers no link', async () => {
+  const { baseUrl, stop } = await startServer();
+  try {
+    const page = markup(await html(`${baseUrl}/app/dashboard`, { headers: { cookie: await login(baseUrl) } }));
+    assert.match(page, /עוד לא הוגדר בשרת/);
+    assert.doesNotMatch(page, /שליחת קישור הגדרה/);
+  } finally { await stop(); }
+});
