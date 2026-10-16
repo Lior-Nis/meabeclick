@@ -12,7 +12,8 @@ import { DatabaseSync } from 'node:sqlite';
 process.env.DB_PATH = join(await mkdtemp(join(tmpdir(), 'vision-')), 'results.db');
 const { handle } = await import('../../src/lib/server/db.ts');   // builds legacy tables + runs migrations
 handle();
-const { measure } = await import('../../scripts/vision-metrics.mjs');
+const { measure, QUOTA_PROBLEM } = await import('../../scripts/vision-metrics.mjs');
+const { ENGINE_DOWN_MESSAGES } = await import('../../src/lib/server/lesson/engine.ts');
 
 const NOW = new Date('2026-10-15T12:00:00Z');
 const daysAgo = (d) => new Date(NOW.getTime() - d * 86_400_000).toISOString();
@@ -86,7 +87,7 @@ test('revenue is last calendar month, paid and owed apart, void ignored', () => 
 test('the gate streak counts consecutive clean runs from the newest finished one', () => {
   // Newest first, skipping g6 (generating): g5 ready, g4 ready, g3 held -> stops.
   // A later tutor restore on g4 does not matter: the gate reads run status only.
-  assert.deepEqual(m.gate, { streak: 2, target: 10 });
+  assert.deepEqual(m.gate, { streak: 2, target: 10, quotaSkipped: 0 });
 });
 
 test('a ready run that never reached the student page breaks the streak', () => {
@@ -98,7 +99,7 @@ test('a ready run that never reached the student page breaks the streak', () => 
   try {
     const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
     // Newest first: g8 clean, g7 generated but undelivered -> stops at 1.
-    assert.deepEqual(later.gate, { streak: 1, target: 10 });
+    assert.deepEqual(later.gate, { streak: 1, target: 10, quotaSkipped: 0 });
   } finally {
     w.exec(`DELETE FROM lessons WHERE slug IN ('g7','g8')`);
   }
@@ -128,7 +129,7 @@ test('a lesson copied from the library is not an engine run: not counted, never 
   use.run('c2', daysAgo(0.1));
   try {
     const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
-    assert.deepEqual(later.gate, { streak: 2, target: 10 }, 'the failed copy did not break it, the clean one did not extend it');
+    assert.deepEqual(later.gate, { streak: 2, target: 10, quotaSkipped: 0 }, 'the failed copy did not break it, the clean one did not extend it');
     assert.equal(later.autogen.units, 5);
     assert.deepEqual(later.library, { copies: 2, imported: 0 });
   } finally {
@@ -145,10 +146,48 @@ test('a library lesson made by another engine is not a Codex run: not counted, n
   eng.run('lib-imp-2', daysAgo(0.1));
   try {
     const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
-    assert.deepEqual(later.gate, { streak: 2, target: 10 });
+    assert.deepEqual(later.gate, { streak: 2, target: 10, quotaSkipped: 0 });
     assert.equal(later.autogen.units, 5);
     assert.equal(later.library.imported, 2);
   } finally {
     w.exec(`DELETE FROM lessons WHERE slug IN ('lib-imp-1','lib-imp-2'); DELETE FROM lesson_engines`);
   }
+});
+
+/* Lior, 2026-10-16: library presentations count toward the gate like booking
+   lessons, and a run the engine quota stopped before it started counts
+   neither way. It is a reliability problem, reported apart. */
+test('a run the quota stopped is skipped: it neither breaks nor extends the streak, and is counted apart', () => {
+  const w = new DatabaseSync(process.env.DB_PATH);
+  const run = w.prepare(`INSERT INTO lessons (slug, student, at, status, problem) VALUES (?, 'x', ?, ?, ?)`);
+  run.run('q1', daysAgo(0.4), 'failed', QUOTA_PROBLEM);
+  run.run('q2', daysAgo(0.3), 'failed', QUOTA_PROBLEM);
+  run.run('q3', daysAgo(0.2), 'ready', null);
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    // Newest first: q3 clean, q2 + q1 skipped, g5 + g4 clean, g3 held -> stops.
+    assert.deepEqual(later.gate, { streak: 3, target: 10, quotaSkipped: 2 });
+    assert.equal(later.autogen.units, 8, 'the share still counts them: no lesson was generated');
+  } finally {
+    w.exec(`DELETE FROM lessons WHERE slug IN ('q1','q2','q3')`);
+  }
+});
+
+test('any other failure still breaks the streak', () => {
+  const w = new DatabaseSync(process.env.DB_PATH);
+  w.prepare(`INSERT INTO lessons (slug, student, at, status, problem) VALUES (?, 'x', ?, 'failed', ?)`)
+    .run('f1', daysAgo(0.3), 'יצירת השיעור נכשלה');
+  w.prepare(`INSERT INTO lessons (slug, student, at, status) VALUES (?, 'x', ?, 'ready')`).run('f2', daysAgo(0.2));
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    assert.deepEqual(later.gate, { streak: 1, target: 10, quotaSkipped: 0 });
+  } finally {
+    w.exec(`DELETE FROM lessons WHERE slug IN ('f1','f2')`);
+  }
+});
+
+test("the script's quota text is the one the queue writes", () => {
+  // The script imports nothing from src/ (it runs piped into the container),
+  // so it carries its own copy; this keeps the two from drifting.
+  assert.equal(QUOTA_PROBLEM, ENGINE_DOWN_MESSAGES['engine-quota']);
 });

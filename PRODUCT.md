@@ -34,8 +34,11 @@ further about phase B; anything more would be a guess.
 | ₪10k a month, about ₪1,000 per family | `payments`; the mechanism is steering families to כפול (90 min a week) |
 
 **Gate:** no new features outside the pillars below until Codex lesson
-generation runs end-to-end in production for 10 real lessons in a row,
-clean. This is a checkable replacement for the older "stabilize the
+generation runs end-to-end in production 10 times in a row, clean. Library
+presentations (one per skill of the plan tree) count the same as a booking's
+lesson. A run the engine quota stopped before it started counts neither way;
+that is a reliability problem, reported apart. `scripts/vision-metrics.mjs`
+measures it. This is a checkable replacement for the older "stabilize the
 foundations first" instinct.
 
 **Decision authority:** Lior owns the business and settles every decision —
