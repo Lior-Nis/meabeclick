@@ -115,3 +115,12 @@ test('an unknown code is still refused, rather than writing a stray file', async
   assert.equal(await appendToPortal('no-such-student', plan, published), false);
   assert.equal(await appendToPortal(null, plan, published), false);
 });
+
+test("a generated lesson's homework keeps its written order, however long writing it takes", async () => {
+  const code = 'manytasks';
+  const studentId = liveOnlyStudent(code).id;
+  await portalFileFor(code);
+  const homework = Array.from({ length: 300 }, (_, i) => ({ task: `תרגיל ${i + 1}`, why: 'w' }));
+  assert.equal(await appendToPortal(code, { ...plan, homework }, published), true);
+  assert.deepEqual(HW.homeworkForStudent(studentId).map(h => h.task), homework.map(h => h.task));
+});
