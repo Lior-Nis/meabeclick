@@ -132,6 +132,11 @@ export function addHomework(h: {
   heldUntil?: string | null;
   /** The answer key — the tutor's, never shown to the family. */
   answer?: string | null;
+  /** One stamp for a whole batch. Lists sort newest first, and a batch whose
+   *  tasks each read the clock came out in a different order whenever a
+   *  millisecond ticked mid-batch; with a shared stamp, ties fall back to
+   *  the order the tasks were written in (homeworkForStudent's id ASC). */
+  assignedAt?: string;
 }): number {
   /* No submission and no grade: a task starts life as neither finished nor
      judged, which is the only honest state for work nobody has done yet. */
@@ -140,7 +145,7 @@ export function addHomework(h: {
                           booking_id, held_until, answer)
     VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(h.lessonId ?? null, h.studentId, h.task, h.template ?? null,
-         h.dataId ?? null, new Date().toISOString(), h.dueAt ?? null,
+         h.dataId ?? null, h.assignedAt ?? new Date().toISOString(), h.dueAt ?? null,
          h.nodeId ?? null, h.bookingId ?? null, h.heldUntil ?? null, h.answer ?? null);
   return Number(info.lastInsertRowid);
 }
@@ -243,7 +248,7 @@ export function homeworkForStudent(
     FROM homework h
     WHERE h.student_id = ?
       AND (? OR h.held_until IS NULL OR h.held_until <= ?)
-    ORDER BY h.assigned_at DESC
+    ORDER BY h.assigned_at DESC, h.id ASC
   `).all(studentId, opts.includeHeld ? 1 : 0, opts.now ?? new Date().toISOString()) as (HomeworkRow & { submitted_flag: number; skill: string | null })[];
 
   return rows.map(({ submitted_flag, ...row }) => ({
@@ -297,7 +302,7 @@ export function replaceHeld(
       `DELETE FROM homework WHERE booking_id = ? AND held_until IS NOT NULL AND held_until > ?`
     ).run(bookingId, now);
     if (Number(removed.changes) === 0) return false;
-    for (const t of tasks) addHomework({ studentId, task: t.task, nodeId: t.nodeId, bookingId, answer: t.answer ?? null });
+    for (const t of tasks) addHomework({ studentId, task: t.task, nodeId: t.nodeId, bookingId, answer: t.answer ?? null, assignedAt: now });
     return true;
   });
 }

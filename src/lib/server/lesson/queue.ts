@@ -466,9 +466,10 @@ export async function appendToPortal(
      section, which is where a game belongs. An explicitly game-backed
      assignment is a different feature, and it needs the generator to be
      ASKED which task a game completes — it never has been. */
+  const assignedAt = new Date().toISOString(); // one batch, one stamp: see addHomework
   for (const h of plan.homework) {
     addHomework({
-      studentId: student.id, task: h.task, template: null, dataId: null,
+      studentId: student.id, task: h.task, template: null, dataId: null, assignedAt,
       /* The tutor's answer key; never on a family route. */
       answer: h.answer ?? null,
       /* The skill the lesson was generated for. Null when the student has

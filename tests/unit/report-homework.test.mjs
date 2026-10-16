@@ -187,3 +187,18 @@ test('from the library: at most five tasks across the covered skills, and only s
   assert.equal(tasks.length, 5);
   assert.ok(tasks.some(t => t.startsWith('חזקות')) && tasks.some(t => t.startsWith('מנה')), 'both skills get some');
 });
+
+/* One batch, one order. Each task used to be stamped with its own clock
+   reading, and the list sorts newest first, so a batch written across a
+   millisecond tick came out with its later tasks on top — the order a family
+   saw depended on how fast the server wrote. 300 tasks make the tick certain
+   rather than occasional (this test's predecessor above failed only when CI
+   was slow). */
+test('a batch of homework keeps the order it was written in, however long writing it takes', () => {
+  const { student, bookingId, skills } = lesson();
+  const tasks = Array.from({ length: 300 }, (_, i) => ({ task: `משימה ${i + 1}`, nodeId: skills[0].id }));
+  assert.equal(L.replaceHeld(bookingId, student.id, tasks), true);
+  const written = handle().prepare(`SELECT DISTINCT assigned_at FROM homework WHERE booking_id = ?`).all(bookingId);
+  assert.equal(written.length, 1, 'one batch, one assigned_at');
+  assert.deepEqual(visible(student), tasks.map(t => t.task));
+});
