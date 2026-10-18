@@ -18,6 +18,12 @@ export type TeacherRow = {
   /** The newest setup link's code hash and expiry; see tutor-setup.ts. */
   setup_hash: string | null;
   setup_expires: string | null;
+  /** Migration 029 (tutor-settings.ts): the lesson calendar the robot
+   *  writes this tutor's lessons into, their private iCal addresses (one
+   *  per line — SECRET), and their teaching hours (JSON, NULL = default). */
+  calendar_id: string | null;
+  busy_ics: string | null;
+  teaching_hours: string | null;
 };
 export type AccountRow = {
   id: number; name: string; phone: string | null;
