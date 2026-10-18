@@ -246,8 +246,15 @@ export function updateStudentProfile(id: number, fields: StudentProfileFields): 
 }
 
 /** Keyed on (student_id, subject) by the table's UNIQUE constraint, so
- *  re-booking the same subject updates the level and tutor rather than
- *  accumulating duplicate enrollments. */
+ *  re-booking the same subject updates the level rather than accumulating
+ *  duplicate enrollments.
+ *
+ *  The tutor is KEPT (migration 029): a student's tutor changes only from
+ *  the dashboard (setEnrollmentTeacher), never because the family booked
+ *  again. An enrollment with no tutor, or with one who has been
+ *  deactivated, takes this booking's tutor instead — otherwise every
+ *  booking would fall through to someone new and the student would never
+ *  settle with anyone. */
 export function upsertEnrollment(
   e: { studentId: number; subject: string; level?: string | null; teacherId?: number | null },
 ): EnrollmentRow {
@@ -255,12 +262,24 @@ export function upsertEnrollment(
     INSERT INTO enrollments (student_id, subject, level, teacher_id)
     VALUES (?, ?, ?, ?)
     ON CONFLICT (student_id, subject)
-    DO UPDATE SET level = excluded.level, teacher_id = excluded.teacher_id
+    DO UPDATE SET level = excluded.level,
+      teacher_id = CASE
+        WHEN enrollments.teacher_id IN (SELECT id FROM teachers WHERE active = 1) THEN enrollments.teacher_id
+        ELSE excluded.teacher_id
+      END
   `).run(e.studentId, e.subject, e.level ?? null, e.teacherId ?? null);
 
   return handle().prepare(
     `SELECT * FROM enrollments WHERE student_id = ? AND subject = ?`
   ).get(e.studentId, e.subject) as EnrollmentRow;
+}
+
+/** Moving a student to another tutor, from the dashboard. That enrollment
+ *  and nothing else: lessons already booked keep the tutor they were
+ *  booked with (bookings_v2.teacher_id). */
+export function setEnrollmentTeacher(enrollmentId: number, teacherId: number): EnrollmentRow | null {
+  handle().prepare(`UPDATE enrollments SET teacher_id = ? WHERE id = ?`).run(teacherId, enrollmentId);
+  return (handle().prepare(`SELECT * FROM enrollments WHERE id = ?`).get(enrollmentId) as EnrollmentRow) ?? null;
 }
 
 export function enrollmentsForStudent(studentId: number): EnrollmentRow[] {
@@ -403,14 +422,18 @@ export function roster(): RosterRow[] {
  * is 0, both unions can drop their legacy half.
  */
 
+/* The tutor every legacy row, and any booking or hold with no tutor
+   recorded, belongs to: the default tutor (migration 029). */
+const DEFAULT_TEACHER_ID = `(SELECT id FROM teachers WHERE active = 1 ORDER BY id LIMIT 1)`;
+
 const OVERLAP_SOURCE = `
-  SELECT start, "end" AS finish, status FROM bookings
+  SELECT start, "end" AS finish, status, ${DEFAULT_TEACHER_ID} AS teacher_id FROM bookings
   UNION ALL
-  SELECT start, "end" AS finish, status FROM bookings_v2
+  SELECT start, "end" AS finish, status, COALESCE(teacher_id, ${DEFAULT_TEACHER_ID}) FROM bookings_v2
   UNION ALL
   -- A booking waiting for its family's confirmation holds the hour until it
   -- expires (migration 021); read as 'confirmed' so both consumers see it.
-  SELECT start, "end" AS finish, 'confirmed' AS status FROM pending_bookings
+  SELECT start, "end" AS finish, 'confirmed' AS status, COALESCE(teacher_id, ${DEFAULT_TEACHER_ID}) FROM pending_bookings
    WHERE status = 'pending' AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')
 `;
 
@@ -425,6 +448,17 @@ export function slotTaken(start: string, end: string): boolean {
     WHERE status = 'confirmed' AND finish > ? AND start < ?
     LIMIT 1
   `).get(start, end);
+}
+
+/** slotTaken, for one tutor: another tutor's lesson does not take this
+ *  tutor's hour (migration 029). The check /api/book makes, inside its
+ *  no-await block, for the tutor it has just chosen. */
+export function slotTakenFor(teacherId: number, start: string, end: string): boolean {
+  return !!handle().prepare(`
+    SELECT 1 FROM (${OVERLAP_SOURCE})
+    WHERE status = 'confirmed' AND teacher_id = ? AND finish > ? AND start < ?
+    LIMIT 1
+  `).get(teacherId, start, end);
 }
 
 /**
@@ -450,17 +484,20 @@ export function reserveBooking(b: {
   heardFrom?: string | null;
   /** Online or in person (migration 027); null when the request never said. */
   mode?: LessonMode | null;
+  /** Who teaches it (migration 029); omitted, the default tutor. */
+  teacherId?: number | null;
 }): number | null {
-  // Calls slotTaken rather than repeating its query, so the standalone
+  // Calls slotTakenFor rather than repeating its query, so the standalone
   // check and the one guarding this insert can never drift apart.
-  if (slotTaken(b.start, b.end)) return null;
+  const teacherId = b.teacherId ?? defaultTeacher()?.id ?? null;
+  if (teacherId == null ? slotTaken(b.start, b.end) : slotTakenFor(teacherId, b.start, b.end)) return null;
 
   const info = handle().prepare(`
-    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from, mode)
-    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?)
+    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from, mode, teacher_id)
+    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)
   `).run(b.studentId, b.enrollmentId ?? null, b.start, b.end,
          b.durationMin ?? null, new Date().toISOString(),
-         b.sourceUtm ?? null, b.heardFrom ?? null, b.mode ?? null);
+         b.sourceUtm ?? null, b.heardFrom ?? null, b.mode ?? null, teacherId);
 
   return Number(info.lastInsertRowid);
 }
@@ -484,15 +521,25 @@ export function readBookings(fromIso: string, toIso: string): { start: string; e
   `).all(fromIso, toIso) as { start: string; end: string }[];
 }
 
+/** readBookings, for one tutor: what blocks THEIR hours. */
+export function readBookingsFor(teacherId: number, fromIso: string, toIso: string): { start: string; end: string }[] {
+  return handle().prepare(`
+    SELECT start, finish AS end FROM (${OVERLAP_SOURCE})
+    WHERE status = 'confirmed' AND teacher_id = ? AND finish > ? AND start < ?
+    ORDER BY start
+  `).all(teacherId, fromIso, toIso) as { start: string; end: string }[];
+}
+
 /** The next confirmed booking for one student, used by tutor and family
- * dashboards instead of a browser-local "next lesson" field. */
+ * dashboards instead of a browser-local "next lesson" field. `teacherId`
+ * is who teaches it (migration 029). */
 export function nextBookingForStudent(studentId: number, nowIso: string = new Date().toISOString()): {
-  id: number; start: string; end: string; duration: number | null;
+  id: number; start: string; end: string; duration: number | null; teacherId: number | null;
 } | null {
   return (handle().prepare(`
-    SELECT id, start, "end" AS end, duration
+    SELECT id, start, "end" AS end, duration, teacher_id AS teacherId
     FROM bookings_v2
     WHERE student_id = ? AND status = 'confirmed' AND start > ?
     ORDER BY start ASC LIMIT 1
-  `).get(studentId, nowIso) as { id: number; start: string; end: string; duration: number | null } | undefined) ?? null;
+  `).get(studentId, nowIso) as { id: number; start: string; end: string; duration: number | null; teacherId: number | null } | undefined) ?? null;
 }
