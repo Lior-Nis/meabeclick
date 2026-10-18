@@ -1238,7 +1238,7 @@
       <h2 class="sec-h2">מורים</h2>
     </div>
   </div>
-  <TutorsCard tutors={pageData.tutors} defaultId={pageData.tutorsDefaultId} googleReady={pageData.googleReady} />
+  <TutorsCard tutors={pageData.tutors} googleReady={pageData.googleReady} />
 
   <div class="sec-header" style="margin-top:2.2rem">
     <div>
