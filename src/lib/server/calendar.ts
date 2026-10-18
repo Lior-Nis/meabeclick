@@ -155,6 +155,13 @@ function classifyReadError(err: unknown): string {
   return 'שגיאת קריאה';
 }
 
+/* A feed that just failed is not asked again for FAILURE_MS. Every booking
+   submit reads its candidates' feeds, and a feed that hangs would otherwise
+   cost each of them up to the 15s timeout. Its dashboard warning stays
+   meanwhile, and the failure is logged once, not on every read. */
+const FAILURE_MS = 2 * 60 * 1000;
+const recentFailure = new Map<string, { at: number; reason: string }>();  // url → last failure
+
 /** Whose feeds these are. The name is for the dashboard's warning; the
  *  addresses are secrets and never leave this module. */
 export interface BusySource { id: number; name: string; addresses: string[] }
@@ -193,16 +200,25 @@ export async function fetchTutorBusy(
   let failed = 0;
   const all = await Promise.all(urls.map(async (url, i) => {
     const key = `${tutor.id}:${i}`;
+    const issue = (at: number, reason: string) => sourceIssues.set(key, {
+      tutorId: tutor.id, tutorName: tutor.name, index: i + 1, total: urls.length,
+      at: new Date(at).toISOString(), reason,
+    });
+    const recent = recentFailure.get(url);
+    if (recent && Date.now() - recent.at < FAILURE_MS) {
+      if (!sourceIssues.has(key)) issue(recent.at, recent.reason);
+      failed++;
+      return [];
+    }
     try {
       const busy = busyFromIcs(await calendarText(url), timeMin, timeMax);
+      recentFailure.delete(url);
       sourceIssues.delete(key);
       return busy;
     } catch (err) {
       const reason = classifyReadError(err);
-      sourceIssues.set(key, {
-        tutorId: tutor.id, tutorName: tutor.name, index: i + 1, total: urls.length,
-        at: new Date().toISOString(), reason,
-      });
+      recentFailure.set(url, { at: Date.now(), reason });
+      issue(Date.now(), reason);
       failed++;
       console.error(`[calendar] ${tutor.name}: יומן ${i + 1} מתוך ${urls.length} — קריאה נכשלה: ${reason}`);
       return [];

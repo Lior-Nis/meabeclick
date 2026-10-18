@@ -73,13 +73,17 @@ test('a feed that cannot be read counts as free, and says so without the address
 
 test("each tutor's busy times come from their own feeds", async () => {
   const original = globalThis.fetch;
+  const realNow = Date.now;
   globalThis.fetch = async (url) => new Response(String(url).endsWith(`/${nikol.id}.ics`) ? ICS : 'BEGIN:VCALENDAR\r\nEND:VCALENDAR\r\n');
+  // Past the two minutes a failed feed is not asked again: the test above failed Nikol's.
+  Date.now = () => realNow() + 2 * 60 * 1000 + 1000;
   try {
     const busy = await A.calendarBusyAround([E.getTeacher(nikol.id), E.getTeacher(lior.id)], MON('25').start, MON('25').end);
     assert.equal(busy.get(nikol.id).length, 1);
     assert.equal(busy.get(lior.id).length, 0);
   } finally {
     globalThis.fetch = original;
+    Date.now = realNow;
   }
 });
 
