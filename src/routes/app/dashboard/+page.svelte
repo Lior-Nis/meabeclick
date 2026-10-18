@@ -720,7 +720,11 @@
   /* ═══════════════════ calendar-READ issues ═══════════════════
      A feed /api/availability couldn't read this cycle — never identified by
      URL (that's a secret), only by position among the configured feeds. */
-  interface CalendarSourceIssue { index: number; total: number; at: string; reason: string }
+  interface CalendarSourceIssue { tutorId: number; tutorName: string; index: number; total: number; at: string; reason: string }
+  const ORDINALS = ['הראשון', 'השני', 'השלישי', 'הרביעי', 'החמישי', 'השישי', 'השביעי', 'השמיני', 'התשיעי', 'העשירי'];
+  /** «היומן השני של ליאור»: by tutor and position, never by address (a secret). */
+  const feedLabel = (s: CalendarSourceIssue): string =>
+    `${s.total > 1 ? `היומן ${ORDINALS[s.index - 1] ?? s.index}` : 'היומן'} של ${s.tutorName}`;
   let calendarSourceIssues = $state<CalendarSourceIssue[]>([]);
 
   async function loadCalendarFailures() {
@@ -856,9 +860,9 @@
   {#if calendarSourceIssues.length}
     <div class="cs-banner" role="alert">
       <div class="cs-title">⛔ קריאת יומן נכשלה — ייתכן ששעות תפוסות מוצגות כפנויות</div>
-      {#each calendarSourceIssues as s (s.index)}
+      {#each calendarSourceIssues as s (`${s.tutorId}-${s.index}`)}
         <div class="cs-row">
-          <span class="cs-src">יומן {s.index} מתוך {s.total}:</span>
+          <span class="cs-src">{feedLabel(s)}:</span>
           <span class="cs-reason">{readIssueWords(s.reason)} · {formatDateTime(s.at)}</span>
         </div>
       {/each}
