@@ -10,6 +10,7 @@
 // `npm run build` before `npm test` — this harness does not build for you.
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
+import { createServer as createHttpServer } from 'node:http';
 import { mkdir, mkdtemp, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
@@ -43,6 +44,26 @@ const BLOCKED = [
   // The tutor-setup web client: a test that wants it passes made-up values.
   'GOOGLE_WEB_CLIENT_ID', 'GOOGLE_WEB_CLIENT_SECRET',
 ];
+
+/* Nikol's busy times, for every test: a feed that answers with an empty
+   calendar. A tutor with no busy address takes no bookings (tutor-settings.ts,
+   takesBookings), and production has Nikol reading two — so without this the
+   suite would book through a path production never takes. Served from this
+   test process, once, and unref'd so it never keeps a test alive. Her row
+   takes it over at boot, with CALENDAR_ID (adoptEnvCalendar). */
+let emptyFeed;
+function emptyFeedUrl() {
+  emptyFeed ??= new Promise((resolve, reject) => {
+    const feed = createHttpServer((req, res) => {
+      res.writeHead(200, { 'Content-Type': 'text/calendar' });
+      res.end('BEGIN:VCALENDAR\r\nVERSION:2.0\r\nEND:VCALENDAR\r\n');
+    });
+    feed.unref();
+    feed.on('error', reject);
+    feed.listen(0, '127.0.0.1', () => resolve(`http://127.0.0.1:${feed.address().port}/nikol.ics`));
+  });
+  return emptyFeed;
+}
 
 const MAX_PORT_ATTEMPTS = 3;
 
@@ -88,10 +109,11 @@ export async function startServer({ env = {}, ports = [] } = {}) {
       // Required by boot-checks.ts (Task 21) — see src/routes/api/login/+server.ts's
       // comment on the cookie `secure` flag for why adapter-node needs this set.
       PROTOCOL_HEADER: 'x-forwarded-proto',
-      // Required at boot since the hardcoded personal-calendar fallback was
-      // removed. The value is never used: GOOGLE_SERVICE_ACCOUNT_* are in
-      // BLOCKED, so no test reaches Google.
+      // Nikol's lesson calendar and busy feed: her row takes both over at
+      // boot (adoptEnvCalendar). The calendar is never written to:
+      // GOOGLE_SERVICE_ACCOUNT_* are in BLOCKED, so no test reaches Google.
       CALENDAR_ID: 'test-calendar@example.com',
+      CALENDAR_ICS_URLS: await emptyFeedUrl(),
       ...env,
     });
 

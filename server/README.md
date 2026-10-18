@@ -72,28 +72,30 @@ Create `.env` (chmod 600) — secret values only; non-secret config
 ADMIN_PASSWORD=<your dashboard password>
 SESSION_SECRET=<openssl rand -hex 32>
 CALLMEBOT_API_KEY=<optional — WhatsApp notifications; see "The weekly reminder" below>
-CALENDAR_ICS_URLS=<private iCal URL, for reading availability>
-AVAILABILITY_CALENDAR_IDS=<optional, comma-separated — only for the Google
-  Calendar API fallback, which needs GOOGLE_API_KEY and is unused when
-  CALENDAR_ICS_URLS is set. These are personal calendar ids; keep them here,
-  never in source>
 GMAIL_USER=<gmail address booking confirmations send from>
 GMAIL_APP_PASSWORD=<gmail app password>
 GOOGLE_SERVICE_ACCOUNT_EMAIL=<service account email, for writing calendar events>
-CALENDAR_ID=<calendar id events get written to — REQUIRED, no default>
 GOOGLE_SERVICE_ACCOUNT_KEY_FILE=/app/service-account.json
 SITE_URL=https://meabeclick.com
 CRON_KEY=<openssl rand -hex 32>
 ```
 
+Each tutor's lesson calendar, private iCal addresses and teaching hours are
+not in `.env`. They live on the tutor's row (migration 029) and are set from
+the dashboard's "מורים" card. A server upgraded from before that copies
+`CALENDAR_ID` and `CALENDAR_ICS_URLS` onto the first tutor's row on its first
+boot and logs `took over CALENDAR_ID and CALENDAR_ICS_URLS`; delete both lines
+from `.env` after that, with a backup first.
+
 ### Calendar reads: what blocks a slot, and how fresh it is
 
-`CALENDAR_ICS_URLS` is a comma/whitespace separated list of private iCal
-URLs. **Production runs exactly one**, measured 2026-09-21. It is the read
-side only — writing a booking into the calendar is a separate mechanism
-(`GOOGLE_SERVICE_ACCOUNT_*` + `CALENDAR_ID`), and the two are fully
-independent: availability can look healthy while an event failed to be
-written, which is why write failures are recorded and surfaced separately.
+Each tutor's private iCal addresses (one per line on their "מורים" card) are
+the read side only. Writing a booking into the calendar is a separate
+mechanism (`GOOGLE_SERVICE_ACCOUNT_*` + that tutor's lesson calendar), and the
+two are fully independent: availability can look healthy while an event
+failed to be written, which is why write failures are recorded and surfaced
+separately. A feed that fails is shown on the dashboard by tutor and position
+(«היומן השני של ליאור»), never by address.
 
 **What counts as a blocking event.** A VEVENT blocks a slot unless it is:
 
@@ -135,7 +137,7 @@ and Google's own iCal publishing lag is longer than 5 minutes and outside
 our control — so a shorter TTL buys accuracy we cannot actually have.
 
 This is safe because **the cache is not what prevents double-booking**.
-That is the booking *write* path: `readBookings()` folds lessons booked
+That is the booking *write* path: `readBookingsFor()` folds each tutor's lessons booked
 here into the busy set, and the write path re-checks. A stale calendar read
 can offer a slot Nicole has since filled in Google; it cannot let two
 parents take the same slot through this site.

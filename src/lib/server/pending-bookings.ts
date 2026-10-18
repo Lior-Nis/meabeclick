@@ -23,6 +23,8 @@ export interface HeldBooking {
   accountId: number;
   body: Record<string, unknown> & { start: string; end: string };
   expiresAt: string;
+  /** Who the hold is with (migration 029); null only for holds older than it. */
+  teacherId: number | null;
 }
 
 /** Holds the hour. The caller has already checked it is free, with no
@@ -30,26 +32,28 @@ export interface HeldBooking {
 export function holdBooking(h: {
   accountId: number;
   body: Record<string, unknown> & { start: string; end: string };
+  /** Who it is held with (migration 029). */
+  teacherId?: number | null;
   now?: Date;
 }): number {
   const now = h.now ?? new Date();
   const info = handle().prepare(`
-    INSERT INTO pending_bookings (account_id, body, start, "end", at, expires_at)
-    VALUES (?, ?, ?, ?, ?, ?)
+    INSERT INTO pending_bookings (account_id, body, start, "end", at, expires_at, teacher_id)
+    VALUES (?, ?, ?, ?, ?, ?, ?)
   `).run(h.accountId, JSON.stringify(h.body), h.body.start, h.body.end,
-         now.toISOString(), holdExpiry(now, h.body.start));
+         now.toISOString(), holdExpiry(now, h.body.start), h.teacherId ?? null);
   return Number(info.lastInsertRowid);
 }
 
-type Row = { id: number; account_id: number; body: string; expires_at: string };
+type Row = { id: number; account_id: number; body: string; expires_at: string; teacher_id: number | null };
 const toHeld = (r: Row): HeldBooking => ({
-  id: r.id, accountId: r.account_id, body: JSON.parse(r.body), expiresAt: r.expires_at,
+  id: r.id, accountId: r.account_id, body: JSON.parse(r.body), expiresAt: r.expires_at, teacherId: r.teacher_id,
 });
 const LIVE = `status = 'pending' AND expires_at > strftime('%Y-%m-%dT%H:%M:%fZ', 'now')`;
 
 /** A hold that can still be confirmed, or null. */
 export function pendingById(id: number): HeldBooking | null {
-  const r = handle().prepare(`SELECT id, account_id, body, expires_at FROM pending_bookings WHERE id = ? AND ${LIVE}`)
+  const r = handle().prepare(`SELECT id, account_id, body, expires_at, teacher_id FROM pending_bookings WHERE id = ? AND ${LIVE}`)
     .get(id) as Row | undefined;
   return r ? toHeld(r) : null;
 }

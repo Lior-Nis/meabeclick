@@ -255,8 +255,10 @@ One noun each, everywhere — these replace the older, drifting mix of
   append-only event log; a one-line end-of-lesson report from the tutor.
 - **Payments ledger** — integer-agorot records, marked paid by hand from
   the dashboard; no automatic collection.
-- **Calendar** — two independent paths: an iCal feed for reading
-  availability, a Google service account for writing booked events.
+- **Calendar** — per tutor, set on the dashboard's "מורים" card: private
+  iCal feeds for reading their busy times, and their own lesson calendar,
+  which a Google service account writes booked events into. Each booking
+  records its tutor (`bookings_v2.teacher_id`).
 - **Email + cron** — booking and portal-link mail via Gmail/nodemailer;
   scheduled reminders run as VPS `systemd --user` timers.
 

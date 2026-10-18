@@ -321,31 +321,18 @@ test('checkRegistry passes silently for the real games/registry.json', () => {
   assert.equal(warned, false);
 });
 
-test('CALENDAR_ID is required, so no booking can be silently misrouted', async () => {
-  // It used to fall back to a hardcoded personal address, so an unset value
-  // did not fail — it routed every booking in the system to one person's
-  // calendar. Invisible with one tutor; with two it is a misrouting bug that
-  // presents as "the calendar did not sync".
-  //
-  // enrollments.teacher_id already records who teaches each subject, so the
-  // per-teacher lookup that replaces this is a change to booking, not a
-  // schema migration. Requiring the variable now is what keeps an unset
-  // value from quietly picking a person in the meantime.
-  const dir = await mkdtemp(join(tmpdir(), 'boot-cal-'));
-  setAllRequired(dir);
-  delete process.env.CALENDAR_ID;
-  try {
-    const issues = envIssues();
-    assert.ok(issues.some(i => i.key === 'CALENDAR_ID'), 'an unset CALENDAR_ID must be reported at boot');
-  } finally {
-    for (const k of ALL_REQUIRED) delete process.env[k];
-  }
+test('CALENDAR_ID is no longer required: each tutor has their own lesson calendar', () => {
+  // Migration 029 moved it onto the tutor's row (tutor-settings.ts). A tutor
+  // without one is never offered and never assigned, so there is no global
+  // calendar left for a missing value to misroute every booking to.
+  assert.ok(!REQUIRED_VARS.some(v => v.key === 'CALENDAR_ID'));
 });
 
 test('no required var carries a personal address as its default', () => {
   // The rule the CALENDAR_ID fallback broke. A default that names a person
   // is a routing decision hiding in a config default.
-  const src = readFileSync(join(root, 'src/routes/api/book/+server.ts'), 'utf8');
+  const src = ['src/routes/api/book/+server.ts', 'src/lib/server/lesson-calendar.ts']
+    .map(f => readFileSync(join(root, f), 'utf8')).join('\n');
   const defaults = [...src.matchAll(/process\.env\.\w+\s*\|\|\s*'([^']+)'/g)].map(m => m[1]);
   for (const d of defaults) {
     assert.doesNotMatch(d, /@(gmail|googlemail)\.com/i,

@@ -1,6 +1,6 @@
 // Pins the semantics of busyFromIcs against hand-written ICS fixtures, and
 // the read-failure recording added alongside it. Never reaches the network —
-// fixtures are plain ICS text; fetchBusy's network call is stubbed via
+// fixtures are plain ICS text; fetchTutorBusy's network call is stubbed via
 // global.fetch where needed.
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
@@ -205,41 +205,52 @@ END:VCALENDAR
 });
 
 // ── Read-failure recording ──────────────────────────────────────────────
-// fetchBusy identifies a failing feed only by its 1-based position, never
-// by its URL (the URL is a secret). These fixture URLs are not real
-// endpoints; global.fetch is stubbed so no network call is made.
+// fetchTutorBusy identifies a failing feed only by its tutor and 1-based
+// position, never by its URL (the URL is a secret). These fixture URLs are
+// not real endpoints; global.fetch is stubbed so no network call is made.
 
-test('a feed that throws is recorded by index/reason, and a later success clears it', async () => {
+const tutor = (id, name, addresses) => ({ id, name, addresses });
+
+test('a feed that throws is recorded by tutor, position and reason, and a later success clears it', async () => {
   const calendar = await import('../../src/lib/server/calendar.ts');
   const secretA = 'https://calendar.google.com/calendar/ical/super-secret-token-aaa/basic.ics';
   const secretB = 'https://calendar.google.com/calendar/ical/super-secret-token-bbb/basic.ics';
-  process.env.CALENDAR_ICS_URLS = `${secretA},${secretB}`;
-
   const originalFetch = global.fetch;
   let firstFeedShouldFail = true;
-  global.fetch = async (url) => {
-    if (url === secretA && firstFeedShouldFail) {
-      return { ok: false, status: 404 };
-    }
-    return { ok: true, text: async () => '' };
-  };
+  global.fetch = async (url) => (url === secretA && firstFeedShouldFail
+    ? { ok: false, status: 404 }
+    : { ok: true, text: async () => '' });
 
   try {
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
-    let issues = calendar.calendarSourceIssues();
-    assert.equal(issues.length, 1);
-    assert.equal(issues[0].index, 1);
-    assert.equal(issues[0].total, 2);
-    assert.equal(issues[0].reason, 'HTTP 404');
-    assert.ok(typeof issues[0].at === 'string' && issues[0].at.length > 0);
+    const read = await calendar.fetchTutorBusy(tutor(2, 'ליאור', [secretA, secretB]), TIME_MIN, TIME_MAX);
+    assert.deepEqual({ failed: read.failed, total: read.total }, { failed: 1, total: 2 });
+    const [issue, ...rest] = calendar.calendarSourceIssues();
+    assert.equal(rest.length, 0);
+    assert.deepEqual({ ...issue, at: 'x' }, { tutorId: 2, tutorName: 'ליאור', index: 1, total: 2, at: 'x', reason: 'HTTP 404' });
+    assert.ok(typeof issue.at === 'string' && issue.at.length > 0);
 
     firstFeedShouldFail = false;
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
-    issues = calendar.calendarSourceIssues();
-    assert.equal(issues.length, 0, 'a recovered feed must stop warning');
+    await calendar.fetchTutorBusy(tutor(2, 'ליאור', [secretA, secretB]), TIME_MIN, TIME_MAX);
+    assert.equal(calendar.calendarSourceIssues().length, 0, 'a recovered feed must stop warning');
   } finally {
     global.fetch = originalFetch;
-    delete process.env.CALENDAR_ICS_URLS;
+  }
+});
+
+test("one tutor's new addresses clear only that tutor's warnings", async () => {
+  const calendar = await import('../../src/lib/server/calendar.ts');
+  const url = 'https://calendar.google.com/calendar/ical/super-secret-token-eee/basic.ics';
+  const originalFetch = global.fetch;
+  global.fetch = async () => ({ ok: false, status: 500 });
+  try {
+    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [url]), TIME_MIN, TIME_MAX);
+    await calendar.fetchTutorBusy(tutor(2, 'ליאור', [url]), TIME_MIN, TIME_MAX);
+    assert.deepEqual(calendar.calendarSourceIssues().map(i => i.tutorName), ['ניקול', 'ליאור']);
+    calendar.clearSourceIssues(2);
+    assert.deepEqual(calendar.calendarSourceIssues().map(i => i.tutorName), ['ניקול']);
+  } finally {
+    calendar.clearSourceIssues(1);
+    global.fetch = originalFetch;
   }
 });
 
@@ -247,35 +258,28 @@ test('no fixture URL or secret appears in any surfaced string', async () => {
   const calendar = await import('../../src/lib/server/calendar.ts');
   const secretUrl = 'https://calendar.google.com/calendar/ical/super-secret-token-ccc/basic.ics';
   const secretToken = 'super-secret-token-ccc';
-  process.env.CALENDAR_ICS_URLS = secretUrl;
 
   const originalFetch = global.fetch;
   const originalConsoleError = console.error;
   const logged = [];
   console.error = (...args) => { logged.push(args.map(String).join(' ')); };
   let shouldFail = true;
-  global.fetch = async () => {
-    if (shouldFail) return { ok: false, status: 500 };
-    return { ok: true, text: async () => '' };
-  };
+  global.fetch = async () => (shouldFail ? { ok: false, status: 500 } : { ok: true, text: async () => '' });
 
   try {
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
-    const issues = calendar.calendarSourceIssues();
-    const surfaced = JSON.stringify(issues) + '\n' + logged.join('\n');
-
+    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
+    const surfaced = JSON.stringify(calendar.calendarSourceIssues()) + '\n' + logged.join('\n');
     assert.ok(!surfaced.includes(secretUrl), 'the full URL must never be surfaced');
     assert.ok(!surfaced.includes(secretToken), 'no part of the URL may be surfaced');
     assert.ok(!surfaced.includes('calendar.google.com'), 'no host derived from the URL may be surfaced');
 
     // clean up: let the feed succeed so it doesn't leak state into other tests
     shouldFail = false;
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
+    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
     assert.equal(calendar.calendarSourceIssues().length, 0);
   } finally {
     global.fetch = originalFetch;
     console.error = originalConsoleError;
-    delete process.env.CALENDAR_ICS_URLS;
   }
 });
 
@@ -288,7 +292,6 @@ test('no fixture URL or secret appears in any surfaced string', async () => {
 test('a fetch rejection carrying the URL still surfaces nothing derived from it', async () => {
   const calendar = await import('../../src/lib/server/calendar.ts');
   const secretUrl = 'https://calendar.google.com/calendar/ical/super-secret-token-ddd/basic.ics';
-  process.env.CALENDAR_ICS_URLS = secretUrl;
 
   const originalFetch = global.fetch;
   const originalConsoleError = console.error;
@@ -296,28 +299,23 @@ test('a fetch rejection carrying the URL still surfaces nothing derived from it'
   console.error = (...args) => { logged.push(args.map(String).join(' ')); };
   let shouldFail = true;
   global.fetch = async () => {
-    if (shouldFail) {
-      // The shape undici actually throws, URL and all.
-      throw new Error(`request to ${secretUrl} failed, reason: ECONNREFUSED`);
-    }
+    if (shouldFail) throw new Error(`request to ${secretUrl} failed, reason: ECONNREFUSED`);
     return { ok: true, text: async () => '' };
   };
 
   try {
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
+    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
     const surfaced = JSON.stringify(calendar.calendarSourceIssues()) + '\n' + logged.join('\n');
-
     assert.ok(!surfaced.includes(secretUrl), 'the full URL must never be surfaced');
     assert.ok(!surfaced.includes('super-secret-token-ddd'), 'no token from the URL may be surfaced');
     assert.ok(!surfaced.includes('calendar.google.com'), 'no host derived from the URL may be surfaced');
     assert.ok(!surfaced.includes('ECONNREFUSED'), 'the raw error message must not be echoed');
 
     shouldFail = false;
-    await calendar.fetchBusy(TIME_MIN, TIME_MAX);
+    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
     assert.equal(calendar.calendarSourceIssues().length, 0);
   } finally {
     global.fetch = originalFetch;
     console.error = originalConsoleError;
-    delete process.env.CALENDAR_ICS_URLS;
   }
 });
