@@ -49,7 +49,7 @@ function from(family: TeacherRow[]): Candidates {
 }
 
 /** For a booking of student `name` in `subject`, by the account this email belongs to. */
-export function bookingCandidates(b: { email: unknown; name: unknown; subject: unknown }): Candidates {
+export function bookingCandidates(b: { email?: unknown; name?: unknown; subject?: unknown }): Candidates {
   const account = findAccountByEmail(b.email);
   if (!account) return from([]);
   const student = findStudentInAccountByName(account.id, b.name);

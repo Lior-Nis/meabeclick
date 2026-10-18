@@ -41,7 +41,7 @@ import {
   createAccount, findAccountByEmail, setAccountEmail, setAccountPhone,
   createStudent, getStudentByCode, findStudentInAccountByName,
   upsertEnrollment, defaultTeacher, normalizeEmail,
-  type AccountRow, type StudentRow, type EnrollmentRow,
+  type AccountRow, type StudentRow, type EnrollmentRow, type TeacherRow,
 } from './entities.ts';
 import { portalDir } from './paths.ts';
 import { inTransaction } from './db.ts';
@@ -215,10 +215,10 @@ export interface EnrollResult {
    * never records which enrollment it belongs to can never be reported on.
    */
   enrollment: EnrollmentRow | null;
-  /** The default teacher (`defaultTeacher()`), or null when there is no
-   *  active teacher row — independent of whether this booking had a
-   *  subject to enrol in. The booking confirmation email names this tutor
-   *  rather than a hardcoded one. */
+  /** The tutor this booking was given (by /api/book; the default teacher
+   *  when the caller names none), or null when there is no active teacher
+   *  — independent of whether this booking had a subject to enrol in. The
+   *  booking confirmation email names this tutor rather than a hardcoded one. */
   teacherName: string | null;
 }
 
@@ -233,7 +233,7 @@ export interface EnrollResult {
  */
 const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
 
-export function enrollFromBooking(booking: BookingInput): EnrollResult {
+export function enrollFromBooking(booking: BookingInput, teacher: TeacherRow | null = defaultTeacher()): EnrollResult {
   const email = normalizeEmail(booking.email);
   // The same rule the booking form applies client-side: one local part, one
   // @, a domain with a dot, no whitespace. "Contains an @" let "orit@",
@@ -289,8 +289,6 @@ export function enrollFromBooking(booking: BookingInput): EnrollResult {
       setAccountEmail(account.id, email);
       account = { ...account, email };
     }
-
-    const teacher = defaultTeacher();
 
     let student = findStudentInAccountByName(account.id, name);
     const created = !student;

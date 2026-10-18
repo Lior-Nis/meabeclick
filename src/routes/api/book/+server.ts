@@ -23,7 +23,9 @@
  */
 import { json, type Cookies } from '@sveltejs/kit';
 import { flagCalendarFailure } from '$server/db.ts';
-import { reserveBooking, slotTaken, cancelBooking, findAccountByEmail, lessonTeacher, type AccountRow } from '$server/entities.ts';
+import { reserveBooking, slotTakenFor, cancelBooking, findAccountByEmail, type AccountRow, type TeacherRow } from '$server/entities.ts';
+import { bookingCandidates, heldCandidates, type Candidates } from '$server/tutor-candidates.ts';
+import { assignTutor, calendarBusyAround, tutorsToAsk, type Assignment } from '$server/tutor-assign.ts';
 import { holdBooking, pendingById, claimPending, confirmLink } from '$server/pending-bookings.ts';
 import { recordEvent, VISITOR_ID_RE } from '$server/marketing.ts';
 import { HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
@@ -227,6 +229,8 @@ async function book(
   body: ConfirmedBookBody, enrolled: EnrollResult | null,
   /** The family account this request is signed in as, if any. */
   sessionAccountId: number | null,
+  /** Who teaches it: the tutor completeBooking assigned (migration 029). */
+  tutor: TeacherRow,
 ): Promise<BookResult> {
   /* Takes the narrowed body: POST has already checked these with
      isComplete() and enrolled the family — see the comment on
@@ -235,29 +239,12 @@ async function book(
   const { name, subject, phone, email, level, start, end, durationMin } = body;
   const requestText = resolveRequest(body);
 
-  /* The room is the lesson's teacher's: the enrollment's, or the default
-     teacher when there is no enrollment to ask (enrolment failed). */
-  const teacher = lessonTeacher(enrolled?.enrollment?.teacher_id ?? null);
-  const place = lessonPlace(body.mode ?? null, teacher?.meet_url ?? null);
-
-  /* No fallback. A default calendar is a personal address in disguise: with
-     CALENDAR_ID unset — a fresh box, a typo, an .env that did not load —
-     every booking in the system silently lands on ONE person's calendar.
-     With a single tutor that is invisible; with two it is a misrouting bug
-     that presents as "the calendar didn't sync", which is a long way from
-     "the calendar id was missing".
-
-     checkEnv() requires it at boot, so reaching here without one means the
-     variable was removed after start; refusing is the honest answer. Which
-     calendar a lesson belongs on becomes a per-teacher question once there
-     is more than one tutor — enrollments.teacher_id already records who
-     teaches each subject, so that lookup replaces this constant rather than
-     working around it. */
-  const calendarId = process.env.CALENDAR_ID;
-  if (!calendarId) throw new Error('CALENDAR_ID is not set — refusing to guess which calendar a lesson belongs on');
+  /* Their room, their name, their lesson calendar: all the booking
+     tutor's, never the student's tutor of the moment (spec D6). */
+  const place = lessonPlace(body.mode ?? null, tutor.meet_url ?? null);
   const sa = serviceAccount();
 
-  const booking = { name, subject, request: requestText, phone, email, level, start, durationMin, place, tutorName: teacher?.name ?? null };
+  const booking = { name, subject, request: requestText, phone, email, level, start, durationMin, place, tutorName: tutor.name };
 
   /* Enrolment used to happen here. It now happens in POST, ahead of the
      reservation, because a booking row names a student — so the family has
@@ -330,8 +317,13 @@ async function book(
 
   let created: { id: string };
   try {
+    /* No fallback calendar. Only a tutor with one is ever assigned
+       (takesBookings), so reaching here without one means it was cleared
+       after this booking was held: the booking stands, and is flagged like
+       any write that failed. */
+    if (!tutor.calendar_id) throw new Error(`no lesson calendar for ${tutor.name}`);
     const event = bookingEvent({ name, subject, request: requestText, level, phone, email, start, end, durationMin }, place);
-    created = await insertLessonEvent(sa, calendarId, event);
+    created = await insertLessonEvent(sa, tutor.calendar_id, event);
   } catch (err) {
     /* A service account that's *configured but broken* (expired creds, or
        the documented PEM-mangled-by-env-file bug) must fail exactly like
@@ -413,6 +405,17 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   });
 };
 
+/** 409 when no candidate is free. A returning family whose own tutor is
+ *  busy, while another tutor is free, is told so and handed their tutor's
+ *  id, so the page can reload that tutor's hours — never offered the other
+ *  tutor (spec D3). The id reveals nothing the tutors' public page doesn't. */
+function noTutorFree(c: Candidates, a: Assignment): Response {
+  if (a.tutorBusy) {
+    return json({ code: 'TUTOR_BUSY', error: 'השעה הזאת לא פנויה אצל המורה שלכם', tutorId: c.familyTutorId }, { status: 409 });
+  }
+  return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
+}
+
 interface CompleteCtx {
   cookies: Cookies;
   /** The family account this request is signed in as, if any. */
@@ -421,6 +424,9 @@ interface CompleteCtx {
   byTutor: boolean;
   attribution: Attribution | null;
   heardFrom: string | null;
+  /** A confirmed hold's tutor (pending_bookings.teacher_id): it books with
+   *  them, and only their hour is checked again. */
+  heldTutorId?: number | null;
 }
 
 /** Holds the hour for a known family and asks the address on file. Nothing
@@ -429,10 +435,17 @@ async function holdForConfirmation(
   body: ConfirmedBookBody, account: AccountRow,
   extra: { attribution: Attribution | null; heardFrom: string | null },
 ): Promise<Response> {
-  if (slotTaken(body.start, body.end)) {
-    return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
-  }
-  const id = holdBooking({ accountId: account.id, body: { ...body, attribution: extra.attribution, heardFrom: extra.heardFrom } });
+  /* The choice completeBooking would make, so the hold is with the tutor
+     the booking will be. Calendars first; from the choice to holdBooking
+     nothing is awaited, as with reserveBooking. */
+  const candidates = bookingCandidates(body);
+  const calendar = await calendarBusyAround(tutorsToAsk(candidates), body.start, body.end);
+  const assigned = assignTutor(candidates, body.start, body.end, calendar);
+  if (!assigned.tutor) return noTutorFree(candidates, assigned);
+  const id = holdBooking({
+    accountId: account.id, teacherId: assigned.tutor.id,
+    body: { ...body, attribution: extra.attribution, heardFrom: extra.heardFrom },
+  });
   const held = pendingById(id);
   const emailed = held && account.email
     ? await sendConfirmBookingEmail({
@@ -461,6 +474,7 @@ async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
   const res = await completeBooking(booking as ConfirmedBookBody, {
     cookies, sessionAccountId: held.accountId, byTutor: false,
     attribution: attribution ?? null, heardFrom: heardFrom ?? null,
+    heldTutorId: held.teacherId,
   });
   if (res.status === 200) setFamilySession(cookies, { kind: 'account', id: held.accountId });
   return res;
@@ -471,6 +485,22 @@ async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
 async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promise<Response> {
   const { attribution, heardFrom, cookies } = ctx;
   const sourceUtm = attribution ? JSON.stringify({ utm: attribution.utm, visitorId: attribution.visitorId ?? null }) : null;
+
+  /* Who may teach this lesson (tutor-candidates.ts), and when each of them
+     is busy in their own calendars. These are the only awaits before the
+     hour is claimed, and they come BEFORE the synchronous block below, so
+     they open no race: the choice is made against the database as it is
+     when the block runs. A confirmed hold keeps the tutor it was held with. */
+  const candidates = ctx.heldTutorId != null ? heldCandidates(ctx.heldTutorId) : bookingCandidates(body);
+  const calendar = await calendarBusyAround(tutorsToAsk(candidates), body.start, body.end);
+
+  /* ── Synchronous from here to reserveBooking's return. ── The tutor is
+     chosen, the family enrolled with them, and the hour claimed for them,
+     with nothing awaited between: two families at one hour can land with
+     two tutors, never with one. */
+  const assigned = assignTutor(candidates, body.start, body.end, calendar);
+  const tutor = assigned.tutor;
+  if (!tutor) return noTutorFree(candidates, assigned);
 
   /* Enrolment moved AHEAD of the reservation so the booking row can name a
      student. Both are synchronous — enrollFromBooking uses the sync
@@ -494,7 +524,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
   let enrolled: EnrollResult | null = null;
   let enrollmentFailed = false;
   try {
-    enrolled = enrollFromBooking(body);
+    enrolled = enrollFromBooking(body, tutor);
   } catch (err) {
     if (err instanceof EnrollError && err.code === 'EMAIL_REQUIRED') {
       return json({ error: err.message }, { status: 400 });
@@ -529,7 +559,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
      event and two emails on top of an hour another family already held.
      Still no `await` between the check and the insert — that gap is the
      race this whole ordering exists to close. */
-  if (slotTaken(body.start, body.end)) {
+  if (slotTakenFor(tutor.id, body.start, body.end)) {
     return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
   }
 
@@ -547,6 +577,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
       sourceUtm,
       heardFrom,
       mode: isLessonMode(body.mode) ? body.mode : null,
+      teacherId: tutor.id,
     });
     if (bookingId == null) {
       return json({ error: 'השעה הזו כבר תפוסה' }, { status: 409 });
@@ -584,7 +615,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
 
   let result: BookResult;
   try {
-    result = await book(body, enrolled, ctx.sessionAccountId);
+    result = await book(body, enrolled, ctx.sessionAccountId, tutor);
   } catch (e) {
     /* book() can throw synchronously — flagCalendarFailure does an unguarded
        INSERT from inside the calendar-failure catch. Without this, the throw
