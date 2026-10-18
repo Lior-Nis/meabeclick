@@ -161,11 +161,11 @@
             <input dir="ltr" bind:value={draft.calendarId} placeholder="…@group.calendar.google.com" />
           </label>
           <div class="field">
-            <span class="label">כתובות יומן פרטיות (iCal) — מהן יודעים מתי {t.name} עסוק/ה</span>
+            <span class="label" id="busy-label-{t.id}">כתובות יומן פרטיות (iCal) — מהן יודעים מתי {t.name} עסוק/ה</span>
             {#if !draft.replacing}
               <div class="saved">{savedCount(t.busyCount)} <button type="button" class="act small" onclick={() => { if (draft) draft.replacing = true; }}>החלפה</button></div>
             {:else}
-              <textarea dir="ltr" rows="3" bind:value={draft.addresses} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></textarea>
+              <textarea dir="ltr" rows="3" aria-labelledby="busy-label-{t.id}" bind:value={draft.addresses} placeholder="https://calendar.google.com/calendar/ical/…/basic.ics"></textarea>
               <span class="hint">כתובת אחת בכל שורה. אחרי השמירה הן לא מוצגות שוב.</span>
             {/if}
           </div>
@@ -175,9 +175,11 @@
               <div class="day">
                 <label class="day-on"><input type="checkbox" bind:checked={draft.days[d].on} /> {WEEKDAY_NAMES[d]}</label>
                 {#if draft.days[d].on}
-                  <input type="time" bind:value={draft.days[d].from} aria-label={`${WEEKDAY_NAMES[d]} — משעה`} />
-                  <span aria-hidden="true">–</span>
-                  <input type="time" bind:value={draft.days[d].to} aria-label={`${WEEKDAY_NAMES[d]} — עד שעה`} />
+                  <span class="range">
+                    <input type="time" bind:value={draft.days[d].from} aria-label={`${WEEKDAY_NAMES[d]} — משעה`} />
+                    <span aria-hidden="true">–</span>
+                    <input type="time" bind:value={draft.days[d].to} aria-label={`${WEEKDAY_NAMES[d]} — עד שעה`} />
+                  </span>
                 {:else}
                   <span class="off-day">לא מלמד/ת</span>
                 {/if}
@@ -207,7 +209,7 @@
   .act { min-height: 44px; display: inline-flex; align-items: center; border: 1.5px solid var(--border-strong); background: none; border-radius: 999px; padding: 0 16px; cursor: pointer; font: inherit; font-size: .85rem; color: inherit; text-decoration: none; }
   .act.wa { background: #25d366; border-color: #25d366; color: #fff; font-weight: 700; }
   .act.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
-  .act.small { min-height: 36px; padding: 0 12px; }
+  .act.small { padding: 0 12px; }
   .act:disabled { opacity: .6; cursor: default; }
   .settings { flex-basis: 100%; display: grid; gap: 14px; padding: 4px 0 6px; min-width: 0; }
   .field { display: grid; gap: 6px; min-width: 0; }
@@ -216,8 +218,12 @@
   .settings input[type="time"] { width: auto; }
   .saved { display: flex; flex-wrap: wrap; align-items: center; gap: 10px; font-size: .9rem; }
   .hint { font-size: .8rem; color: var(--text-muted); }
-  .hours { border: 0; padding: 0; margin: 0; display: grid; gap: 8px; min-width: 0; }
-  .day { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; }
+  .hours { border: 0; padding: 0; margin: 0; display: grid; grid-template-columns: minmax(0, 1fr); gap: 8px; min-width: 0; }
+  .day { display: flex; flex-wrap: wrap; align-items: center; gap: 8px; min-width: 0; }
+  /* A day's from–to stay together: on a narrow phone the pair moves under
+     the day's name instead of splitting across two lines. */
+  .range { display: inline-flex; align-items: center; gap: 6px; max-width: 100%; min-width: 0; }
+  .range input[type="time"] { flex: 1 1 7.5em; min-width: 0; }
   .day-on { display: inline-flex; align-items: center; gap: 6px; min-width: 5.5em; min-height: 44px; }
   .off-day { color: var(--text-muted); font-size: .85rem; }
   .form-actions { display: flex; flex-wrap: wrap; gap: 8px; }
