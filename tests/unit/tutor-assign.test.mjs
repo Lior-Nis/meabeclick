@@ -5,7 +5,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { mkdtemp } from 'node:fs/promises';
-import { readFileSync } from 'node:fs';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -85,13 +84,4 @@ test("each tutor's busy times come from their own feeds", async () => {
     globalThis.fetch = original;
     Date.now = realNow;
   }
-});
-
-/* The write itself is tested with Google faked (lesson-calendar.test.mjs);
-   the harness has no service account, so this pins which calendar the route
-   hands it. */
-test("the booking route writes the event into the booking tutor's calendar, and no other", () => {
-  const route = readFileSync(new URL('../../src/routes/api/book/+server.ts', import.meta.url), 'utf8');
-  assert.match(route, /insertLessonEvent\(sa, tutor\.calendar_id, event\)/);
-  assert.doesNotMatch(route, /process\.env\.CALENDAR_ID/);
 });

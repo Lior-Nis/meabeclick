@@ -11,7 +11,10 @@
 import { spawn } from 'node:child_process';
 import { createServer } from 'node:net';
 import { createServer as createHttpServer } from 'node:http';
-import { mkdir, mkdtemp, rm } from 'node:fs/promises';
+import { mkdir, mkdtemp, rm, writeFile } from 'node:fs/promises';
+import { readFileSync, existsSync } from 'node:fs';
+import { generateKeyPairSync } from 'node:crypto';
+import { fileURLToPath } from 'node:url';
 import { tmpdir } from 'node:os';
 import { join } from 'node:path';
 
@@ -67,9 +70,15 @@ function emptyFeedUrl() {
 
 const MAX_PORT_ATTEMPTS = 3;
 
+const FAKE_GOOGLE = fileURLToPath(new URL('./fake-google.mjs', import.meta.url));
+
 /** `ports` is a test seam: ports to try before asking the OS for free ones,
- *  so harness.test.mjs can hand it a port something else already answers. */
-export async function startServer({ env = {}, ports = [] } = {}) {
+ *  so harness.test.mjs can hand it a port something else already answers.
+ *
+ *  `fakeGoogle`: the server gets a made-up service-account key and loads
+ *  fake-google.mjs, which answers Google's sign-in and calendar writes and
+ *  records them; `googleRequests()` returns what it recorded. */
+export async function startServer({ env = {}, ports = [], fakeGoogle = false } = {}) {
   for (let attempt = 1; attempt <= MAX_PORT_ATTEMPTS; attempt++) {
     const port    = ports[attempt - 1] ?? await getFreePort();
     const dataDir = await mkdtemp(join(tmpdir(), 'meabeclick-test-'));
@@ -117,11 +126,22 @@ export async function startServer({ env = {}, ports = [] } = {}) {
       ...env,
     });
 
+    const googleLog = join(dataDir, 'google-requests.jsonl');
+    if (fakeGoogle) {
+      // Made up here, never a real key: it only has to sign a JWT the fake accepts.
+      const { privateKey } = generateKeyPairSync('rsa', { modulusLength: 2048, privateKeyEncoding: { type: 'pkcs8', format: 'pem' }, publicKeyEncoding: { type: 'spki', format: 'pem' } });
+      const keyFile = join(dataDir, 'fake-service-account.json');
+      await writeFile(keyFile, JSON.stringify({ client_email: 'robot@example-project.iam.gserviceaccount.com', private_key: privateKey }));
+      await writeFile(googleLog, '');
+      Object.assign(childEnv, { GOOGLE_SERVICE_ACCOUNT_KEY_FILE: keyFile, FAKE_GOOGLE_LOG: googleLog });
+    }
+
     // The only remaining target since Task 24 deleted server/app.mjs — see
     // this module's header comment. Requires `npm run build` to have been
     // run first; a missing build/index.js surfaces as a boot error below
     // (MODULE_NOT_FOUND in stderr), not a silent hang.
-    const child = spawn('node', ['build/index.js'], { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
+    const args = fakeGoogle ? ['--import', FAKE_GOOGLE, 'build/index.js'] : ['build/index.js'];
+    const child = spawn('node', args, { env: childEnv, stdio: ['ignore', 'pipe', 'pipe'] });
 
     let stderr = '';
     child.stderr.on('data', c => { stderr += c; });
@@ -188,7 +208,8 @@ export async function startServer({ env = {}, ports = [] } = {}) {
       throw bootError;
     }
 
-    return { baseUrl, stop: cleanup, dbPath, dataDir };
+    const googleRequests = () => readFileSyncLines(googleLog);
+    return { baseUrl, stop: cleanup, dbPath, dataDir, googleRequests };
   }
   // Unreachable: the loop above always either returns or throws.
 }
@@ -219,4 +240,10 @@ export async function familySession(enterUrl) {
   const raw = r.headers.getSetCookie().find(c => c.startsWith('maab_family='));
   if (!raw) throw new Error(`no family cookie from ${enterUrl} (status ${r.status})`);
   return raw.split(';')[0];
+}
+
+/** The fake Google's record, one request per line (see fake-google.mjs). */
+function readFileSyncLines(file) {
+  if (!existsSync(file)) return [];
+  return readFileSync(file, 'utf8').split('\n').filter(Boolean).map(l => JSON.parse(l));
 }
