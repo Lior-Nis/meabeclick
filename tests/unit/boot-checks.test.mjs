@@ -331,7 +331,8 @@ test('CALENDAR_ID is no longer required: each tutor has their own lesson calenda
 test('no required var carries a personal address as its default', () => {
   // The rule the CALENDAR_ID fallback broke. A default that names a person
   // is a routing decision hiding in a config default.
-  const src = readFileSync(join(root, 'src/routes/api/book/+server.ts'), 'utf8');
+  const src = ['src/routes/api/book/+server.ts', 'src/lib/server/lesson-calendar.ts']
+    .map(f => readFileSync(join(root, f), 'utf8')).join('\n');
   const defaults = [...src.matchAll(/process\.env\.\w+\s*\|\|\s*'([^']+)'/g)].map(m => m[1]);
   for (const d of defaults) {
     assert.doesNotMatch(d, /@(gmail|googlemail)\.com/i,
