@@ -446,20 +446,38 @@
   const tutorsOf = (s: RealStudent): string =>
     [...new Set((s.enrollments ?? []).map(e => tutorName(e.teacherId)).filter(Boolean))].join(', ');
 
+  /** The picker's value for an enrollment: its tutor, or '' when it has
+   *  none or theirs is no longer active (the "—" option). */
+  const pickerValue = (teacherId: number | null): string =>
+    teacherId != null && pageData.tutors.some(t => t.id === teacherId) ? String(teacherId) : '';
+
   /** Moves one enrollment to another tutor. Lessons already booked stay with
    *  the tutor they were booked with; the next booking goes to the new one. */
-  async function moveStudent(s: RealStudent, enrollmentId: number, teacherId: number) {
+  async function moveStudent(s: RealStudent, enrollmentId: number, select: HTMLSelectElement) {
+    const teacherId = Number(select.value);
+    const saved = s.enrollments.find(e => e.id === enrollmentId)?.teacherId ?? null;
+    /* A move that did not happen must not stay on screen as if it had. */
+    const undo = () => { select.value = pickerValue(saved); };
+    if (!Number.isInteger(teacherId) || teacherId <= 0) { undo(); return; }
     try {
       const r = await api(`/api/enrollments/${enrollmentId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacherId }),
       });
       const j = await r.json().catch(() => ({}));
-      if (!r.ok) { toast(j.error || 'ההעברה לא הצליחה', { kind: 'error' }); return; }
+      if (!r.ok) { undo(); toast(j.error || 'ההעברה לא הצליחה', { kind: 'error' }); return; }
       realStudents = realStudents.map(x => (x.code !== s.code ? x : {
         ...x, enrollments: x.enrollments.map(e => (e.id === enrollmentId ? { ...e, teacherId } : e)),
       }));
-      toast(`${s.name} עכשיו אצל ${tutorName(teacherId)}. שיעורים שכבר נקבעו נשארים כמו שהם.`);
+      const to = pageData.tutors.find(t => t.id === teacherId);
+      /* Moved to a tutor who cannot take bookings yet: the family is offered
+         no hours until that tutor's settings are complete. Said now, not
+         discovered by the family. */
+      const notReady = to && to.missing.length
+        ? ` ${to.name} עוד לא מקבל/ת הזמנות — עד שההגדרות יושלמו, למשפחה לא יוצגו שעות פנויות.`
+        : '';
+      toast(`${s.name} עכשיו אצל ${to?.name ?? tutorName(teacherId)}. שיעורים שכבר נקבעו נשארים כמו שהם.${notReady}`);
     } catch {
+      undo();
       toast('אין חיבור לשרת — ההעברה לא נשמרה', { kind: 'error' });
     }
   }
@@ -1227,9 +1245,10 @@
               {#each s.enrollments ?? [] as en (en.id)}
                 <div class="field-row single">
                   <div class="field"><label for="pf-tutor-{en.id}">מורה{s.enrollments.length > 1 ? ` · ${en.subject}` : ''}</label>
-                    <select id="pf-tutor-{en.id}" onchange={(e) => moveStudent(s, en.id, Number(e.currentTarget.value))}>
-                      {#if en.teacherId == null}<option value="" selected>— לא נבחר —</option>{/if}
-                      {#each pageData.tutors as tt (tt.id)}<option value={tt.id} selected={en.teacherId === tt.id}>{tt.name}</option>{/each}
+                    <select id="pf-tutor-{en.id}" onchange={(e) => moveStudent(s, en.id, e.currentTarget)}>
+                      {#if en.teacherId == null}<option value="" selected>— לא נבחר —</option>
+                      {:else if !tutorName(en.teacherId)}<option value="" selected>— מורה שכבר לא פעיל/ה —</option>{/if}
+                      {#each pageData.tutors as tt (tt.id)}<option value={tt.id} selected={en.teacherId === tt.id}>{tt.name}{tt.missing.length ? ' (עוד לא מקבל/ת הזמנות)' : ''}</option>{/each}
                     </select>
                   </div>
                 </div>
