@@ -366,6 +366,13 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
     return json({ error: 'חסרים פרטים' }, { status: 400 });
   }
 
+  /* Real times, the start before the end, checked before anything reads
+     them: an unparseable time used to reach a server error inside the
+     tutor choice, and an end before the start booked a nonsense lesson. */
+  if (!(Date.parse(body.start) < Date.parse(body.end))) {
+    return json({ error: 'המועד שנבחר לא תקין' }, { status: 400 });
+  }
+
   /* Online or in person, and nothing else: a lesson at the student's home
      is not on offer, so a request for one is refused before anyone is
      enrolled or any hour claimed. A request that does not say at all is
