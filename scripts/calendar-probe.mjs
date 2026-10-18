@@ -2,6 +2,7 @@
  * Proves a Google service-account key can write lessons: signs in as the
  * key's robot, inserts one test event into the lesson calendar, deletes it.
  *
+ *   node scripts/calendar-probe.mjs <key.json> <calendar id>...
  *   CALENDAR_ID=<lesson calendar id> node scripts/calendar-probe.mjs <key.json>
  *
  * scripts/connect-calendar.sh runs it on the server twice: once in a
@@ -93,9 +94,11 @@ export async function probeCalendarWrite({ key, calendarId, fetchImpl = fetch, n
 const piped = process.argv[1] === '-' || process.argv[1] === undefined;
 if (piped || import.meta.url.endsWith(String(process.argv[1]).split('/').pop())) {
   const file = process.argv[2];
-  const calendarId = process.env.CALENDAR_ID;
-  if (!file || !calendarId) {
-    console.error('usage: CALENDAR_ID=<lesson calendar id> node calendar-probe.mjs <key.json>');
+  /* Every tutor's lesson calendar (connect-calendar.sh passes them all), or
+     CALENDAR_ID for a single one. */
+  const calendarIds = process.argv.length > 3 ? process.argv.slice(3) : [process.env.CALENDAR_ID].filter(Boolean);
+  if (!file || !calendarIds.length) {
+    console.error('usage: node calendar-probe.mjs <key.json> <calendar id>...  (or CALENDAR_ID=<id> node calendar-probe.mjs <key.json>)');
     process.exit(2);
   }
   let key;
@@ -106,11 +109,15 @@ if (piped || import.meta.url.endsWith(String(process.argv[1]).split('/').pop()))
     console.error('calendar probe: the key file is missing or is not JSON');
     process.exit(1);
   }
-  try {
-    const robot = await probeCalendarWrite({ key, calendarId });
-    console.log(`ok: ${robot} wrote and deleted a test event on the lesson calendar`);
-  } catch (err) {
-    console.error(`calendar probe: ${err.message}`);
-    process.exit(1);
+  let robot = key.client_email;
+  for (const [i, calendarId] of calendarIds.entries()) {
+    try {
+      robot = await probeCalendarWrite({ key, calendarId });
+    } catch (err) {
+      // By position, never by id: the calendar id names a person.
+      console.error(`calendar probe: lesson calendar ${i + 1} of ${calendarIds.length}: ${err.message}`);
+      process.exit(1);
+    }
   }
+  console.log(`ok: ${robot} wrote and deleted a test event in ${calendarIds.length} lesson calendar(s)`);
 }

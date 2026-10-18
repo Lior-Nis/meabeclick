@@ -158,8 +158,8 @@ real student data — see the Todoist task's own dependency note.
 
 ### The calendar robot: writing lessons
 
-Each booking is written into the lesson calendar (`CALENDAR_ID`) by a Google
-service account. The robot has no access of its own: it reaches only the
+Each booking is written into its tutor's lesson calendar (set on the
+dashboard's "מורים" card) by a Google service account. The robot has no access of its own: it reaches only the
 calendars shared with it ("Make changes to events"), and it asks for nothing
 but `calendar.events`. Its key is `./service-account.json` (uid 1000, mode
 400), mounted read-only at `/app/service-account.json`; the app reads it on
@@ -171,17 +171,18 @@ another project):
 1. In the console as `mea.beclick@gmail.com`, project `meabeclick-site`:
    enable the **Google Calendar API**, then IAM & Admin → Service accounts →
    create one with **no roles**, then Keys → Add key → JSON.
-2. In Google Calendar as `mea.beclick@gmail.com`: share the lesson calendar
-   with the robot's email, **Make changes to events**.
+2. In Google Calendar as `mea.beclick@gmail.com`: share **every** tutor's
+   lesson calendar with the robot's email, **Make changes to events**.
 3. From a machine with `ssh mea`:
    `./scripts/connect-calendar.sh <key.json>`, or
    `./scripts/connect-calendar.sh <(ssh mac cat '~/Downloads/<key>.json')`
-   when the key downloaded on Lior's Mac. The script writes and deletes a
-   test event with the new key before anything changes, writes it over the
+   when the key downloaded on Lior's Mac. The script lists every active
+   tutor's lesson calendar from the running app's database, writes and
+   deletes a test event in each with the new key before anything changes, writes it over the
    mounted file in place (no restart), probes again inside the running app,
    and puts the old key back if that probe fails. It leaves dated backups of
    the key and `.env` beside them.
-4. Once real bookings have landed: unshare the lesson calendar from the old
+4. Once real bookings have landed: unshare the lesson calendars from the old
    robot, delete the old robot's key in its project, and delete the backups.
 
 The test event is dated 2000-01-01 and marked free, so one left behind by a
