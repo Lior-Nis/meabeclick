@@ -4023,6 +4023,11 @@ Expected: a non-zero slot count, `2` calendars and `0` failures, matching the co
 
 - [ ] **Step 4: Back up `.env`, then delete the lines nothing reads any more**
 
+Only after BOTH of these (final-review ruling, 2026-10-18):
+- the calendar-robot move (#51) is done, because its script probes with the container's `CALENDAR_ID`;
+- the deploy has run cleanly for a few days, because the previous image's boot check requires `CALENDAR_ID`, so a rollback without it would not boot.
+
+
 ```bash
 ssh mea 'cd /home/meabeclick/mea-beclick && cp -p .env .env.bak-before-per-tutor-$(date +%F) \
   && sed -i "/^CALENDAR_ID=/d; /^CALENDAR_ICS_URLS=/d; /^AVAILABILITY_CALENDAR_IDS=/d; /^GOOGLE_API_KEY=/d" .env \
