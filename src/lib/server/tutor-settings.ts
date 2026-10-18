@@ -8,7 +8,7 @@
  * never logged and never returned: what leaves this module is a count.
  */
 import { handle } from './db.ts';
-import { getTeacher, type TeacherRow } from './entities.ts';
+import { defaultTeacher, getTeacher, type TeacherRow } from './entities.ts';
 import { DEFAULT_HOURS, parseTeachingHours, type TeachingHours } from '../teaching-hours.ts';
 
 /** One address per line; commas and spaces split too, as CALENDAR_ICS_URLS always did. */
@@ -78,4 +78,27 @@ export function tutorCardView(t: TeacherRow) {
     teachingHours: teachingHours(t),
     missing: missingForBookings(t),
   };
+}
+
+/**
+ * The first boot after migration 029: the default tutor's row takes over
+ * CALENDAR_ID and CALENDAR_ICS_URLS from .env, so booking carries on
+ * exactly as before with nothing set by hand.
+ *
+ * Only when her row has neither a calendar nor a busy address yet, so it
+ * happens once and never overwrites anything — after it, the two .env
+ * lines can be deleted. Only that it happened is logged, never the values:
+ * the iCal addresses are secrets.
+ *
+ * @returns whether anything was copied.
+ */
+export function adoptEnvCalendar(env: Record<string, string | undefined> = process.env): boolean {
+  const t = defaultTeacher();
+  if (!t || t.calendar_id || t.busy_ics) return false;
+  const calendarId = env.CALENDAR_ID?.trim() || null;
+  const busy = splitAddresses(env.CALENDAR_ICS_URLS);
+  if (!calendarId && !busy.length) return false;
+  updateTutorSettings(t.id, { calendarId, busyIcs: busy });
+  console.log(`[boot] ${t.name} took over CALENDAR_ID and CALENDAR_ICS_URLS from .env — both lines can be deleted now`);
+  return true;
 }

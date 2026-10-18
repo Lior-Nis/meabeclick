@@ -120,14 +120,6 @@ export const REQUIRED_VARS: RequiredVar[] = [
       "portal files) lives under — unset, content.ts falls back to the CWD-relative " +
       "'./data', and adapter-node's runtime cwd is not guaranteed to be the repo root",
   },
-  {
-    key: 'CALENDAR_ID',
-    why: 'the calendar bookings are written to. It used to fall back to a hardcoded ' +
-      'personal address, so an unset value did not fail — it silently routed every ' +
-      "booking in the system to one person's calendar. Harmless while there is one " +
-      'tutor and a misrouting bug the moment there are two, presenting as "the ' +
-      'calendar did not sync" rather than as a missing variable',
-  },
 ];
 
 export interface EnvIssue { key: string; message: string; }
