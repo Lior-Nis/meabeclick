@@ -67,8 +67,9 @@ echo
 # that from data/ being owned by uid 1000 with the setgid bit (see
 # backup-db.sh); a freshly restored copy carries whatever ownership the
 # restoring user had, so the drill container fails to boot without this.
-# Discovered on 2026-09-16: the drill below failed twice before it ran, once
-# here and once on the missing CALENDAR_ID added underneath.
+# Discovered on 2026-09-16: the drill below failed to boot here before it
+# ran. (It also needed CALENDAR_ID then; since migration 029 the lesson
+# calendar lives on the tutor's row, which the restored database carries.)
 if [ "$(id -u)" = "0" ]; then
   chown -R 1000:1000 "$TARGET/data"
 else
@@ -81,7 +82,6 @@ echo "  docker run --rm -p 3100:3000 -v $TARGET/data:/app/data \\"
 echo "    -e PORT=3000 -e ORIGIN=http://localhost:3100 -e PROTOCOL_HEADER=x-forwarded-proto \\"
 echo "    -e DATA_DIR=/app/data -e PORTAL_DIR=/app/data/portal -e SITE_URL=http://localhost:3100 \\"
 echo "    -e SESSION_SECRET=drill-only -e ADMIN_PASSWORD=drill-only \\"
-echo "    -e CALENDAR_ID=drill-only \\"
 echo "    ghcr.io/lior-nis/meabeclick:\$(docker inspect mea-beclick-app-1 --format '"'"'{{.Config.Image}}'"'"' | sed '"'"'s/.*://'"'"')"
 echo
 echo "  (the tag matters: :latest is whatever this box last CACHED, which on a"
