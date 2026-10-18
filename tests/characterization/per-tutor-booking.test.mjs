@@ -11,6 +11,7 @@ import { createHmac } from 'node:crypto';
 import { readFileSync } from 'node:fs';
 import { join } from 'node:path';
 import { DatabaseSync } from 'node:sqlite';
+import { createServer } from 'node:http';
 import { startServer, familySession } from './harness.mjs';
 
 const NIKOL = 1, LIOR = 2;
@@ -138,4 +139,33 @@ test("a family booked with Lior has his name on their page", async () => {
     const page = JSON.parse(readFileSync(join(dataDir, 'portal', `${b.portal.code}.json`), 'utf8'));
     assert.equal(page.tutor, 'ליאור');
   } finally { await stop(); }
+});
+
+/* Final review, Important #1. Confirming a hold releases its hour, so the
+   held tutor's calendars must be read BEFORE the claim: an await between
+   the claim and the reservation let another family take the hour this
+   family was holding. Nikol's feed here answers 500 after 1.5s, so every
+   calendar read is slow (failures are never cached). */
+test('confirming a hold keeps the hour, even when another family books it while the calendars are read', async () => {
+  const slow = createServer((req, res) => setTimeout(() => { res.writeHead(500); res.end(); }, 1500));
+  await new Promise(r => slow.listen(0, '127.0.0.1', r));
+  const { baseUrl, dbPath, stop } = await startServer();
+  try {
+    await book(baseUrl);                                           // Dana, with Nikol
+    assert.equal((await (await book(baseUrl, { name: 'נועה', ...LATER })).json()).awaitingConfirmation, true);
+    const [hold] = rows(dbPath, `SELECT id, expires_at FROM pending_bookings`);
+    run(dbPath, `UPDATE teachers SET busy_ics = ? WHERE id = ?`, `http://127.0.0.1:${slow.address().port}/slow.ics`, NIKOL);
+
+    const other = book(baseUrl, { email: 'other@example.com', name: 'אחר', ...LATER });
+    await new Promise(r => setTimeout(r, 500));
+    const confirmed = fetch(`${baseUrl}/api/book`, {
+      method: 'POST', headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify({ confirm: confirmToken(hold.id, Date.parse(hold.expires_at)) }),
+    });
+    const [o, c] = await Promise.all([other, confirmed]);
+    assert.equal(c.status, 200, `the held family keeps their hour: ${await c.clone().text()}`);
+    assert.equal(o.status, 409, 'the other family is told the hour is taken');
+    assert.deepEqual(tutorsOf(dbPath, 'dana@example.com'), [NIKOL, NIKOL]);
+    assert.deepEqual(tutorsOf(dbPath, 'other@example.com'), []);
+  } finally { await stop(); slow.close(); }
 });

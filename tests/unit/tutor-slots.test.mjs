@@ -95,3 +95,20 @@ test("outside everyone's hours, the first tutor with nothing then still gets it,
   assert.equal(pickTutor([NIKOL, LIOR], ...sat, days({})), NIKOL);
   assert.equal(pickTutor([NIKOL, LIOR], ...sat, days({ 1: { bookings: [{ start: sat[0], end: sat[1] }] } })), LIOR);
 });
+
+/* Final review, Important #2: the second pass must not hand a tutor an
+   hour outside their own day just because the tutor whose day it is, is
+   busy — that is a stale page meeting a taken hour, and the answer is 409. */
+test("a tutor is never given an hour outside their own day, even when the tutor whose day it is, is busy", () => {
+  // 19:30–21:00 Israel on Monday: Nikol has it booked; Lior's Monday ends at 18:00.
+  const late = ['2027-03-15T17:30:00.000Z', '2027-03-15T19:00:00.000Z'];
+  const nikolBooked = { bookings: [{ start: late[0], end: late[1] }] };
+  assert.equal(pickTutor([NIKOL, LIOR], ...late, days({ 1: nikolBooked, 2: { hours: { 1: ['08:00', '18:00'] } } })), null);
+  assert.equal(pickTutor([NIKOL, LIOR], ...late, days({ 1: nikolBooked, 2: { hours: {} } })), null, 'nor when he has no days at all');
+});
+
+test('inside their day, a tutor with nothing at that hour still takes it, even inside a buffer', () => {
+  // Nikol alone, a calendar event ending exactly at the lesson's start: no clash, inside her hours.
+  const at = ['2027-03-15T10:00:00.000Z', '2027-03-15T10:45:00.000Z'];
+  assert.equal(pickTutor([NIKOL], ...at, days({ 1: { calendar: [{ start: '2027-03-15T09:00:00.000Z', end: at[0] }] } })), NIKOL);
+});

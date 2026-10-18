@@ -158,22 +158,38 @@ export function clashes(t: Pick<TutorDay, 'calendar' | 'bookings'>, start: strin
   return [...t.calendar, ...t.bookings].some(b => Date.parse(b.end) > s && Date.parse(b.start) < e);
 }
 
+/** Whether [start, end) lies inside this tutor's teaching hours that day. */
+function withinHours(t: TutorDay, start: string, end: string): boolean {
+  const s = Date.parse(start), e = Date.parse(end);
+  if (!(s < e)) return false;
+  const win = windowOn(israelDate(s), t.hours);
+  return !!win && s >= win[0] && e <= win[1];
+}
+
 /**
- * Who teaches a lesson at [start, end): the first candidate, in the order
- * given (id order, so Nikol first), whose hours, buffers and breaks would
- * offer that hour; failing that, the first who has nothing in it at all.
+ * Who teaches a lesson at [start, end), in three passes over the
+ * candidates in the order given (id order, so Nikol first):
  *
- * The first pass stops a 19:30 booking landing on a tutor whose day ended
- * at 18:00 while another tutor's day has it. The second keeps what one
- * tutor could always do: a lesson booked outside the hours — by the tutor
- * for a family, or from a page opened earlier — still lands when nothing
- * clashes.
+ *   1. whose hours, buffers and breaks would offer that hour;
+ *   2. whose hours contain it and who has nothing in it — a buffer is a
+ *      preference, a tutor's day is not;
+ *   3. only when the hour lies in NO candidate's day, the first who has
+ *      nothing in it.
+ *
+ * Pass 2 never hands a tutor an hour outside their own day because the
+ * tutor whose day it is, is busy: that is a stale page meeting a taken
+ * hour, and the answer is no. Pass 3 keeps what one tutor could always do:
+ * a lesson booked outside everyone's hours — by the tutor for a family, or
+ * on a Saturday — still lands when nothing clashes.
  */
 export function pickTutor<T extends { id: number }>(
   candidates: T[], start: string, end: string, dayOf: (t: T) => TutorDay,
 ): T | null {
+  const free = (t: T) => !clashes(dayOf(t), start, end);
+  const inDay = (t: T) => withinHours(dayOf(t), start, end);
   return candidates.find(t => offers(dayOf(t), start, end))
-    ?? candidates.find(t => !clashes(dayOf(t), start, end))
+    ?? candidates.find(t => inDay(t) && free(t))
+    ?? (candidates.some(inDay) ? null : candidates.find(free))
     ?? null;
 }
 

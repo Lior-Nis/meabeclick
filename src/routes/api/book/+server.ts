@@ -26,6 +26,7 @@ import { flagCalendarFailure } from '$server/db.ts';
 import { reserveBooking, slotTakenFor, cancelBooking, findAccountByEmail, type AccountRow, type TeacherRow } from '$server/entities.ts';
 import { bookingCandidates, heldCandidates, type Candidates } from '$server/tutor-candidates.ts';
 import { assignTutor, calendarBusyAround, tutorsToAsk, type Assignment } from '$server/tutor-assign.ts';
+import type { BusyInterval } from '$server/calendar.ts';
 import { holdBooking, pendingById, claimPending, confirmLink } from '$server/pending-bookings.ts';
 import { recordEvent, VISITOR_ID_RE } from '$server/marketing.ts';
 import { HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
@@ -427,7 +428,14 @@ interface CompleteCtx {
   /** A confirmed hold's tutor (pending_bookings.teacher_id): it books with
    *  them, and only their hour is checked again. */
   heldTutorId?: number | null;
+  /** The candidates' calendars, already read — by confirmHeld, which must
+   *  read them before it claims the hold (see there). */
+  calendar?: Map<number, BusyInterval[]>;
 }
+
+/** Who may teach this booking: a held booking's tutor, or the spec's rules 1–3. */
+const candidatesFor = (body: ConfirmedBookBody, heldTutorId?: number | null): Candidates =>
+  heldTutorId != null ? heldCandidates(heldTutorId) : bookingCandidates(body);
 
 /** Holds the hour for a known family and asks the address on file. Nothing
  *  is awaited between the check and the hold, as with reserveBooking. */
@@ -464,6 +472,16 @@ async function holdForConfirmation(
  *  device is signed in to that family. */
 async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
   const id = verifyPendingToken(token);
+  /* The held tutor's calendars are read BEFORE the hold is claimed.
+     Claiming frees the hour, so from the claim to reserveBooking nothing may
+     be awaited — or another family's booking could take the hour this
+     family was holding (final review, 2026-10-18). */
+  const peek = id === null ? null : pendingById(id);
+  const calendar = peek
+    ? await calendarBusyAround(
+        tutorsToAsk(candidatesFor(peek.body as unknown as ConfirmedBookBody, peek.teacherId)),
+        peek.body.start, peek.body.end)
+    : undefined;
   const held = id === null ? null : claimPending(id);
   if (!held) {
     return json({ error: 'הקישור לאישור לא תקף — ייתכן שפג תוקפו או שהשיעור כבר אושר' }, { status: 410 });
@@ -474,7 +492,7 @@ async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
   const res = await completeBooking(booking as ConfirmedBookBody, {
     cookies, sessionAccountId: held.accountId, byTutor: false,
     attribution: attribution ?? null, heardFrom: heardFrom ?? null,
-    heldTutorId: held.teacherId,
+    heldTutorId: held.teacherId, calendar,
   });
   if (res.status === 200) setFamilySession(cookies, { kind: 'account', id: held.accountId });
   return res;
@@ -491,8 +509,8 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
      hour is claimed, and they come BEFORE the synchronous block below, so
      they open no race: the choice is made against the database as it is
      when the block runs. A confirmed hold keeps the tutor it was held with. */
-  const candidates = ctx.heldTutorId != null ? heldCandidates(ctx.heldTutorId) : bookingCandidates(body);
-  const calendar = await calendarBusyAround(tutorsToAsk(candidates), body.start, body.end);
+  const candidates = candidatesFor(body, ctx.heldTutorId);
+  const calendar = ctx.calendar ?? await calendarBusyAround(tutorsToAsk(candidates), body.start, body.end);
 
   /* ── Synchronous from here to reserveBooking's return. ── The tutor is
      chosen, the family enrolled with them, and the hour claimed for them,
