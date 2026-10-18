@@ -128,7 +128,7 @@ export function pendingReminders(nowIso: string): (RemindableBooking & {
   const rows = handle().prepare(`
     SELECT b.id AS id, b.start AS start, b.status AS status, b.duration AS duration,
            s.name AS studentName, a.email AS email, e.subject AS subject,
-           b.mode AS mode, e.teacher_id AS teacherId
+           b.mode AS mode, b.teacher_id AS teacherId
     FROM bookings_v2 b
     JOIN students_v2 s ON s.id = b.student_id
     JOIN accounts a    ON a.id = s.account_id
@@ -144,8 +144,11 @@ export function pendingReminders(nowIso: string): (RemindableBooking & {
   })[];
 
   const due = new Set(dueForReminder(rows, nowIso).map(b => b.id));
-  /* The room is looked up only for what is due, and through lessonTeacher
-     so a reminder and the booking email can never name different rooms. */
+  /* The room is the booking's tutor's (bookings_v2.teacher_id, migration
+     029): a student moved to another tutor keeps the room of a lesson they
+     had already booked. Looked up only for what is due, and through
+     lessonTeacher so a reminder and the booking email can never name
+     different rooms. */
   return rows.filter(r => due.has(r.id)).map(({ teacherId, ...r }) => ({
     ...r, meetUrl: r.mode === 'online' ? lessonTeacher(teacherId)?.meet_url ?? null : null,
   }));

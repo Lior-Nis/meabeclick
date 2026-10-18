@@ -53,6 +53,13 @@
      away. */
   let openDay = $state(0);
 
+  /* Set when /api/book answered TUTOR_BUSY: the family's tutor is busy at
+     the hour they picked, though another tutor is not. A returning family
+     stays with their tutor (spec D3), so from then on the hours shown are
+     that tutor's alone, and the page says so. */
+  let tutorFilter = $state<number | null>(null);
+  let slotNotice = $state('');
+
   function selectPlan(plan: Plan) {
     selectedPlan = plan;
     step = 'slots';
@@ -70,7 +77,7 @@
     openDay = 0;
 
     try {
-      const res = await fetch(`/api/availability?duration=${selectedPlan!.minutes}`);
+      const res = await fetch(`/api/availability?duration=${selectedPlan!.minutes}${tutorFilter ? `&tutor=${tutorFilter}` : ''}`);
       if (!res.ok) throw new Error(`HTTP ${res.status}`);
       const data = await res.json();
       if (data.error) throw new Error(data.error);
@@ -461,6 +468,16 @@
         submitting = false;
         return;
       }
+      /* TUTOR_BUSY: everything they typed stays, only the hour changes —
+         back to the hours, which reload as their tutor's alone. */
+      if (res.status === 409 && data.code === 'TUTOR_BUSY' && Number.isInteger(data.tutorId)) {
+        tutorFilter = data.tutorId;
+        closeSheet();
+        loadSlots();
+        slotNotice = data.error || 'השעה הזאת לא פנויה אצל המורה שלכם';
+        submitting = false;
+        return;
+      }
       if (res.status === 409) {
         submitError = data.error || 'השעה הזו כבר נתפסה. בחרו מועד אחר.';
         submitting = false;
@@ -584,6 +601,9 @@
       <div class="selected-plan-badge">
         ⏱️ {selectedPlan?.name} · {selectedPlan?.minutes} דקות · {formatPrice(selectedPlan?.shekels ?? 0)}
       </div>
+      {#if slotNotice}
+        <p class="slot-notice" role="status">{slotNotice}. אלה השעות הפנויות אצל המורה שלכם.</p>
+      {/if}
 
       {#if slotState === 'loading'}
         <div class="state-block" aria-live="polite">
@@ -987,6 +1007,7 @@
 {/if}
 
 <style>
+  .slot-notice { border: 1.5px solid var(--border-strong); border-radius: 12px; padding: 10px 14px; margin: 10px 0; font-size: .9rem; line-height: 1.5; }
   /* ── header ─────────────────────────────────── */
   header {
     background: var(--bg-card);

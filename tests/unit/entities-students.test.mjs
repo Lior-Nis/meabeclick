@@ -51,7 +51,9 @@ test('upsertEnrollment updates rather than duplicating the same subject', () => 
 
   assert.equal(E.enrollmentsForStudent(s.id).length, 1);
   assert.equal(again.level, 'כיתה ח');
-  assert.equal(again.teacher_id, nika.id);
+  // Migration 029: booking again keeps the student's tutor; only the
+  // dashboard moves a student (setEnrollmentTeacher).
+  assert.equal(again.teacher_id, nicole.id);
 });
 
 test('a student cannot be created against a nonexistent account', () => {

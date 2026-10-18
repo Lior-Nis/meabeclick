@@ -48,6 +48,11 @@ if (!dev) {
   // database-backed route for the rest of its life.
   await import('$server/db.ts');
 
+  // Migration 029: the default tutor's row takes over CALENDAR_ID and
+  // CALENDAR_ICS_URLS, once (tutor-settings.ts). After that nothing reads them.
+  const { adoptEnvCalendar } = await import('$server/tutor-settings.ts');
+  adoptEnvCalendar();
+
   // Library preparations run in this process; any a restart cut short are
   // marked failed, so the tutor can prepare them again (library/store.ts).
   const { resetInterrupted } = await import('$server/library/store.ts');

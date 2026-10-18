@@ -6,7 +6,9 @@
  * Google generates per calendar, so the server can read the real calendar without
  * anyone's calendar becoming public.
  *
- * Env: CALENDAR_ICS_URLS — one or more secret iCal addresses, comma or newline separated.
+ * Each tutor has their own addresses (teachers.busy_ics, migration 029; see
+ * tutor-settings.ts). A failing feed is identified by its tutor and position,
+ * never by its address.
  */
 import ical from 'node-ical';
 
@@ -105,28 +107,6 @@ export function busyFromIcs(icsText: string, timeMin: string, timeMax: string): 
   return busy;
 }
 
-export function icsUrls(): string[] {
-  return (process.env.CALENDAR_ICS_URLS || '')
-    .split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-}
-
-/**
- * Calendar ids for /api/availability's Google Calendar API fallback — the
- * path taken only when no iCal feed is configured and GOOGLE_API_KEY is.
- *
- * These used to be six literals in the route: Nicole's personal Gmail, her
- * university address, and four private calendar ids, committed and pushed.
- * A calendar id names a person, so it belongs in the environment next to
- * CALENDAR_ICS_URLS rather than in the history of a repo that gets cloned.
- *
- * Empty when unset, and the route treats empty as "nothing configured"
- * rather than fetching no calendars and calling every hour free.
- */
-export function availabilityCalendarIds(): string[] {
-  return (process.env.AVAILABILITY_CALENDAR_IDS || '')
-    .split(/[\s,]+/).map(s => s.trim()).filter(Boolean);
-}
-
 /* A year of expanded occurrences is around a megabyte; re-downloading and
    re-parsing it on every page load would make the booking page crawl.
    Decision: 5 minutes is the accepted staleness window. In plain terms —
@@ -175,45 +155,58 @@ function classifyReadError(err: unknown): string {
   return 'שגיאת קריאה';
 }
 
-export type CalendarSourceIssue = { index: number; total: number; at: string; reason: string };
+/** Whose feeds these are. The name is for the dashboard's warning; the
+ *  addresses are secrets and never leave this module. */
+export interface BusySource { id: number; name: string; addresses: string[] }
 
-/** Last read failure per feed, keyed by its 0-based position. Cleared the
+export type CalendarSourceIssue = {
+  tutorId: number; tutorName: string;
+  /** 1-based position among that tutor's addresses, and how many they have. */
+  index: number; total: number;
+  at: string; reason: string;
+};
+
+/** Last read failure per feed, keyed `${tutorId}:${position}`. Cleared the
  *  next time that same feed reads successfully, so a recovered calendar
  *  stops warning. */
-const sourceIssues = new Map<number, { at: string; reason: string }>();
+const sourceIssues = new Map<string, CalendarSourceIssue>();
 
-/** Read-failure state for the tutor dashboard — feeds identified by
- *  position only («יומן 2 מתוך 3»), never by URL. */
+/** Read-failure state for the tutor dashboard («היומן השני של ליאור»),
+ *  never by URL. */
 export function calendarSourceIssues(): CalendarSourceIssue[] {
-  const total = icsUrls().length;
-  return [...sourceIssues.entries()]
-    .sort(([a], [b]) => a - b)
-    .map(([index, issue]) => ({ index: index + 1, total, ...issue }));
+  return [...sourceIssues.values()].sort((a, b) => a.tutorId - b.tutorId || a.index - b.index);
 }
 
-/** Fetch every configured calendar; a calendar that fails is skipped, not
- *  fatal to the request — but the failure is recorded (see
- *  calendarSourceIssues) rather than silently dropped. */
-export async function fetchBusy(
-  timeMin: string,
-  timeMax: string,
-): Promise<{ busy: BusyInterval[]; failed: number } | null> {
-  const urls = icsUrls();
-  if (!urls.length) return null;                     // null = not configured
+/** A tutor's addresses were replaced: what was wrong with the old ones is moot. */
+export function clearSourceIssues(tutorId: number): void {
+  for (const [key, issue] of sourceIssues) if (issue.tutorId === tutorId) sourceIssues.delete(key);
+}
 
+/** One tutor's busy times from their own feeds. A feed that fails is
+ *  skipped — its hours read as free, the fail-open the booking page then
+ *  warns about — and recorded (see calendarSourceIssues), never silently
+ *  dropped. */
+export async function fetchTutorBusy(
+  tutor: BusySource, timeMin: string, timeMax: string,
+): Promise<{ busy: BusyInterval[]; failed: number; total: number }> {
+  const urls = tutor.addresses;
   let failed = 0;
   const all = await Promise.all(urls.map(async (url, i) => {
+    const key = `${tutor.id}:${i}`;
     try {
       const busy = busyFromIcs(await calendarText(url), timeMin, timeMax);
-      sourceIssues.delete(i);
+      sourceIssues.delete(key);
       return busy;
     } catch (err) {
       const reason = classifyReadError(err);
-      sourceIssues.set(i, { at: new Date().toISOString(), reason });
+      sourceIssues.set(key, {
+        tutorId: tutor.id, tutorName: tutor.name, index: i + 1, total: urls.length,
+        at: new Date().toISOString(), reason,
+      });
       failed++;
-      console.error(`[calendar] יומן ${i + 1} מתוך ${urls.length} — קריאה נכשלה: ${reason}`);
+      console.error(`[calendar] ${tutor.name}: יומן ${i + 1} מתוך ${urls.length} — קריאה נכשלה: ${reason}`);
       return [];
     }
   }));
-  return { busy: all.flat(), failed };
+  return { busy: all.flat(), failed, total: urls.length };
 }
