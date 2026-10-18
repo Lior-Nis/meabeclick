@@ -293,7 +293,7 @@ async function book(
      the tutor her record, and vice versa — so they settle independently
      and neither can reject the other. */
   const notify = async (inCalendar: boolean) => {
-    const [tutor, family] = await Promise.all([
+    const [tutorEmailed, family] = await Promise.all([
       sendBookingEmail(booking, inCalendar, forEmail).catch(err => {
         console.error('[book] tutor email failed:', (err as Error).message);
         return false;
@@ -305,7 +305,7 @@ async function book(
           })
         : Promise.resolve(false),
     ]);
-    return { emailed: tutor, familyEmailed: family };
+    return { emailed: tutorEmailed, familyEmailed: family };
   };
 
   // Without a service account there is no calendar write, but the booking
