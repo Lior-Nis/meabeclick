@@ -387,26 +387,34 @@ export function deleteStudentCascade(code: string): boolean {
 }
 
 /** The dashboard's roster: every student with the account contact beside
- *  it, so the tutor sees who to message without opening each family. */
+ *  it, so the tutor sees who to message without opening each family — and
+ *  each enrollment with its tutor, for the card's tutor picker. */
 export type RosterRow = StudentRow & {
   account_name: string;
   email: string | null;
   account_phone: string | null;
   subjects: string | null;
+  enrollments: { id: number; subject: string; teacherId: number | null }[];
 };
 
 export function roster(): RosterRow[] {
-  return handle().prepare(`
+  const rows = handle().prepare(`
     SELECT s.*,
            a.name  AS account_name,
            a.email AS email,
            a.phone AS account_phone,
            (SELECT GROUP_CONCAT(e.subject, ', ')
-              FROM enrollments e WHERE e.student_id = s.id) AS subjects
+              FROM enrollments e WHERE e.student_id = s.id) AS subjects,
+           (SELECT json_group_array(json_object('id', e.id, 'subject', e.subject, 'teacherId', e.teacher_id))
+              FROM enrollments e WHERE e.student_id = s.id) AS enrollments_json
     FROM students_v2 s
     JOIN accounts a ON a.id = s.account_id
     ORDER BY s.created_at DESC
-  `).all() as RosterRow[];
+  `).all() as (Omit<RosterRow, 'enrollments'> & { enrollments_json: string })[];
+  return rows.map(({ enrollments_json, ...r }) => ({
+    ...r,
+    enrollments: (JSON.parse(enrollments_json) as RosterRow['enrollments']).sort((a, b) => a.id - b.id),
+  }));
 }
 
 /* ── Bookings ───────────────────────────────────────────────────────────

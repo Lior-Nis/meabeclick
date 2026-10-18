@@ -87,7 +87,7 @@
    * that id never matched a real student and can't be used to reattach a
    * session/homework list to the card that now renders from the server. */
   interface SessionRec { id: string; date: string; type: string; amount: number; paid: boolean; notes: string; void?: boolean }
-  interface NextLesson { date: string; time: string; type: string }
+  interface NextLesson { date: string; time: string; type: string; tutor?: string | null }
   interface LocalStudent {
     id: string; name: string; subject: string; level: string; style: string; emoji: string;
     goals: string; phone: string; parent: string; progress: number; progressNote: string;
@@ -431,6 +431,7 @@
     goals: string | null; style: string | null; notes: string | null;
     email: string | null; account_name: string; account_phone: string | null;
     subjects: string | null;
+    enrollments: { id: number; subject: string; teacherId: number | null }[];
   }
   interface StudentLinks { name: string; familyLink: string; studentLink: string; joinCode: string }
   // Seeded from the server load so a first, JS-free GET already carries the
@@ -440,6 +441,28 @@
   // the panel never needs to react to `pageData` changing again, and
   // loadCodes() below is what keeps it fresh from here on.
   let realStudents = $state<RealStudent[]>(untrack(() => pageData.roster ?? []));
+  const tutorName = (id: number | null): string | null => pageData.tutors.find(t => t.id === id)?.name ?? null;
+  /** "ניקול", or "ניקול, ליאור" for a student with subjects at both. */
+  const tutorsOf = (s: RealStudent): string =>
+    [...new Set((s.enrollments ?? []).map(e => tutorName(e.teacherId)).filter(Boolean))].join(', ');
+
+  /** Moves one enrollment to another tutor. Lessons already booked stay with
+   *  the tutor they were booked with; the next booking goes to the new one. */
+  async function moveStudent(s: RealStudent, enrollmentId: number, teacherId: number) {
+    try {
+      const r = await api(`/api/enrollments/${enrollmentId}`, {
+        method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacherId }),
+      });
+      const j = await r.json().catch(() => ({}));
+      if (!r.ok) { toast(j.error || 'ההעברה לא הצליחה', { kind: 'error' }); return; }
+      realStudents = realStudents.map(x => (x.code !== s.code ? x : {
+        ...x, enrollments: x.enrollments.map(e => (e.id === enrollmentId ? { ...e, teacherId } : e)),
+      }));
+      toast(`${s.name} עכשיו אצל ${tutorName(teacherId)}. שיעורים שכבר נקבעו נשארים כמו שהם.`);
+    } catch {
+      toast('אין חיבור לשרת — ההעברה לא נשמרה', { kind: 'error' });
+    }
+  }
   let codesLoading = $state(false);
   let codesError = $state('');
 
@@ -1000,7 +1023,7 @@
               <div class="sc-avatar">{s.emoji || '🎓'}</div>
               <div>
                 <div class="sc-name">{s.name}</div>
-                <div class="sc-subject">{s.subjects || '—'}</div>
+                <div class="sc-subject">{s.subjects || '—'}{tutorsOf(s) ? ` · ${tutorsOf(s)}` : ''}</div>
               </div>
             </div>
             <div style="display:flex;flex-direction:column;gap:6px;align-items:flex-end">
@@ -1034,7 +1057,7 @@
                 <div class="next-lesson-box" style="margin-bottom:14px">
                   <div class="nl-label">📅 שיעור הבא</div>
                   <div class="nl-date">{formatDate(ex.nextLesson.date)}{ex.nextLesson.time ? ' · ' + ex.nextLesson.time : ''}</div>
-                  <div class="nl-meta">סוג: {ex.nextLesson.type || 'יחיד'}</div>
+                  <div class="nl-meta">סוג: {ex.nextLesson.type || 'יחיד'}{ex.nextLesson.tutor ? ` · עם ${ex.nextLesson.tutor}` : ''}</div>
                 </div>
               {:else}
                 <div class="next-lesson-box" style="margin-bottom:14px">
@@ -1201,6 +1224,16 @@
                 <div class="field"><span class="field-label">שם</span><div class="readonly-value">{s.name}</div></div>
                 <div class="field"><span class="field-label">מקצועות</span><div class="readonly-value">{s.subjects || '—'}</div></div>
               </div>
+              {#each s.enrollments ?? [] as en (en.id)}
+                <div class="field-row single">
+                  <div class="field"><label for="pf-tutor-{en.id}">מורה{s.enrollments.length > 1 ? ` · ${en.subject}` : ''}</label>
+                    <select id="pf-tutor-{en.id}" onchange={(e) => moveStudent(s, en.id, Number(e.currentTarget.value))}>
+                      {#if en.teacherId == null}<option value="" selected>— לא נבחר —</option>{/if}
+                      {#each pageData.tutors as tt (tt.id)}<option value={tt.id} selected={en.teacherId === tt.id}>{tt.name}</option>{/each}
+                    </select>
+                  </div>
+                </div>
+              {/each}
               <div class="field-row">
                 <div class="field"><span class="field-label">טלפון</span><div class="readonly-value" dir="ltr">{s.account_phone || '—'}</div></div>
                 <div class="field"><span class="field-label">הורה / חשבון</span><div class="readonly-value">{s.account_name}</div></div>

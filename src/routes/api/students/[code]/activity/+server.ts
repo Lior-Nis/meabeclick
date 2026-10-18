@@ -1,7 +1,7 @@
 /** Server-backed activity for one tutor-dashboard student card. */
 import { json } from '@sveltejs/kit';
 import { apiAuthDenied } from '$server/auth.ts';
-import { getStudentByCode, nextBookingForStudent } from '$server/entities.ts';
+import { getStudentByCode, getTeacher, nextBookingForStudent } from '$server/entities.ts';
 import { chargesForStudent, addPayment } from '$server/payments.ts';
 import {
   addHomework, deleteHomework, homeworkForStudent, setHomeworkSubmitted, gradeHomework,
@@ -25,6 +25,8 @@ function view(code: string) {
          the string printed the UTC hour — 08:00 for an 11:00 lesson. */
       ...lessonWhen(booking.start),
       type: booking.duration === 90 ? 'כפול' : booking.duration === 135 ? 'משולש' : 'יחיד',
+      /* Who teaches it: the booking's tutor, which moving the student does not change. */
+      tutor: booking.teacherId != null ? getTeacher(booking.teacherId)?.name ?? null : null,
     } : { date: '', time: '', type: 'יחיד' },
     sessions: chargesForStudent(student.id).filter(p => p.status !== 'void').map(p => ({
       id: String(p.id), date: p.date, type: p.kind === 'double' ? 'כפול · 90 דק׳' : p.kind === 'triple' ? 'משולש · 135 דק׳' : 'יחיד · 45 דק׳',
