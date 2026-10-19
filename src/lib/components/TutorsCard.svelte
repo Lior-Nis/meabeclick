@@ -22,7 +22,11 @@
     replacing: boolean;
     days: Record<Weekday, { on: boolean; from: string; to: string }>;
   };
-  let { tutors, googleReady }: { tutors: Tutor[]; googleReady: boolean } = $props();
+  let { tutors, googleReady, onsaved }: {
+    tutors: Tutor[]; googleReady: boolean;
+    /** Told after each save, so the rest of the page sees the tutor as saved. */
+    onsaved?: (t: Tutor) => void;
+  } = $props();
 
   // A one-time seed: from here on the card's own saves keep it current.
   let list = $state<Tutor[]>(untrack(() => tutors));
@@ -111,6 +115,7 @@
       const j = await r.json().catch(() => ({}));
       if (!r.ok) { problem = j.error || 'השמירה לא הצליחה. נסו שוב.'; return; }
       list = list.map(x => (x.id === t.id ? { ...x, ...j.tutor } : x));
+      onsaved?.(j.tutor);
       close();
       saved = t.id;
       setTimeout(() => { if (saved === t.id) saved = null; }, 2500);

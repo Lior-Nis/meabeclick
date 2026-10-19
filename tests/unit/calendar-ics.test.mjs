@@ -211,6 +211,39 @@ END:VCALENDAR
 
 const tutor = (id, name, addresses) => ({ id, name, addresses });
 
+/** Runs fn with the clock moved past the window in which a failed feed is
+ *  not asked again (FAILURE_MS in calendar.ts). */
+async function afterFailureWindow(fn) {
+  const realNow = Date.now;
+  Date.now = () => realNow() + 2 * 60 * 1000 + 1000;
+  try { return await fn(); } finally { Date.now = realNow; }
+}
+
+test('a feed that just failed is not asked again for two minutes, and its failure is logged once', async () => {
+  const calendar = await import('../../src/lib/server/calendar.ts');
+  const url = 'https://calendar.google.com/calendar/ical/super-secret-token-fff/basic.ics';
+  const originalFetch = global.fetch;
+  const originalConsoleError = console.error;
+  const logged = [];
+  let calls = 0;
+  console.error = (...args) => { logged.push(args.map(String).join(' ')); };
+  global.fetch = async () => { calls++; return { ok: false, status: 503 }; };
+  try {
+    const first = await calendar.fetchTutorBusy(tutor(3, 'שלישית', [url]), TIME_MIN, TIME_MAX);
+    const second = await calendar.fetchTutorBusy(tutor(3, 'שלישית', [url]), TIME_MIN, TIME_MAX);
+    assert.equal(calls, 1, 'the second read did not wait on the feed');
+    assert.deepEqual([first.failed, second.failed], [1, 1], 'it still counts as failed');
+    assert.equal(logged.length, 1, 'logged once, not on every read');
+    assert.equal(calendar.calendarSourceIssues().filter(i => i.tutorId === 3).length, 1, 'the dashboard still warns');
+    await afterFailureWindow(() => calendar.fetchTutorBusy(tutor(3, 'שלישית', [url]), TIME_MIN, TIME_MAX));
+    assert.equal(calls, 2, 'after two minutes it is asked again');
+  } finally {
+    calendar.clearSourceIssues(3);
+    global.fetch = originalFetch;
+    console.error = originalConsoleError;
+  }
+});
+
 test('a feed that throws is recorded by tutor, position and reason, and a later success clears it', async () => {
   const calendar = await import('../../src/lib/server/calendar.ts');
   const secretA = 'https://calendar.google.com/calendar/ical/super-secret-token-aaa/basic.ics';
@@ -230,10 +263,42 @@ test('a feed that throws is recorded by tutor, position and reason, and a later 
     assert.ok(typeof issue.at === 'string' && issue.at.length > 0);
 
     firstFeedShouldFail = false;
-    await calendar.fetchTutorBusy(tutor(2, 'ליאור', [secretA, secretB]), TIME_MIN, TIME_MAX);
+    await afterFailureWindow(() => calendar.fetchTutorBusy(tutor(2, 'ליאור', [secretA, secretB]), TIME_MIN, TIME_MAX));
     assert.equal(calendar.calendarSourceIssues().length, 0, 'a recovered feed must stop warning');
   } finally {
     global.fetch = originalFetch;
+  }
+});
+
+test('a fresh copy of a feed is used even when a slower read of it just failed', async () => {
+  // Two reads race on an expired cache: the faster one succeeds and fills
+  // it, the slower one fails. The tutor's busy times must still come from
+  // the fresh copy — a remembered failure must not hide it for two minutes.
+  const calendar = await import('../../src/lib/server/calendar.ts');
+  const url = 'https://calendar.google.com/calendar/ical/super-secret-token-ggg/basic.ics';
+  const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:race@test\r\nDTSTAMP:20260101T000000Z\r\nDTSTART:20260110T100000Z\r\nDTEND:20260110T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+  const originalFetch = global.fetch;
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  let calls = 0;
+  global.fetch = async () => {
+    calls++;
+    if (calls === 1) return { ok: true, text: async () => ics };
+    await new Promise(r => setTimeout(r, 30));
+    return { ok: false, status: 503 };
+  };
+  try {
+    await Promise.all([
+      calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX),
+      calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX),
+    ]);
+    const after = await calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX);
+    assert.equal(after.failed, 0, 'the cached copy is fresh');
+    assert.equal(after.busy.length, 1, "the tutor's busy time is still there");
+  } finally {
+    calendar.clearSourceIssues(4);
+    global.fetch = originalFetch;
+    console.error = originalConsoleError;
   }
 });
 
@@ -275,7 +340,7 @@ test('no fixture URL or secret appears in any surfaced string', async () => {
 
     // clean up: let the feed succeed so it doesn't leak state into other tests
     shouldFail = false;
-    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
+    await afterFailureWindow(() => calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX));
     assert.equal(calendar.calendarSourceIssues().length, 0);
   } finally {
     global.fetch = originalFetch;
@@ -312,7 +377,7 @@ test('a fetch rejection carrying the URL still surfaces nothing derived from it'
     assert.ok(!surfaced.includes('ECONNREFUSED'), 'the raw error message must not be echoed');
 
     shouldFail = false;
-    await calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX);
+    await afterFailureWindow(() => calendar.fetchTutorBusy(tutor(1, 'ניקול', [secretUrl]), TIME_MIN, TIME_MAX));
     assert.equal(calendar.calendarSourceIssues().length, 0);
   } finally {
     global.fetch = originalFetch;

@@ -37,12 +37,12 @@ export const GET: RequestHandler = async ({ url, locals }) => {
   }
 
   const asked = Number(url.searchParams.get('tutor'));
-  const tutors = availabilityCandidates({
-    tutorId: Number.isInteger(asked) && asked > 0 ? asked : null,
-    accountId: locals.family?.kind === 'account' ? locals.family.id : null,
-  });
 
   try {
+    const tutors = availabilityCandidates({
+      tutorId: Number.isInteger(asked) && asked > 0 ? asked : null,
+      accountId: locals.family?.kind === 'account' ? locals.family.id : null,
+    });
     const { days, timeMin, timeMax } = buildBookingWindow();
     if (!days.length || !timeMin || !timeMax) {
       return json({ slots: [], message: 'no_days' }, { headers });

@@ -293,7 +293,7 @@ async function book(
      the tutor her record, and vice versa — so they settle independently
      and neither can reject the other. */
   const notify = async (inCalendar: boolean) => {
-    const [tutor, family] = await Promise.all([
+    const [tutorEmailed, family] = await Promise.all([
       sendBookingEmail(booking, inCalendar, forEmail).catch(err => {
         console.error('[book] tutor email failed:', (err as Error).message);
         return false;
@@ -305,7 +305,7 @@ async function book(
           })
         : Promise.resolve(false),
     ]);
-    return { emailed: tutor, familyEmailed: family };
+    return { emailed: tutorEmailed, familyEmailed: family };
   };
 
   // Without a service account there is no calendar write, but the booking
@@ -364,6 +364,13 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
      and a student behind. */
   if (!isComplete(body)) {
     return json({ error: 'חסרים פרטים' }, { status: 400 });
+  }
+
+  /* Real times, the start before the end, checked before anything reads
+     them: an unparseable time used to reach a server error inside the
+     tutor choice, and an end before the start booked a nonsense lesson. */
+  if (!(Date.parse(body.start) < Date.parse(body.end))) {
+    return json({ error: 'המועד שנבחר לא תקין' }, { status: 400 });
   }
 
   /* Online or in person, and nothing else: a lesson at the student's home
