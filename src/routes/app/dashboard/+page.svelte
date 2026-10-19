@@ -441,7 +441,11 @@
   // the panel never needs to react to `pageData` changing again, and
   // loadCodes() below is what keeps it fresh from here on.
   let realStudents = $state<RealStudent[]>(untrack(() => pageData.roster ?? []));
-  const tutorName = (id: number | null): string | null => pageData.tutors.find(t => t.id === id)?.name ?? null;
+  /* The tutors, live: the "מורים" card reports each save (onsaved), so a
+     tutor set up on this page is ready in the picker at once, not after a
+     reload. */
+  let tutors = $state(untrack(() => pageData.tutors));
+  const tutorName = (id: number | null): string | null => tutors.find(t => t.id === id)?.name ?? null;
   /** "ניקול", or "ניקול, ליאור" for a student with subjects at both. */
   const tutorsOf = (s: RealStudent): string =>
     [...new Set((s.enrollments ?? []).map(e => tutorName(e.teacherId)).filter(Boolean))].join(', ');
@@ -449,16 +453,21 @@
   /** The picker's value for an enrollment: its tutor, or '' when it has
    *  none or theirs is no longer active (the "—" option). */
   const pickerValue = (teacherId: number | null): string =>
-    teacherId != null && pageData.tutors.some(t => t.id === teacherId) ? String(teacherId) : '';
+    teacherId != null && tutors.some(t => t.id === teacherId) ? String(teacherId) : '';
 
   /** Moves one enrollment to another tutor. Lessons already booked stay with
    *  the tutor they were booked with; the next booking goes to the new one. */
   async function moveStudent(s: RealStudent, enrollmentId: number, select: HTMLSelectElement) {
     const teacherId = Number(select.value);
-    const saved = s.enrollments.find(e => e.id === enrollmentId)?.teacherId ?? null;
-    /* A move that did not happen must not stay on screen as if it had. */
-    const undo = () => { select.value = pickerValue(saved); };
+    /* A move that did not happen must not stay on screen as if it had — and
+       it goes back to what is saved when the undo runs, not when it began. */
+    const undo = () => {
+      select.value = pickerValue(realStudents.find(x => x.code === s.code)?.enrollments.find(e => e.id === enrollmentId)?.teacherId ?? null);
+    };
     if (!Number.isInteger(teacherId) || teacherId <= 0) { undo(); return; }
+    /* One move at a time per picker, so a reply that lands late can never
+       leave it on a tutor other than the one saved. */
+    select.disabled = true;
     try {
       const r = await api(`/api/enrollments/${enrollmentId}`, {
         method: 'PATCH', headers: { 'Content-Type': 'application/json' }, body: JSON.stringify({ teacherId }),
@@ -468,7 +477,7 @@
       realStudents = realStudents.map(x => (x.code !== s.code ? x : {
         ...x, enrollments: x.enrollments.map(e => (e.id === enrollmentId ? { ...e, teacherId } : e)),
       }));
-      const to = pageData.tutors.find(t => t.id === teacherId);
+      const to = tutors.find(t => t.id === teacherId);
       /* Moved to a tutor who cannot take bookings yet: the family is offered
          no hours until that tutor's settings are complete. Said now, not
          discovered by the family. */
@@ -479,6 +488,8 @@
     } catch {
       undo();
       toast('אין חיבור לשרת — ההעברה לא נשמרה', { kind: 'error' });
+    } finally {
+      select.disabled = false;
     }
   }
   let codesLoading = $state(false);
@@ -1248,7 +1259,7 @@
                     <select id="pf-tutor-{en.id}" onchange={(e) => moveStudent(s, en.id, e.currentTarget)}>
                       {#if en.teacherId == null}<option value="" selected>— לא נבחר —</option>
                       {:else if !tutorName(en.teacherId)}<option value="" selected>— מורה שכבר לא פעיל/ה —</option>{/if}
-                      {#each pageData.tutors as tt (tt.id)}<option value={tt.id} selected={en.teacherId === tt.id}>{tt.name}{tt.missing.length ? ' (עוד לא מקבל/ת הזמנות)' : ''}</option>{/each}
+                      {#each tutors as tt (tt.id)}<option value={tt.id} selected={en.teacherId === tt.id}>{tt.name}{tt.missing.length ? ' (עוד לא מקבל/ת הזמנות)' : ''}</option>{/each}
                     </select>
                   </div>
                 </div>
@@ -1290,7 +1301,8 @@
       <h2 class="sec-h2">מורים</h2>
     </div>
   </div>
-  <TutorsCard tutors={pageData.tutors} googleReady={pageData.googleReady} />
+  <TutorsCard tutors={pageData.tutors} googleReady={pageData.googleReady}
+    onsaved={(t) => { tutors = tutors.map(x => (x.id === t.id ? { ...x, ...t } : x)); }} />
 
   <div class="sec-header" style="margin-top:2.2rem">
     <div>

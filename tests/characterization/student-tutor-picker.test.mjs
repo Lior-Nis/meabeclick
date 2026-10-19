@@ -43,10 +43,27 @@ test("a student whose tutor was deactivated shows that, not another tutor's name
   } finally { await stop(); }
 });
 
-test('a failed move puts the picker back on the tutor actually saved', () => {
-  const page = readFileSync(new URL('../../src/routes/app/dashboard/+page.svelte', import.meta.url), 'utf8');
-  const fn = page.slice(page.indexOf('async function moveStudent'), page.indexOf('let codesLoading'));
-  assert.match(fn, /select\.value = /, 'the select is reset when the move fails');
-  assert.equal((fn.match(/select\.value = /g) ?? []).length >= 1, true);
+const page = readFileSync(new URL('../../src/routes/app/dashboard/+page.svelte', import.meta.url), 'utf8');
+const card = readFileSync(new URL('../../src/lib/components/TutorsCard.svelte', import.meta.url), 'utf8');
+const moveStudentSource = () => {
+  const from = page.indexOf('async function moveStudent');
+  return page.slice(from, page.indexOf('\n  }\n', from));
+};
+
+test('a failed move puts the picker back on the tutor saved at that moment, and one move runs at a time', () => {
+  const fn = moveStudentSource();
+  assert.match(fn, /select\.disabled = true/, 'the picker waits for the answer');
+  assert.match(fn, /select\.disabled = false/);
+  assert.match(fn, /const undo = \(\) => \{[^}]*realStudents/, 'the undo reads what is saved when it runs, not when the move started');
   assert.match(fn, /עוד לא מקבל\/ת הזמנות/, 'moving to a tutor without settings warns');
+});
+
+test("the picker and its warning follow a tutor's settings saved on the same page", () => {
+  // Review finding: the card kept its own copy, so after setting Lior up the
+  // picker still called him not ready until a reload.
+  assert.match(card, /onsaved\?\.\(j\.tutor\)/, 'the card reports each save');
+  assert.match(page, /<TutorsCard [^>]*onsaved=/, 'the page listens');
+  assert.doesNotMatch(page.slice(page.indexOf('const tutorName'), page.indexOf('let codesLoading')), /pageData\.tutors/,
+    'the picker reads the live list, not the page load\'s copy');
+  assert.match(page, /\{#each tutors as tt \(tt\.id\)\}<option/);
 });
