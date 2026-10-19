@@ -270,6 +270,38 @@ test('a feed that throws is recorded by tutor, position and reason, and a later 
   }
 });
 
+test('a fresh copy of a feed is used even when a slower read of it just failed', async () => {
+  // Two reads race on an expired cache: the faster one succeeds and fills
+  // it, the slower one fails. The tutor's busy times must still come from
+  // the fresh copy — a remembered failure must not hide it for two minutes.
+  const calendar = await import('../../src/lib/server/calendar.ts');
+  const url = 'https://calendar.google.com/calendar/ical/super-secret-token-ggg/basic.ics';
+  const ics = `BEGIN:VCALENDAR\r\nVERSION:2.0\r\nBEGIN:VEVENT\r\nUID:race@test\r\nDTSTAMP:20260101T000000Z\r\nDTSTART:20260110T100000Z\r\nDTEND:20260110T110000Z\r\nEND:VEVENT\r\nEND:VCALENDAR\r\n`;
+  const originalFetch = global.fetch;
+  const originalConsoleError = console.error;
+  console.error = () => {};
+  let calls = 0;
+  global.fetch = async () => {
+    calls++;
+    if (calls === 1) return { ok: true, text: async () => ics };
+    await new Promise(r => setTimeout(r, 30));
+    return { ok: false, status: 503 };
+  };
+  try {
+    await Promise.all([
+      calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX),
+      calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX),
+    ]);
+    const after = await calendar.fetchTutorBusy(tutor(4, 'רביעית', [url]), TIME_MIN, TIME_MAX);
+    assert.equal(after.failed, 0, 'the cached copy is fresh');
+    assert.equal(after.busy.length, 1, "the tutor's busy time is still there");
+  } finally {
+    calendar.clearSourceIssues(4);
+    global.fetch = originalFetch;
+    console.error = originalConsoleError;
+  }
+});
+
 test("one tutor's new addresses clear only that tutor's warnings", async () => {
   const calendar = await import('../../src/lib/server/calendar.ts');
   const url = 'https://calendar.google.com/calendar/ical/super-secret-token-eee/basic.ics';

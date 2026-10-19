@@ -120,9 +120,32 @@ export function busyFromIcs(icsText: string, timeMin: string, timeMax: string): 
 const CACHE_MS = 5 * 60 * 1000;
 const cache = new Map<string, { at: number; text: string }>();  // url → { at, text }
 
+/* A feed that just failed is not asked again for FAILURE_MS. Every booking
+   submit reads its candidates' feeds, and a feed that hangs would otherwise
+   cost each of them up to the 15s timeout. Its dashboard warning stays
+   meanwhile, and the failure is logged once, not on every read. */
+const FAILURE_MS = 2 * 60 * 1000;
+const recentFailure = new Map<string, { at: number; reason: string }>();  // url → last failure
+
+/** A read skipped because the feed failed moments ago: the failure that
+ *  was already recorded and logged, not a new one. */
+class RememberedFailure extends Error {
+  at: number;
+  reason: string;
+  constructor(f: { at: number; reason: string }) {
+    super('failed moments ago');
+    this.at = f.at;
+    this.reason = f.reason;
+  }
+}
+
 async function calendarText(url: string): Promise<string> {
   const hit = cache.get(url);
   if (hit && Date.now() - hit.at < CACHE_MS) return hit.text;
+  /* After the cache, not before: a fresh copy — say, from a faster read that
+     raced a slower failing one — is always used over a remembered failure. */
+  const recent = recentFailure.get(url);
+  if (recent && Date.now() - recent.at < FAILURE_MS) throw new RememberedFailure(recent);
 
   const r = await fetch(url, { signal: AbortSignal.timeout(15000) });
   if (!r.ok) throw new Error(`HTTP ${r.status}`);
@@ -154,13 +177,6 @@ function classifyReadError(err: unknown): string {
   // request details (host, path) derived from the secret URL.
   return 'שגיאת קריאה';
 }
-
-/* A feed that just failed is not asked again for FAILURE_MS. Every booking
-   submit reads its candidates' feeds, and a feed that hangs would otherwise
-   cost each of them up to the 15s timeout. Its dashboard warning stays
-   meanwhile, and the failure is logged once, not on every read. */
-const FAILURE_MS = 2 * 60 * 1000;
-const recentFailure = new Map<string, { at: number; reason: string }>();  // url → last failure
 
 /** Whose feeds these are. The name is for the dashboard's warning; the
  *  addresses are secrets and never leave this module. */
@@ -204,18 +220,17 @@ export async function fetchTutorBusy(
       tutorId: tutor.id, tutorName: tutor.name, index: i + 1, total: urls.length,
       at: new Date(at).toISOString(), reason,
     });
-    const recent = recentFailure.get(url);
-    if (recent && Date.now() - recent.at < FAILURE_MS) {
-      if (!sourceIssues.has(key)) issue(recent.at, recent.reason);
-      failed++;
-      return [];
-    }
     try {
       const busy = busyFromIcs(await calendarText(url), timeMin, timeMax);
       recentFailure.delete(url);
       sourceIssues.delete(key);
       return busy;
     } catch (err) {
+      if (err instanceof RememberedFailure) {
+        if (!sourceIssues.has(key)) issue(err.at, err.reason);
+        failed++;
+        return [];
+      }
       const reason = classifyReadError(err);
       recentFailure.set(url, { at: Date.now(), reason });
       issue(Date.now(), reason);
