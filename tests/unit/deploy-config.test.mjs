@@ -197,3 +197,12 @@ test('the catch-all failure admits the firewall is a guess', () => {
   assert.match(tail.slice(0, 700), /no recognised cause/,
     'the exhausted-retries error must say the cause was not recognised');
 });
+
+test('Compose pulls from the same repository namespace that CI publishes', () => {
+  // A repository transfer changes github.repository automatically, but not
+  // Compose's image path. Catch that mismatch before a production deploy.
+  const repository = (process.env.GITHUB_REPOSITORY || 'its-nix/meabeclick').toLowerCase();
+  const image = compose.match(/^\s*image:\s*(ghcr\.io\/[^:\s]+):/m)?.[1];
+  assert.equal(image, `ghcr.io/${repository}`,
+    'Compose must use the namespace published from github.repository');
+});

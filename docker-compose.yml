@@ -33,7 +33,7 @@ services:
     # `:?` turns that silent downgrade into a refusal that says what to do.
     # Bootstrapping a fresh box passes it explicitly (APP_TAG=latest), which
     # is honest about what it is asking for.
-    image: ghcr.io/lior-nis/meabeclick:${APP_TAG:?set APP_TAG to the commit you are deploying, e.g. APP_TAG=$(git rev-parse HEAD) — or APP_TAG=latest to bootstrap a new box}
+    image: ghcr.io/its-nix/meabeclick:${APP_TAG:?set APP_TAG to the commit you are deploying, e.g. APP_TAG=$(git rev-parse HEAD) — or APP_TAG=latest to bootstrap a new box}
     restart: unless-stopped
     # Loopback only, never 0.0.0.0: Caddy fronts every public request, and
     # this mapping exists for one caller — the two systemd --user timers on
