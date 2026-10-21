@@ -135,10 +135,13 @@ Todoist: label `@Infra`
 - **Two named tutors, shown by face.** The landing page sells Nikol and
   Lior by name, with testimonials that name them individually. This is
   the positioning, not decoration.
-- **The repo is private.** Flipped from public to private on 2026-08-22
-  after a routine check found it already held real student PII (names, a
-  phone number, homework files, payment amounts) committed in plain
-  Markdown and PDFs.
+- **The repo is intentionally public.** Lior confirmed this choice on
+  2026-10-21 for the project's CI/CD workflow. The current repository is
+  [`its-nix/meabeclick`](https://github.com/its-nix/meabeclick).
+  Historically, the repo was made private on 2026-08-22 after student PII
+  was found in committed Markdown and PDFs. Public visibility does not
+  permit student or payment PII, credentials, or secrets in Git; the
+  data-separation safeguards below remain binding.
 - **Student and payment PII never goes in this repo.** See
   `docs/superpowers/specs/2026-09-18-student-records-out-of-the-repo-design.md`
   for where that data actually lives and how the app reaches it.
