@@ -237,3 +237,67 @@ test("the script's quota text is the one the queue writes", () => {
   // so it carries its own copy; this keeps the two from drifting.
   assert.equal(QUOTA_PROBLEM, ENGINE_DOWN_MESSAGES['engine-quota']);
 });
+
+test('the 30-day funnel counts each step, which plan, and where the visit came from', async () => {
+  const { PLAN_KINDS } = await import('../../scripts/vision-metrics.mjs');
+  const { PLANS } = await import('../../src/lib/plans.ts');
+  assert.deepEqual(PLAN_KINDS, PLANS.map((p) => [p.kind, p.name]));
+
+  const w = new DatabaseSync(process.env.DB_PATH);
+  const ev = w.prepare(
+    `INSERT INTO marketing_events (at, visitor_id, event, detail, utm_source, referrer) VALUES (?, ?, ?, ?, ?, ?)`,
+  );
+  ev.run(daysAgo(2), 'v1', 'landing_visit', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(1), 'v1', 'landing_visit', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v2', 'landing_visit', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(4), 'v3', 'landing_visit', null, null, 'https://l.facebook.com');
+  ev.run(daysAgo(40), 'v4', 'landing_visit', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v1', 'booking_start', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v2', 'booking_start', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v1', 'plan_selected', 'double', 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v2', 'plan_selected', 'single', 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v1', 'time_selected', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v1', 'booking_submitted', null, 'google', 'https://www.google.com');
+  ev.run(daysAgo(2), 'v1', 'lesson_scheduled', null, 'google', 'https://www.google.com');
+  w.prepare(`UPDATE bookings_v2 SET heard_from = 'friend' WHERE at = ?`).run(daysAgo(10));
+  w.prepare(`UPDATE bookings_v2 SET heard_from = 'google' WHERE at = ?`).run(daysAgo(50));
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    const step = Object.fromEntries(later.funnel.steps.map((s) => [s.event, s]));
+    assert.deepEqual(later.funnel.steps.map((s) => s.label), [
+      'landing view', 'booking start', 'plan selected', 'time selected', 'details submitted', 'booking confirmed',
+    ]);
+    assert.equal(step.landing_visit.n, 3);
+    assert.equal(step.landing_visit.ofPrevious, null);
+    assert.equal(step.booking_start.n, 2);
+    assert.equal(step.booking_start.ofPrevious, 2 / 3);
+    assert.equal(step.booking_start.ofLanding, 2 / 3);
+    assert.equal(step.plan_selected.n, 2);
+    assert.equal(step.plan_selected.ofPrevious, 1);
+    assert.equal(step.time_selected.n, 1);
+    assert.equal(step.booking_submitted.n, 1);
+    assert.equal(step.lesson_scheduled.n, 1);
+    assert.equal(step.lesson_scheduled.ofLanding, 1 / 3);
+    assert.deepEqual(later.funnel.plans, { single: 1, double: 1, triple: 0 });
+    assert.deepEqual(later.funnel.sources, [
+      { source: 'google', visits: 2, confirmed: 1 },
+      { source: null, visits: 1, confirmed: 0 },
+    ]);
+    assert.deepEqual(later.funnel.referrers, [
+      { referrer: 'https://www.google.com', visits: 2, confirmed: 1 },
+      { referrer: 'https://l.facebook.com', visits: 1, confirmed: 0 },
+    ]);
+    assert.deepEqual(later.funnel.heardFrom, { friend: 1 });
+    assert.ok(later.notes.some((n) => n.includes('anonymous first-party events')));
+
+    const empty = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), new Date('2030-01-01T00:00:00Z'));
+    assert.ok(empty.funnel.steps.every((s) => s.n === 0 && s.ofLanding === null && s.ofPrevious === null));
+    assert.deepEqual(empty.funnel.plans, { single: 0, double: 0, triple: 0 });
+    assert.deepEqual(empty.funnel.sources, []);
+    assert.deepEqual(empty.funnel.referrers, []);
+    assert.deepEqual(empty.funnel.heardFrom, {});
+  } finally {
+    w.exec(`DELETE FROM marketing_events`);
+    w.exec(`UPDATE bookings_v2 SET heard_from = NULL`);
+  }
+});

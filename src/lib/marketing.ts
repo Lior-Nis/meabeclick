@@ -31,6 +31,8 @@ export interface Utm {
 export interface Attribution {
   utm: Utm;
   visitorId: string;
+  /** External origin of the landing visit (scheme + host), when there was one. */
+  referrer?: string;
 }
 
 const FIRST_TOUCH_KEY = 'mb_first_touch';
@@ -41,6 +43,33 @@ const EVENTS_URL = '/api/events';
 interface StoredFirstTouch {
   utm: Utm;
   at: string;
+  referrer?: string;
+}
+
+/** `document.referrer` in a browser, or null under SSR and in node tests.
+ *  A throwing access (a locked-down webview) is the same as no referrer. */
+function readDocumentReferrer(): string | null {
+  try {
+    if (typeof document === 'undefined') return null;
+    return document.referrer || null;
+  } catch {
+    return null;
+  }
+}
+
+/** The origin of an external http(s) referrer. A path or query is dropped
+ *  here — a search query is not a source we want to keep — and a referrer
+ *  that is this site itself is not a source at all. */
+function externalOrigin(raw: string | null, page: URL): string | undefined {
+  if (!raw) return undefined;
+  try {
+    const u = new URL(raw);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return undefined;
+    if (u.origin === page.origin) return undefined;
+    return u.origin;
+  } catch {
+    return undefined;
+  }
 }
 
 /** The real localStorage when one exists (a browser), or null during SSR
@@ -98,13 +127,24 @@ function utmFromUrl(url: URL): Utm {
  * that must survive attribution resetting after 30 days.
  *
  * Call once per page load, before any `track()` call on that page.
+ *
+ * `referrer` defaults to `document.referrer`. The first touch keeps the
+ * external origin (scheme and host only) beside the UTM, for the same 30
+ * days. A later visit does not replace either one while the first touch
+ * is still fresh.
  */
-export function initMarketing(url: URL, storage: StorageLike | null = defaultStorage()): void {
+export function initMarketing(
+  url: URL,
+  storage: StorageLike | null = defaultStorage(),
+  referrer: string | null = readDocumentReferrer(),
+): void {
   if (!storage) return;
   try {
     const existing = readFirstTouch(storage);
     if (!existing || isStale(existing.at)) {
       const fresh: StoredFirstTouch = { utm: utmFromUrl(url), at: new Date().toISOString() };
+      const origin = externalOrigin(referrer, url);
+      if (origin) fresh.referrer = origin;
       storage.setItem(FIRST_TOUCH_KEY, JSON.stringify(fresh));
     }
   } catch {
@@ -129,7 +169,9 @@ export function attribution(storage: StorageLike | null = defaultStorage()): Att
     const firstTouch = readFirstTouch(storage);
     const visitorId = storage.getItem(VISITOR_KEY);
     if (!firstTouch || !visitorId) return null;
-    return { utm: firstTouch.utm, visitorId };
+    const out: Attribution = { utm: firstTouch.utm, visitorId };
+    if (typeof firstTouch.referrer === 'string' && firstTouch.referrer) out.referrer = firstTouch.referrer;
+    return out;
   } catch {
     return null;
   }
@@ -160,7 +202,11 @@ export function track(
     const body: Record<string, unknown> = {
       ...extra,
       event,
-      ...(attrib ? { utm: attrib.utm, visitorId: attrib.visitorId } : {}),
+      ...(attrib ? {
+        utm: attrib.utm,
+        visitorId: attrib.visitorId,
+        ...(attrib.referrer ? { referrer: attrib.referrer } : {}),
+      } : {}),
     };
     const payload = JSON.stringify(body);
 

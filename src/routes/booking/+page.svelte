@@ -7,7 +7,7 @@
   import { SUBJECT } from '$lib/subjects.ts';
   import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
-  import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
+  import { HEARD_DETAIL_MAX, HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
   import { TUTOR_PHONE, OFFICE_ADDRESS } from '$lib/contact.ts';
   import { MODE_LABEL, type LessonMode } from '$lib/lesson-mode.ts';
   import { contactTutor } from '$lib/tutors.ts';
@@ -17,6 +17,7 @@
 
   onMount(() => {
     initMarketing(new URL(location.href));
+    track('booking_start');
   });
 
   // "איך שמעתם עלינו?" — the marketing funnel's optional self-report
@@ -69,6 +70,7 @@
     if (!selectedPlan) return;
     step = 'slots';
     track('booking_started');
+    track('plan_selected', { detail: selectedPlan.kind });
     loadSlots();
   }
 
@@ -169,6 +171,7 @@
 
   function openSheet(slot: Slot, event: MouseEvent) {
     selectedSlot = slot;
+    track('time_selected');
     openerEl = event.currentTarget as HTMLElement;
     pane = 1;
     errors = {};
@@ -301,6 +304,8 @@
    *  (submitBooking). '' is "not answered", the same convention every
    *  other optional field on this page uses. */
   let heardFrom = $state('');
+  /** Optional free text after "אחר". Never required, and sent only with that choice. */
+  let heardDetail = $state('');
   let submitting = $state(false);
   let submitError = $state('');
   /** A failed save (not a validation message): offer the WhatsApp we name. */
@@ -481,6 +486,7 @@
           mode,
           ...(attrib ? { attribution: attrib } : {}),
           ...(heardFrom ? { heardFrom } : {}),
+          ...(heardFrom === 'other' && heardDetail.trim() ? { heardDetail: heardDetail.trim() } : {}),
         }),
       });
 
@@ -1006,6 +1012,15 @@
               <option value={opt.value}>{opt.label}</option>
             {/each}
           </select>
+          {#if heardFrom === 'other'}
+            <label for="inp-heard-detail">ספרו בקצרה <span class="optional">(לא חובה)</span></label>
+            <input
+              id="inp-heard-detail" type="text" maxlength={HEARD_DETAIL_MAX}
+              autocomplete="off" bind:value={heardDetail}
+              placeholder="למשל קבוצת הורים, שלט, כתבה"
+            />
+            <p class="field-hint">אפשר לדלג.</p>
+          {/if}
           {/if}
 
           <div class="recap">
