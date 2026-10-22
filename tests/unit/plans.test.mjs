@@ -48,5 +48,25 @@ test('exactly one plan is recommended, and it is the 90-minute כפול', async 
   assert.equal(recommended.length, 1);
   assert.equal(recommended[0].minutes, 90);
   assert.equal(recommended[0].name, 'כפול');
-  assert.equal(RECOMMENDED_BADGE, '⭐ הכי פופולרי');
+  assert.equal(recommended[0].shekels, 215);
+  assert.equal(RECOMMENDED_BADGE, '⭐ מומלץ');
+});
+
+test('plan descriptions match main', () => {
+  assert.deepEqual(PLANS.map(p => p.description), [
+    'שיעור ממוקד על נושא אחד',
+    'שיעור מקיף עם זמן לתרגול',
+    'שיעור אינטנסיבי לקראת מבחן',
+  ]);
+});
+
+test('prices, lengths, and slide counts are unchanged', () => {
+  assert.deepEqual(
+    PLANS.map(p => [p.minutes, p.shekels, p.slides, p.kind, p.duration]),
+    [
+      [45, 120, 8, 'single', '45 דקות'],
+      [90, 215, 11, 'double', 'שעה וחצי'],
+      [135, 300, 14, 'triple', 'שעתיים ורבע'],
+    ],
+  );
 });

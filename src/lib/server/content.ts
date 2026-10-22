@@ -28,7 +28,7 @@
  *
  * The `.json` / `.html` suffix each kind reads is a fixed literal this
  * module appends AFTER validation, never something threaded through the
- * regex — an id like "noga-integrals-quiz" must pass the same strict
+ * regex — an id like "example-integrals-quiz" must pass the same strict
  * charset a bare slug does; the file that id resolves to is this module's
  * business, not the caller's.
  */

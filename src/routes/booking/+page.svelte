@@ -1,12 +1,13 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
-  import { PLANS, planFor, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
+  import { PLANS, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
+  import { planRadioMove } from '$lib/plan-radios.ts';
   import { SUBJECT } from '$lib/subjects.ts';
   import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
-  import { HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
+  import { HEARD_DETAIL_MAX, HEARD_FROM_OPTIONS } from '$lib/marketing-labels.ts';
   import { TUTOR_PHONE, OFFICE_ADDRESS } from '$lib/contact.ts';
   import { MODE_LABEL, type LessonMode } from '$lib/lesson-mode.ts';
   import { contactTutor } from '$lib/tutors.ts';
@@ -16,6 +17,7 @@
 
   onMount(() => {
     initMarketing(new URL(location.href));
+    track('booking_start');
   });
 
   // "איך שמעתם עלינו?" — the marketing funnel's optional self-report
@@ -37,7 +39,11 @@
   const TUTOR_PHONE_DISPLAY = '054-696-9891';
 
   let step = $state<'duration' | 'slots' | 'success'>('duration');
-  let selectedPlan = $state<Plan | null>(null);
+  /* כפול starts selected. A card used to leave this step on click, so
+     assigning the recommended plan at the start would have skipped the
+     choice. A card now only changes the selection; continueWithPlan is
+     what moves on. */
+  let selectedPlan = $state<Plan | null>(PLANS.find((p) => p.recommended) ?? null);
   let selectedSlot = $state<Slot | null>(null);
 
   /* 'unconfirmed' is a degraded read, not an error: the times shown came
@@ -60,11 +66,30 @@
   let tutorFilter = $state<number | null>(null);
   let slotNotice = $state('');
 
-  function selectPlan(plan: Plan) {
-    selectedPlan = plan;
+  function continueWithPlan() {
+    if (!selectedPlan) return;
     step = 'slots';
     track('booking_started');
+    track('plan_selected', { detail: selectedPlan.kind });
     loadSlots();
+  }
+
+  /* Roving tabindex: only the checked radio is in the tab order. Arrow
+     keys move the check and the focus together. Left/Right follow the
+     page direction; the helper is what the unit test pins. */
+  let planCards: HTMLButtonElement[] = [];
+
+  async function onPlanKeydown(e: KeyboardEvent) {
+    const cards = planCards.filter(Boolean);
+    const current = cards.indexOf(e.currentTarget as HTMLButtonElement);
+    const from = current >= 0 ? current : 0;
+    const rtl = document.documentElement.dir === 'rtl';
+    const next = planRadioMove(from, e.key, rtl, PLANS.length);
+    if (next === null) return;
+    e.preventDefault();
+    selectedPlan = PLANS[next];
+    await tick();
+    planCards[next]?.focus();
   }
 
   function goBack() {
@@ -146,6 +171,7 @@
 
   function openSheet(slot: Slot, event: MouseEvent) {
     selectedSlot = slot;
+    track('time_selected');
     openerEl = event.currentTarget as HTMLElement;
     pane = 1;
     errors = {};
@@ -278,6 +304,8 @@
    *  (submitBooking). '' is "not answered", the same convention every
    *  other optional field on this page uses. */
   let heardFrom = $state('');
+  /** Optional free text after "אחר". Never required, and sent only with that choice. */
+  let heardDetail = $state('');
   let submitting = $state(false);
   let submitError = $state('');
   /** A failed save (not a validation message): offer the WhatsApp we name. */
@@ -458,6 +486,7 @@
           mode,
           ...(attrib ? { attribution: attrib } : {}),
           ...(heardFrom ? { heardFrom } : {}),
+          ...(heardFrom === 'other' && heardDetail.trim() ? { heardDetail: heardDetail.trim() } : {}),
         }),
       });
 
@@ -554,18 +583,37 @@
   {#if step === 'duration'}
     <div id="step-duration">
       <p class="subtitle">איזה שיעור מתאים לכם?</p>
-      <div class="duration-grid">
-        {#each PLANS as plan (plan.minutes)}
-          <button class="dur-card" class:recommended={plan.recommended} onclick={() => selectPlan(plan)}>
+      <div class="duration-grid" role="radiogroup" aria-label="סוג שיעור">
+        {#each PLANS as plan, i (plan.minutes)}
+          <button
+            type="button"
+            class="dur-card"
+            class:recommended={plan.recommended}
+            class:selected={selectedPlan?.minutes === plan.minutes}
+            role="radio"
+            aria-checked={selectedPlan?.minutes === plan.minutes}
+            tabindex={(selectedPlan ? selectedPlan.minutes === plan.minutes : i === 0) ? 0 : -1}
+            bind:this={planCards[i]}
+            onclick={() => (selectedPlan = plan)}
+            onkeydown={onPlanKeydown}
+          >
             {#if plan.recommended}<span class="dur-badge">{RECOMMENDED_BADGE}</span>{/if}
-            <div class="dur-icon">{plan.icon}</div>
-            <div class="dur-name">{plan.name}</div>
+            <div class="dur-icon" aria-hidden="true">{plan.icon}</div>
+            <div class="dur-name">
+              {plan.name}
+              {#if selectedPlan?.minutes === plan.minutes}<span class="dur-chosen" aria-hidden="true">נבחר</span>{/if}
+            </div>
             <div class="dur-price">{formatPrice(plan.shekels)}</div>
             <div class="dur-time">{plan.minutes} דקות</div>
             <div class="dur-desc">{plan.description}</div>
           </button>
         {/each}
       </div>
+      {#if selectedPlan}
+        <button type="button" class="btn-primary plan-continue" onclick={continueWithPlan}>
+          המשך עם {selectedPlan.name} · {formatPrice(selectedPlan.shekels)}
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -964,6 +1012,15 @@
               <option value={opt.value}>{opt.label}</option>
             {/each}
           </select>
+          {#if heardFrom === 'other'}
+            <label for="inp-heard-detail">ספרו בקצרה <span class="optional">(לא חובה)</span></label>
+            <input
+              id="inp-heard-detail" type="text" maxlength={HEARD_DETAIL_MAX}
+              autocomplete="off" bind:value={heardDetail}
+              placeholder="למשל קבוצת הורים, שלט, כתבה"
+            />
+            <p class="field-hint">אפשר לדלג.</p>
+          {/if}
           {/if}
 
           <div class="recap">
@@ -1105,6 +1162,20 @@
     border-color: var(--pricing-featured-border);
     box-shadow: 0 4px 24px var(--accent2-glow);
   }
+  /* Selection is a word ("נבחר") plus a solid ring. --accent-dim is an 8%
+     wash and disappears on the peach card; #2563eb clears 3:1 on white and
+     on that wash. */
+  .dur-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent);
+  }
+  .dur-card.recommended.selected {
+    box-shadow: 0 0 0 3px var(--accent), 0 4px 24px var(--accent2-glow);
+  }
+  .dur-card:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
   .dur-badge {
     position: absolute;
     top: -12px;
@@ -1112,7 +1183,7 @@
     transform: translateX(-50%);
     background: var(--accent2);
     color: var(--btn-text);
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 800;
     padding: 0.2rem 0.85rem;
     border-radius: 20px;
@@ -1120,7 +1191,16 @@
     box-shadow: 0 3px 10px var(--accent2-glow);
   }
   .dur-icon { font-size: 1.7rem; }
-  .dur-name { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+  .dur-name {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.4rem; flex-wrap: wrap;
+    font-size: 1.1rem; font-weight: 800; color: var(--text-primary);
+  }
+  .dur-chosen {
+    font-size: 0.8rem; font-weight: 800; color: var(--accent-deep);
+    background: var(--accent-dim); border-radius: 999px; padding: 0.12rem 0.5rem;
+  }
+  .plan-continue { display: block; width: 100%; margin-top: 1.25rem; }
   .dur-price { font-size: 1.45rem; font-weight: 900; color: var(--accent); line-height: 1.1; }
   .dur-time { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
   .dur-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem; }
@@ -1595,6 +1675,15 @@
     .dur-card { flex-direction: row; flex-wrap: wrap; text-align: right; gap: 0.1rem 0.7rem; padding: 1rem; }
     .dur-card .dur-icon { font-size: 1.4rem; }
     .dur-card .dur-desc { flex-basis: 100%; }
+    /* The continue bar stays on screen while the cards scroll, and the
+       step's own padding is the room that keeps the last card above it. */
+    #step-duration { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+    .plan-continue {
+      position: sticky;
+      bottom: 0;
+      z-index: 4;
+      padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+    }
 
     /* Full-screen, not a card inside a nested scroller. */
     .sheet-overlay { padding: 0; align-items: stretch; }

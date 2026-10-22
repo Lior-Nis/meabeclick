@@ -10,11 +10,9 @@ node_modules/
 # writable mount is exactly what let a live student record (portal/
 # noga.json, pre-move) and a dozen games-data fixtures dirty the VPS
 # working tree and block `git pull` on deploy (see server/README.md's
-# Cutover section). The dozen demo/example games-data fixtures that used
-# to live tracked at data/games-data/*.json now live tracked at
-# seed/games-data/ instead — outside DATA_DIR — and get copied into
-# data/games-data/ as a one-time seeding step, the same pattern portal/
-# already used for PORTAL_DIR.
+# Cutover section). Those demo fixtures later left git entirely: migration
+# 031 inserts them into game_filler. seed/games-data/ now holds only the
+# speed-drill example, which is still copied into data/games-data/ once.
 /data/
 # Real student portal records. The app reads them from PORTAL_DIR under the
 # data mount (backed up nightly), never from here; the last tracked one

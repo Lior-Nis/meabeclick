@@ -247,3 +247,38 @@ test('distinctVisitors counts a visitor once across the whole window, even when 
     'summing funnel()\'s per-group visitors double-counts dv-multi — the exact gap distinctVisitors closes',
   );
 });
+
+test('plan_selected stores a plan key, and any other detail is rejected', () => {
+  assert.equal(M.recordEvent({ event: 'plan_selected', detail: 'double', at: '2020-01-01T00:00:00.000Z' }), true);
+  const row = handle().prepare(`SELECT detail FROM marketing_events WHERE event = 'plan_selected' ORDER BY id DESC LIMIT 1`).get();
+  assert.equal(row.detail, 'double');
+
+  const before = countRows();
+  assert.equal(M.recordEvent({ event: 'plan_selected', detail: 'a name', at: '2020-01-01T00:00:00.000Z' }), false);
+  assert.equal(M.recordEvent({ event: 'time_selected', detail: 'double', at: '2020-01-01T00:00:00.000Z' }), false);
+  assert.equal(M.recordEvent({ event: 'booking_start', detail: 'double', at: '2020-01-01T00:00:00.000Z' }), false);
+  assert.equal(countRows(), before, 'a rejected detail must not leave a row behind');
+});
+
+test('referrer is stored as an external origin', () => {
+  assert.equal(M.sanitizeReferrer('https://www.google.com/search?q=secret'), 'https://www.google.com');
+  assert.equal(M.sanitizeReferrer('https://meabeclick.com/booking?utm_source=x'), null);
+  assert.equal(M.sanitizeReferrer('javascript:alert(1)'), null);
+  assert.equal(M.sanitizeReferrer('https://user:pass@evil.example/'), null);
+
+  assert.equal(M.recordEvent({
+    event: 'landing_visit',
+    referrer: 'https://l.facebook.com/l.php?u=secret',
+    at: '2020-01-02T00:00:00.000Z',
+  }), true);
+  const row = handle().prepare(`SELECT referrer FROM marketing_events WHERE at = '2020-01-02T00:00:00.000Z'`).get();
+  assert.equal(row.referrer, 'https://l.facebook.com');
+});
+
+test('the vision-metrics funnel steps are events this store accepts', async () => {
+  const { FUNNEL_STEPS } = await import('../../scripts/vision-metrics.mjs');
+  for (const [event] of FUNNEL_STEPS) {
+    const detail = event === 'plan_selected' ? 'single' : undefined;
+    assert.equal(M.recordEvent({ event, detail, at: '2020-03-01T00:00:00.000Z' }), true, event);
+  }
+});

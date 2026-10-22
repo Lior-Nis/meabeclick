@@ -422,15 +422,17 @@ test('heardFrom is ignored when the request carries a family session, even if th
         name: 'ילד שני', durationMin: 45,
         start: '2027-04-10T10:00:00+02:00', end: '2027-04-10T10:45:00+02:00',
         heardFrom: 'google',
+        heardDetail: 'should not stick',
       })),
     });
     assert.equal(r.status, 200);
 
     const { DatabaseSync } = await import('node:sqlite');
     const db = new DatabaseSync(dbPath);
-    const b = db.prepare(`SELECT heard_from FROM bookings_v2 ORDER BY id DESC LIMIT 1`).get();
+    const b = db.prepare(`SELECT heard_from, heard_from_detail FROM bookings_v2 ORDER BY id DESC LIMIT 1`).get();
     db.close();
     assert.equal(b.heard_from, null, 'a returning family session must never carry a heard_from answer, even a forged one');
+    assert.equal(b.heard_from_detail, null);
   } finally { await stop(); }
 });
 
@@ -509,5 +511,79 @@ test('a booked student can be read back through their own portal page', async ()
     const enrolled = students.find(s => s.name === 'תלמיד בדיקה');
     assert.ok(enrolled, 'the booking must have enrolled a student findable by name');
     assert.equal(enrolled.email, 'reach@example.com');
+  } finally { await stop(); }
+});
+
+test('אחר stores a short explanation, and the same text on any other choice is dropped', async () => {
+  const { HEARD_DETAIL_MAX } = await import('../../src/lib/marketing-labels.ts');
+  const { baseUrl, dbPath, stop } = await startServer();
+  try {
+    const other = await fetch(`${baseUrl}/api/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(booking({
+        heardFrom: 'other',
+        heardDetail: '  מודעה\nבקבוצת   הורים  ' + 'א'.repeat(200),
+        email: 'other-source@example.com',
+        name: 'אחר',
+      })),
+    });
+    assert.equal(other.status, 200);
+
+    const google = await fetch(`${baseUrl}/api/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(booking({
+        heardFrom: 'google',
+        heardDetail: 'should not stick',
+        email: 'google-source@example.com',
+        name: 'גוגל',
+        start: '2027-05-02T10:00:00+02:00',
+        end: '2027-05-02T10:45:00+02:00',
+      })),
+    });
+    assert.equal(google.status, 200);
+
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    const rows = db.prepare(`SELECT heard_from, heard_from_detail FROM bookings_v2 ORDER BY id`).all();
+    db.close();
+
+    const explained = rows.find(r => r.heard_from === 'other');
+    assert.ok(explained);
+    assert.equal(explained.heard_from_detail.length, HEARD_DETAIL_MAX);
+    assert.equal(explained.heard_from_detail.startsWith('מודעה בקבוצת הורים'), true);
+
+    const searched = rows.find(r => r.heard_from === 'google');
+    assert.ok(searched);
+    assert.equal(searched.heard_from_detail, null);
+  } finally { await stop(); }
+});
+
+test('a landing referrer is stored on the booking as an origin', async () => {
+  const { baseUrl, dbPath, stop } = await startServer();
+  try {
+    const r = await fetch(`${baseUrl}/api/book`, {
+      method: 'POST',
+      headers: { 'Content-Type': 'application/json' },
+      body: JSON.stringify(booking({
+        attribution: {
+          utm: { source: 'google', medium: 'organic' },
+          visitorId: VALID_VISITOR_ID,
+          referrer: 'https://www.google.com/search?q=secret-query',
+        },
+      })),
+    });
+    assert.equal(r.status, 200);
+
+    const { DatabaseSync } = await import('node:sqlite');
+    const db = new DatabaseSync(dbPath);
+    const b = db.prepare(`SELECT source_utm FROM bookings_v2 ORDER BY id DESC LIMIT 1`).get();
+    const ev = db.prepare(`SELECT referrer FROM marketing_events WHERE event = 'lesson_scheduled' ORDER BY id DESC LIMIT 1`).get();
+    db.close();
+    const stored = JSON.parse(b.source_utm);
+    assert.equal(stored.referrer, 'https://www.google.com');
+    assert.equal(stored.utm.source, 'google');
+    assert.equal(ev.referrer, 'https://www.google.com');
   } finally { await stop(); }
 });

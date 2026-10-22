@@ -437,6 +437,7 @@
             <div class="pricing-card-name">{plan.name}</div>
             <div class="pricing-card-price">{formatPrice(plan.shekels)}</div>
             <div class="pricing-card-duration">{plan.duration}</div>
+            <p class="pricing-card-why">{plan.description}</p>
           </div>
         {/each}
 
@@ -1146,6 +1147,17 @@ h1, h2, h3, h4 {
   font-size: 0.83rem;
   color: var(--text-muted);
   margin-bottom: 0;
+}
+.pricing-card-why {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0.55rem 0 0;
+  max-width: 16rem;
+}
+.pricing-card.featured .pricing-card-why {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* ── HOW IT WORKS ──────────────────────────────────────────── */

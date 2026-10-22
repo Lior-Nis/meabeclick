@@ -123,7 +123,8 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
     // Server-only — see this file's header comment.
     if (b.event === 'lesson_scheduled') return NO_CONTENT();
 
-    if (!isStringOrAbsent(b.target) || !isStringOrAbsent(b.path) || !isStringOrAbsent(b.visitorId)) {
+    if (!isStringOrAbsent(b.target) || !isStringOrAbsent(b.path) || !isStringOrAbsent(b.visitorId)
+        || !isStringOrAbsent(b.detail) || !isStringOrAbsent(b.referrer)) {
       return NO_CONTENT();
     }
     const utm = readUtm(b.utm);
@@ -144,6 +145,8 @@ export const POST: RequestHandler = async ({ request, locals, getClientAddress }
       // not rejected outright — same tolerant posture as every other field.
       visitorId: (typeof b.visitorId === 'string' && VISITOR_ID_RE.test(b.visitorId)) ? b.visitorId : undefined,
       utm,
+      detail: typeof b.detail === 'string' ? b.detail : undefined,
+      referrer: typeof b.referrer === 'string' ? b.referrer : undefined,
     });
   } catch (err) {
     console.error('/api/events', err);

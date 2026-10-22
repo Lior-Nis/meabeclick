@@ -98,7 +98,7 @@ test('an authenticated request renders the seeded funnel numbers', async () => {
     assert.match(html, /ישיר \/ לא מתויג/, 'a NULL source groups under the spec\'d Hebrew label');
 
     // The heard-from answer, labelled (not the raw "school" value).
-    assert.match(html, /בית ספר או מורה/);
+    assert.match(html, /בית הספר/);
     assert.doesNotMatch(html, />school</, 'the raw value must never leak past its label');
 
     // The one-line retention note.
