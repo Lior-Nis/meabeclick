@@ -1,0 +1,18 @@
+[Unit]
+Description=מאה בקליק — daily lesson-generation health check (alerts on failure)
+After=network-online.target
+
+[Service]
+Type=oneshot
+# Same shape as meabeclick-report-prompt.service: curl localhost so the
+# request never touches the public interface, and a dedicated file holding
+# ONLY CRON_KEY rather than the app's full .env.
+#
+# --fail is the point: the endpoint answers 503 when no alert channel is
+# configured and 502 when the WhatsApp could not be sent, so a check that
+# cannot speak turns this unit red (`systemctl --user --failed`) instead of
+# passing quietly. A healthy day is a 200 and sends nothing.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+ExecStart=/usr/bin/curl -sS --fail --max-time 60 -X POST \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/health/generation

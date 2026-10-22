@@ -41,6 +41,8 @@ const BLOCKED = [
   'GOOGLE_SERVICE_ACCOUNT_KEY_FILE', 'GOOGLE_SERVICE_ACCOUNT_EMAIL',
   'GOOGLE_SERVICE_ACCOUNT_KEY', 'GMAIL_USER', 'GMAIL_APP_PASSWORD',
   'CALLMEBOT_API_KEY', 'OPENAI_API_KEY',
+  // The health check's own alert channels (Lior's Slack and phone): never from a test.
+  'OPS_CALLMEBOT_PHONE', 'OPS_CALLMEBOT_API_KEY', 'OPS_SLACK_WEBHOOK_URL',
   // The Drive login (the backups' and the lesson sync's): a test must never
   // create folders in the business's real Drive.
   'GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REFRESH_TOKEN',

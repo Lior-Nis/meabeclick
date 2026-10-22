@@ -856,6 +856,41 @@ and not shipped in the image; pipe it in:
 
     ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module -' < scripts/vision-metrics.mjs
 
+### Generation health (daily)
+
+`meabeclick-generation-health.timer` runs every morning at 08:00 Israel
+time and `POST`s `/api/health/generation` (cron key). It reads `lessons`,
+`engine_status` and `bookings_v2` and sends **one** summary when:
+
+- in the last 24 hours a generation `failed`, was `held`, or was `ready`
+  but never reached the student's page;
+- a run has sat at `generating` for over an hour (the process died under it);
+- an engine outage is open;
+- a booked **maths** lesson in the last/next `GENERATION_HEALTH_STALE_DAYS`
+  (default 3) has no ready lesson — never generated, or failed/held earlier.
+  If, on top of that, Codex has not succeeded once in that many days, the
+  message says the engine is the likely cause.
+
+A healthy day sends nothing.
+
+**Where it goes.** Every configured ops channel gets the one message:
+
+- `OPS_SLACK_WEBHOOK_URL`: a Slack Incoming Webhook into `#meabeclick`
+  (recommended). Official, no phone number at risk. The URL is the
+  credential: it is never logged or returned.
+- `OPS_CALLMEBOT_PHONE` + `OPS_CALLMEBOT_API_KEY`: optional WhatsApp via
+  CallMeBot. It is an unofficial, free, personal-use bot that WhatsApp
+  periodically restricts, so expect outages. Use a personal number, not the
+  WhatsApp Business one families know.
+
+With no ops channel it falls back to the tutor's `CALLMEBOT_*` channel.
+With nothing at all, or a half-set or non-Slack webhook, it answers 503.
+If any configured channel can't be reached it answers 502. Either way the
+unit fails (`systemctl --user --failed`), so the check is never silently
+mute. To look without sending:
+
+    curl -sS -H "X-Cron-Key: $CRON_KEY" 'http://127.0.0.1:3000/api/health/generation?days=7'
+
 ## Scheduling: the lesson-report prompt and the booking reminder
 
 Two more `systemd --user` timers, the same shape as the backup timer above:
@@ -921,7 +956,7 @@ Install once:
 ```bash
 cp server/meabeclick-*.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer
+systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer meabeclick-generation-health.timer
 systemctl --user list-timers
 ```
 
