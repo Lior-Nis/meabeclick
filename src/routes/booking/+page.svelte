@@ -2,7 +2,7 @@
   import { onMount } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
-  import { PLANS, planFor, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
+  import { PLANS, formatPrice, RECOMMENDED_BADGE, RECOMMENDED_PITCH, type Plan } from '$lib/plans.ts';
   import { SUBJECT } from '$lib/subjects.ts';
   import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
@@ -37,7 +37,11 @@
   const TUTOR_PHONE_DISPLAY = '054-696-9891';
 
   let step = $state<'duration' | 'slots' | 'success'>('duration');
-  let selectedPlan = $state<Plan | null>(null);
+  /* כפול starts selected. A card used to leave this step on click, so
+     assigning the recommended plan at the start would have skipped the
+     choice. A card now only changes the selection; continueWithPlan is
+     what moves on. */
+  let selectedPlan = $state<Plan | null>(PLANS.find((p) => p.recommended) ?? null);
   let selectedSlot = $state<Slot | null>(null);
 
   /* 'unconfirmed' is a degraded read, not an error: the times shown came
@@ -60,8 +64,8 @@
   let tutorFilter = $state<number | null>(null);
   let slotNotice = $state('');
 
-  function selectPlan(plan: Plan) {
-    selectedPlan = plan;
+  function continueWithPlan() {
+    if (!selectedPlan) return;
     step = 'slots';
     track('booking_started');
     loadSlots();
@@ -554,18 +558,34 @@
   {#if step === 'duration'}
     <div id="step-duration">
       <p class="subtitle">איזה שיעור מתאים לכם?</p>
-      <div class="duration-grid">
+      <p class="plan-pitch">{RECOMMENDED_PITCH}</p>
+      <div class="duration-grid" role="group" aria-label="סוג שיעור">
         {#each PLANS as plan (plan.minutes)}
-          <button class="dur-card" class:recommended={plan.recommended} onclick={() => selectPlan(plan)}>
+          <button
+            type="button"
+            class="dur-card"
+            class:recommended={plan.recommended}
+            class:selected={selectedPlan?.minutes === plan.minutes}
+            aria-pressed={selectedPlan?.minutes === plan.minutes}
+            onclick={() => (selectedPlan = plan)}
+          >
             {#if plan.recommended}<span class="dur-badge">{RECOMMENDED_BADGE}</span>{/if}
             <div class="dur-icon">{plan.icon}</div>
-            <div class="dur-name">{plan.name}</div>
+            <div class="dur-name">
+              {plan.name}
+              {#if selectedPlan?.minutes === plan.minutes}<span class="dur-chosen">נבחר</span>{/if}
+            </div>
             <div class="dur-price">{formatPrice(plan.shekels)}</div>
             <div class="dur-time">{plan.minutes} דקות</div>
             <div class="dur-desc">{plan.description}</div>
           </button>
         {/each}
       </div>
+      {#if selectedPlan}
+        <button type="button" class="btn-primary plan-continue" onclick={continueWithPlan}>
+          המשך עם {selectedPlan.name} · {formatPrice(selectedPlan.shekels)}
+        </button>
+      {/if}
     </div>
   {/if}
 
@@ -1046,7 +1066,14 @@
   }
 
   h1 { font-size: 1.7rem; color: var(--text-primary); margin-bottom: 0.4rem; }
-  .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.6rem; }
+  .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.35rem; }
+  .plan-pitch {
+    color: var(--text-primary);
+    font-size: 0.95rem;
+    font-weight: 700;
+    line-height: 1.55;
+    margin: 0 0 1.35rem;
+  }
 
   /* ── step indicator ──────────────────────────── */
   .steps-bar { display: flex; align-items: center; margin-bottom: 2rem; }
@@ -1105,6 +1132,19 @@
     border-color: var(--pricing-featured-border);
     box-shadow: 0 4px 24px var(--accent2-glow);
   }
+  /* Selection is a word ("נבחר") plus the ring, so it is not colour alone,
+     and it stays visible on the orange recommended card. */
+  .dur-card.selected {
+    border-color: var(--accent);
+    box-shadow: 0 0 0 3px var(--accent-dim);
+  }
+  .dur-card.recommended.selected {
+    box-shadow: 0 0 0 3px var(--accent-dim), 0 4px 24px var(--accent2-glow);
+  }
+  .dur-card:focus-visible {
+    outline: 3px solid var(--accent);
+    outline-offset: 2px;
+  }
   .dur-badge {
     position: absolute;
     top: -12px;
@@ -1120,7 +1160,16 @@
     box-shadow: 0 3px 10px var(--accent2-glow);
   }
   .dur-icon { font-size: 1.7rem; }
-  .dur-name { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
+  .dur-name {
+    display: inline-flex; align-items: center; justify-content: center;
+    gap: 0.4rem; flex-wrap: wrap;
+    font-size: 1.1rem; font-weight: 800; color: var(--text-primary);
+  }
+  .dur-chosen {
+    font-size: 0.72rem; font-weight: 800; color: var(--accent-deep);
+    background: var(--accent-dim); border-radius: 999px; padding: 0.12rem 0.5rem;
+  }
+  .plan-continue { display: block; width: 100%; margin-top: 1.25rem; }
   .dur-price { font-size: 1.45rem; font-weight: 900; color: var(--accent); line-height: 1.1; }
   .dur-time { font-size: 0.85rem; color: var(--text-muted); font-weight: 600; }
   .dur-desc { font-size: 0.82rem; color: var(--text-muted); line-height: 1.45; margin-top: 0.2rem; }

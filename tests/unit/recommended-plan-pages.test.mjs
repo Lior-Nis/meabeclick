@@ -33,3 +33,19 @@ test('both pages print the badge from plans.ts, as text a screen reader can read
 test('the booking page marks the recommended card', () => {
   assert.match(booking, /class:recommended=\{plan\.recommended\}/);
 });
+
+test('booking pre-selects the recommended plan and advances only from continue', () => {
+  // A card click used to set the plan and leave the step in one function.
+  // Pre-selecting inside that function would have skipped the choice.
+  assert.match(booking, /PLANS\.find\(\(p\) => p\.recommended\)/);
+  assert.match(booking, /function continueWithPlan\(\)/);
+  assert.match(booking, /class="btn-primary plan-continue"/);
+  assert.match(booking, /RECOMMENDED_PITCH/);
+  assert.doesNotMatch(booking, /function selectPlan/);
+  assert.doesNotMatch(booking, /onclick=\{\(\) => selectPlan/);
+});
+
+test('the landing page and the FAQ sell the same weekly pitch', () => {
+  assert.match(landing, /RECOMMENDED_PITCH/);
+  assert.match(landing, /plan\.description/);
+});

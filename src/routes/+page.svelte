@@ -4,7 +4,7 @@
   import Header from '$lib/components/Header.svelte';
   import Footer from '$lib/components/Footer.svelte';
   import AutoCarousel from '$lib/components/AutoCarousel.svelte';
-  import { PLANS, formatPrice, RECOMMENDED_BADGE } from '$lib/plans.ts';
+  import { PLANS, formatPrice, RECOMMENDED_BADGE, RECOMMENDED_PITCH } from '$lib/plans.ts';
   import { initMarketing, track } from '$lib/marketing.ts';
   import { TUTOR_PHONE } from '$lib/contact.ts';
   import { TUTORS } from '$lib/tutors.ts';
@@ -429,6 +429,7 @@
       <div class="section-label">תעריף</div>
       <h2 class="section-title">מחירים לשיעור</h2>
       <p class="section-sub">תשלום בסוף כל שיעור — ב-PayBox, בביט או במזומן</p>
+      <p class="pricing-pitch">{RECOMMENDED_PITCH}</p>
       <div class="pricing-grid">
 
         {#each PLANS as plan, i (plan.minutes)}
@@ -437,6 +438,7 @@
             <div class="pricing-card-name">{plan.name}</div>
             <div class="pricing-card-price">{formatPrice(plan.shekels)}</div>
             <div class="pricing-card-duration">{plan.duration}</div>
+            <p class="pricing-card-why">{plan.description}</p>
           </div>
         {/each}
 
@@ -529,6 +531,7 @@
           <summary>מה משך השיעור?<span class="faq-icon" aria-hidden="true">+</span></summary>
           <div class="faq-answer-inner">
             קיימת אפשרות להזמין שלושה סוגים של שיעורים: {DURATIONS_SENTENCE}.
+            {RECOMMENDED_PITCH}
           </div>
         </details>
 
@@ -1146,6 +1149,25 @@ h1, h2, h3, h4 {
   font-size: 0.83rem;
   color: var(--text-muted);
   margin-bottom: 0;
+}
+.pricing-pitch {
+  color: var(--text-primary);
+  font-size: 1rem;
+  font-weight: 700;
+  line-height: 1.55;
+  max-width: 36rem;
+  margin: -1.4rem auto 0;
+}
+.pricing-card-why {
+  font-size: 0.85rem;
+  line-height: 1.45;
+  color: var(--text-muted);
+  margin: 0.55rem 0 0;
+  max-width: 16rem;
+}
+.pricing-card.featured .pricing-card-why {
+  color: var(--text-primary);
+  font-weight: 600;
 }
 
 /* ── HOW IT WORKS ──────────────────────────────────────────── */

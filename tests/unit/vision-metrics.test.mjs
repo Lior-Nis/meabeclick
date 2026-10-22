@@ -12,7 +12,7 @@ import { DatabaseSync } from 'node:sqlite';
 process.env.DB_PATH = join(await mkdtemp(join(tmpdir(), 'vision-')), 'results.db');
 const { handle } = await import('../../src/lib/server/db.ts');   // builds legacy tables + runs migrations
 handle();
-const { measure, QUOTA_PROBLEM } = await import('../../scripts/vision-metrics.mjs');
+const { measure, QUOTA_PROBLEM, PLAN_LADDER } = await import('../../scripts/vision-metrics.mjs');
 const { ENGINE_DOWN_MESSAGES } = await import('../../src/lib/server/lesson/engine.ts');
 
 const NOW = new Date('2026-10-15T12:00:00Z');
@@ -117,6 +117,52 @@ test('an empty window reports null shares, not zero', () => {
   assert.equal(empty.autogen.strict, null);
   assert.equal(empty.activeStudents, 0);
   assert.deepEqual(empty.coverage, { runs: 0, taught: 0 });
+  assert.deepEqual(empty.planMix, {
+    total: 0,
+    other: 0,
+    plans: [
+      { minutes: 45, kind: 'single', name: 'יחיד', count: 0 },
+      { minutes: 90, kind: 'double', name: 'כפול', count: 0 },
+      { minutes: 135, kind: 'triple', name: 'משולש', count: 0 },
+    ],
+  });
+});
+
+test('the plan ladder the metric names is the one plans.ts sells', async () => {
+  const { PLANS } = await import('../../src/lib/plans.ts');
+  assert.deepEqual(PLAN_LADDER, PLANS.map((p) => ({ minutes: p.minutes, kind: p.kind, name: p.name })));
+});
+
+test('plan mix counts bookings created in the last 30 days by the stored duration', () => {
+  // Seed rows: three confirmed bookings whose `at` is inside the window and
+  // whose duration was never stored, plus one cancelled and one too old.
+  assert.equal(m.planMix.total, 3);
+  assert.equal(m.planMix.other, 3);
+  assert.deepEqual(m.planMix.plans.map((p) => p.count), [0, 0, 0]);
+  assert.ok(m.notes.some((n) => n.includes('bookings_v2.at')));
+
+  const w = new DatabaseSync(process.env.DB_PATH);
+  const ins = w.prepare(
+    `INSERT INTO bookings_v2 (student_id, start, "end", duration, at, status) VALUES (1, ?, ?, ?, ?, ?)`);
+  const start = daysAgo(1);
+  ins.run(start, start, 90, daysAgo(2), 'confirmed');
+  ins.run(start, start, 90, daysAgo(3), 'confirmed');
+  ins.run(start, start, 45, daysAgo(4), 'confirmed');
+  ins.run(start, start, 135, daysAgo(5), 'confirmed');
+  ins.run(start, start, 60, daysAgo(6), 'confirmed');      // not a sold plan
+  ins.run(start, start, 90, daysAgo(7), 'cancelled');      // excluded
+  ins.run(start, start, 90, daysAgo(40), 'confirmed');     // outside the window
+  try {
+    const later = measure(new DatabaseSync(process.env.DB_PATH, { readOnly: true }), NOW);
+    assert.deepEqual(
+      Object.fromEntries(later.planMix.plans.map((p) => [p.kind, p.count])),
+      { single: 1, double: 2, triple: 1 },
+    );
+    assert.equal(later.planMix.other, 4);   // three seed rows with no duration, plus 60
+    assert.equal(later.planMix.total, 8);   // seed 3 + the five in-window rows above
+  } finally {
+    w.exec(`DELETE FROM bookings_v2 WHERE duration IS NOT NULL`);
+  }
 });
 
 test('a lesson copied from the library is not an engine run: not counted, never breaks the streak', () => {

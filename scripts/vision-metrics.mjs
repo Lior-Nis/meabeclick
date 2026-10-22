@@ -20,6 +20,11 @@
  * and booking lessons alike. A run the engine quota stopped before it started
  * counts neither way: the engine never ran, so it says nothing about what it
  * makes. It is a reliability problem, reported apart as `quotaSkipped`.
+ *
+ * Plan mix: bookings created in the last 30 days, by the plan they stored.
+ * `bookings_v2.duration` is that plan — minutes, the same key `plans.ts`
+ * sells (45 יחיד, 90 כפול, 135 משולש). No extra column. A hold still in
+ * `pending_bookings` is not a booking yet, so it is not in the mix.
  */
 import { DatabaseSync } from 'node:sqlite';
 import { join } from 'node:path';
@@ -31,6 +36,14 @@ const GATE_TARGET = 10;
  *  ENGINE_DOWN_MESSAGES['engine-quota'] in src/lib/server/lesson/engine.ts,
  *  copied because this script imports nothing from src/ (a test pins it). */
 export const QUOTA_PROBLEM = 'נגמרה המכסה ליצירת שיעורים אוטומטית — השיעור לא נוצר. אפשר לנסות שוב מאוחר יותר';
+
+/** The sold ladder, copied because this script imports nothing from src/.
+ *  A test pins it to `PLANS` in plans.ts (minutes, kind, name — not price). */
+export const PLAN_LADDER = [
+  { minutes: 45, kind: 'single', name: 'יחיד' },
+  { minutes: 90, kind: 'double', name: 'כפול' },
+  { minutes: 135, kind: 'triple', name: 'משולש' },
+];
 
 const inWindow = (iso, from, to) => {
   if (!iso) return false;
@@ -103,6 +116,19 @@ export function measure(db, now) {
     streak += 1;
   }
 
+  /* Created (`at`), not taught (`end`): the mix is the choice a family made
+     in the window, including a lesson that has not happened yet. */
+  const booked = db.prepare(
+    `SELECT duration, at FROM bookings_v2 WHERE status != 'cancelled'`
+  ).all().filter((b) => inWindow(b.at, from, to));
+  const counts = new Map(PLAN_LADDER.map((p) => [p.minutes, 0]));
+  let other = 0;
+  for (const b of booked) {
+    const minutes = Number(b.duration);
+    if (counts.has(minutes)) counts.set(minutes, counts.get(minutes) + 1);
+    else other += 1;
+  }
+
   return {
     activeStudents,
     autogen: { units: total, strict: total ? strict / total : null, lenient: total ? lenient / total : null },
@@ -110,10 +136,16 @@ export function measure(db, now) {
     coverage: { runs: total, taught: lessonsTaught },
     gate: { streak, target: GATE_TARGET, quotaSkipped },
     library: { copies: copiesInWindow, imported: importedInWindow },
+    planMix: {
+      total: booked.length,
+      other,
+      plans: PLAN_LADDER.map((p) => ({ ...p, count: counts.get(p.minutes) })),
+    },
     notes: [
       "homework has no origin column; its share is not measured separately — a `ready` lesson's homework was generated with it.",
       "a run counts as clean only if it is `ready` and reached the student's page; runs before 2026-09-25 never recorded a failed delivery, so an older `ready` may still be one.",
       "active students counts only lessons booked through the site (bookings_v2); lessons arranged outside it are not counted.",
+      "plan mix counts bookings created in the last 30 days (bookings_v2.at), not lessons taught. The plan is the stored duration in minutes; cancelled bookings are excluded, and a missing or unknown duration is other. A hold still in pending_bookings is not a booking yet.",
     ],
   };
 }
@@ -134,6 +166,8 @@ function main() {
   console.log(`revenue ${m.revenue.month}         paid ${ils(m.revenue.paidAgorot)} · owed ${ils(m.revenue.owedAgorot)} / ₪10,000`);
   console.log(`gate: clean runs in a row ${m.gate.streak} / ${m.gate.target}`
     + (m.gate.quotaSkipped ? `   (${m.gate.quotaSkipped} skipped: the engine quota ran out — reliability)` : ''));
+  const mix = m.planMix.plans.map((p) => `${p.name} ${p.count}`).join(' · ');
+  console.log(`plan mix (30d bookings)   ${mix} · other ${m.planMix.other}`);
   for (const n of m.notes) console.log(`note: ${n}`);
 }
 
