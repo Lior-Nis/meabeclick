@@ -856,6 +856,23 @@ and not shipped in the image; pipe it in:
 
     ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module -' < scripts/vision-metrics.mjs
 
+### Generation health (daily)
+
+`meabeclick-generation-health.timer` runs every morning at 08:00 Israel
+time and `POST`s `/api/health/generation` (cron key). It reads the
+`lessons` and `engine_status` tables and sends **one** WhatsApp when, in
+the last 24 hours, a generation `failed`, was `held`, or was `ready` but
+never reached the student's page — or when a run has sat at `generating`
+for over an hour (the process died under it), or an engine outage is open.
+A healthy day sends nothing.
+
+Alerts go to `OPS_CALLMEBOT_PHONE` + `OPS_CALLMEBOT_API_KEY` (`.env`),
+falling back to the tutor's `CALLMEBOT_*` channel. With no channel at all
+the route answers 503 and the unit fails, every day, so the check can never
+be silently mute. Look without sending:
+
+    curl -sS -H "X-Cron-Key: $CRON_KEY" http://127.0.0.1:3000/api/health/generation
+
 ## Scheduling: the lesson-report prompt and the booking reminder
 
 Two more `systemd --user` timers, the same shape as the backup timer above:
@@ -921,7 +938,7 @@ Install once:
 ```bash
 cp server/meabeclick-*.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer
+systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer meabeclick-generation-health.timer
 systemctl --user list-timers
 ```
 

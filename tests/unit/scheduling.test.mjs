@@ -54,3 +54,22 @@ test('CRON_KEY is documented where a deployer will look', () => {
   assert.match(read('server/README.md'), /CRON_KEY/);
   assert.match(read('server/README.md'), /meabeclick-report-prompt\.timer/);
 });
+
+test('the generation-health unit POSTs the check with the key, and fails loudly', () => {
+  const unit = read('server/meabeclick-generation-health.service');
+  assert.match(unit, /-X POST/);
+  assert.match(unit, /http:\/\/127\.0\.0\.1:3000\/api\/health\/generation/);
+  assert.match(unit, /X-Cron-Key: \$\{CRON_KEY\}/);
+  assert.match(unit, /curl[^\n]*--fail/, 'a 503 (no alert channel) must turn the unit red');
+  assert.match(unit, /EnvironmentFile=%h\/mea-beclick\/\.cron-key\.env/);
+  assert.doesNotMatch(unit, /EnvironmentFile=%h\/mea-beclick\/\.env\b/);
+});
+
+test('the generation-health timer runs every morning, Israel time, and survives a reboot', () => {
+  const timer = read('server/meabeclick-generation-health.timer');
+  assert.match(timer, /OnCalendar=\*-\*-\* 0[6-9]:\d\d:\d\d Asia\/Jerusalem/);
+  assert.match(timer, /Persistent=true/);
+  assert.match(timer, /WantedBy=timers\.target/);
+  assert.match(read('server/README.md'), /meabeclick-generation-health\.timer/);
+  assert.match(read('.env.example'), /OPS_CALLMEBOT_PHONE/);
+});

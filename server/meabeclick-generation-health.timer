@@ -1,0 +1,15 @@
+[Unit]
+Description=Check yesterday's lesson generation every morning (08:00 Israel time)
+
+[Timer]
+# Daily, in the morning, in Israel time whatever the box's own zone is:
+# the check covers the 24 hours before it, so a lesson that failed
+# overnight is on Lior's phone before the day's first lesson.
+OnCalendar=*-*-* 08:00:00 Asia/Jerusalem
+# A reboot must not swallow a run. The route only reads and sends at most
+# one message, so a late fire costs nothing.
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target
