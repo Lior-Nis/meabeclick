@@ -873,12 +873,17 @@ and not shipped in the image; pipe it in:
 
 `scripts/skills-covered.mjs` counts the skills marked covered (`plan_events`
 rows of type `covered`, written when a lesson report is filed or a skill is
-marked «נלמד» by hand) in the last `--days` (default 7), grouped by the
-template's skill key, and keeps those covered with at least
-`--min-students` (default 2) distinct students. It prints topic and skill
-names with counts, never a student. Read-only, not shipped in the image:
+marked «נלמד» by hand) in the last `--days` (default 7). A mark made when a
+report is filed is dated by when the report was filed, not when the lesson
+happened. `--by topic` (the default) groups those marks by the topic each
+skill belongs to, and `--min-students` (default 2) is distinct students of
+that topic, so a topic taught to two students through different skills
+counts. `--by skill` groups by the template's skill key instead, and the
+threshold is per skill. It prints topic titles — and, in skill mode, skill
+names — with counts, never a student name or id. Read-only, not shipped in
+the image:
 
-    ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module - --days 7 --json' < scripts/skills-covered.mjs
+    ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module - --days 7 --by topic --json' < scripts/skills-covered.mjs
 
 ### Generation health (daily)
 
