@@ -72,4 +72,6 @@ test('the generation-health timer runs every morning, Israel time, and survives 
   assert.match(timer, /WantedBy=timers\.target/);
   assert.match(read('server/README.md'), /meabeclick-generation-health\.timer/);
   assert.match(read('.env.example'), /OPS_CALLMEBOT_PHONE/);
+  assert.match(read('.env.example'), /OPS_SLACK_WEBHOOK_URL/);
+  assert.match(read('.env.example'), /GENERATION_HEALTH_STALE_DAYS/);
 });
