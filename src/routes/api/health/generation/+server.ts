@@ -33,7 +33,7 @@
  * recommended) and/or Lior's WhatsApp (OPS_CALLMEBOT_PHONE +
  * OPS_CALLMEBOT_API_KEY). With neither, the tutor's existing CallMeBot
  * channel, said so in the response and the log. See alertChannels() in
- * $server/lesson/generation-health.ts. The webhook URL is the credential:
+ * $server/ops-alert.ts (shared with /api/health/ops). The webhook URL is the credential:
  * it is never logged or returned.
  *
  * GET ?days=N overrides the stale-booking window for a look (the timer uses
@@ -41,10 +41,8 @@
  */
 import { json } from '@sveltejs/kit';
 import { authorizedCronRequest } from '$server/cron-auth.ts';
-import {
-  generationHealth, alertChannels, channelLabel, sendSlack, staleDaysFrom, runHealthCheck,
-} from '$server/lesson/generation-health.ts';
-import { sendWhatsAppChecked } from '$server/lesson/queue.ts';
+import { generationHealth, staleDaysFrom, runHealthCheck } from '$server/lesson/generation-health.ts';
+import { alertChannels, channelLabel, sendAlert } from '$server/ops-alert.ts';
 import type { RequestHandler } from './$types';
 
 const denied = (key: string | null) =>
@@ -69,7 +67,7 @@ export const POST: RequestHandler = async ({ request }) => {
   const { status, body } = await runHealthCheck({
     health: generationHealth(),
     channels: alertChannels(),
-    send: (text, c) => (c.kind === 'slack' ? sendSlack(text, c.webhookUrl) : sendWhatsAppChecked(text, c.to)),
+    send: sendAlert,
   });
   return json(body, { status });
 };

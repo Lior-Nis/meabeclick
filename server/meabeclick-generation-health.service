@@ -1,6 +1,9 @@
 [Unit]
 Description=מאה בקליק — daily lesson-generation health check (alerts on failure)
 After=network-online.target
+# The app's own alert did not go out (503/502), or the app is down: the
+# host sends one message instead (server/health-alert.sh).
+OnFailure=meabeclick-health-alert@%n.service
 
 [Service]
 Type=oneshot

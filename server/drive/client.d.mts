@@ -20,3 +20,9 @@ export function accessToken(
   cfg: { clientId: string; clientSecret: string; refreshToken: string },
   fetchImpl?: typeof fetch,
 ): Promise<string>;
+
+export interface DriveFile { id: string; name: string; createdTime: string; size?: string }
+
+export function findFolder(token: string, name: string, fetchImpl?: typeof fetch): Promise<string | null>;
+
+export function listBackups(token: string, folderId: string, fetchImpl?: typeof fetch): Promise<DriveFile[]>;

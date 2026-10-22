@@ -1,0 +1,18 @@
+[Unit]
+Description=מאה בקליק — daily ops health check: uptime, backups, mail, calendar (alerts on failure)
+After=network-online.target
+# The app cannot report that it is down. When this curl fails (app
+# unreachable, or the app answered 503/502 because its alert did not go
+# out) the host sends the message instead: server/health-alert.sh.
+OnFailure=meabeclick-health-alert@%n.service
+
+[Service]
+Type=oneshot
+# Same shape as meabeclick-generation-health.service: curl localhost with
+# a dedicated file holding ONLY CRON_KEY, and --fail so a check that
+# cannot speak turns this unit red instead of passing quietly. A healthy
+# day is a 200 and sends nothing.
+EnvironmentFile=%h/mea-beclick/.cron-key.env
+ExecStart=/usr/bin/curl -sS --fail --max-time 120 -X POST \
+  -H "X-Cron-Key: ${CRON_KEY}" \
+  http://127.0.0.1:3000/api/health/ops

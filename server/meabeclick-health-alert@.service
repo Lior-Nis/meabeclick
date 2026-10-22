@@ -1,0 +1,11 @@
+# Sends ONE message from the host when a daily health check unit fails —
+# the app is down, or its own alert could not be sent. Not enabled on its
+# own: the health units name it in OnFailure=, with %i = the failed unit.
+# See server/health-alert.sh.
+[Unit]
+Description=מאה בקליק — tell Lior that %i failed
+
+[Service]
+Type=oneshot
+WorkingDirectory=%h/mea-beclick
+ExecStart=/bin/bash %h/mea-beclick/server/health-alert.sh %i

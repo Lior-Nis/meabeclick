@@ -69,7 +69,9 @@ function buildJWT(email: string, privateKey: string): string {
   return `${data}.${signature}`;
 }
 
-async function getAccessToken(sa: ServiceAccount, fetchImpl: typeof fetch): Promise<string> {
+/** The robot's sign-in. Exported for the daily ops health check, which
+ *  proves the key still works without writing anything. */
+export async function getAccessToken(sa: ServiceAccount, fetchImpl: typeof fetch = fetch): Promise<string> {
   const r = await fetchImpl('https://oauth2.googleapis.com/token', {
     method: 'POST',
     headers: { 'Content-Type': 'application/x-www-form-urlencoded' },

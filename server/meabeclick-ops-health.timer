@@ -1,0 +1,13 @@
+[Unit]
+Description=Check uptime, last night's backup, mail and calendar every morning (08:00 Israel time)
+
+[Timer]
+# After the nightly backup (meabeclick-backup.timer, OnCalendar=daily) and
+# before the day's first lesson. Read-only and at most one message, so a
+# late fire after a reboot costs nothing.
+OnCalendar=*-*-* 08:00:00 Asia/Jerusalem
+Persistent=true
+RandomizedDelaySec=300
+
+[Install]
+WantedBy=timers.target

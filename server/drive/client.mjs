@@ -72,14 +72,8 @@ const auth = (token) => ({ Authorization: `Bearer ${token}` });
  * from the browser without losing the app's access.
  */
 export async function ensureFolder(token, name, fetchImpl = fetch) {
-  const q = encodeURIComponent(
-    `mimeType='application/vnd.google-apps.folder' and name='${name.replace(/'/g, "\\'")}' and trashed=false`,
-  );
-  const found = await fetchImpl(`${API}/files?q=${q}&fields=files(id,name)`, { headers: auth(token) });
-  if (found.ok) {
-    const { files } = await found.json();
-    if (files?.length) return files[0].id;
-  }
+  const existing = await findFolder(token, name, fetchImpl);
+  if (existing) return existing;
   const created = await fetchImpl(`${API}/files?fields=id`, {
     method: 'POST',
     headers: { ...auth(token), 'Content-Type': 'application/json' },
@@ -87,6 +81,22 @@ export async function ensureFolder(token, name, fetchImpl = fetch) {
   });
   if (!created.ok) throw new Error(`could not create Drive folder: ${created.status}`);
   return (await created.json()).id;
+}
+
+/**
+ * The backup folder's id, or null when this client has none by that name.
+ * Never creates one: the daily ops health check (src/lib/server/ops-health.ts)
+ * reads backups and must not invent an empty folder that would then look
+ * like "no backups yet" instead of "the uploader never ran".
+ */
+export async function findFolder(token, name, fetchImpl = fetch) {
+  const q = encodeURIComponent(
+    `mimeType='application/vnd.google-apps.folder' and name='${name.replace(/'/g, "\\'")}' and trashed=false`,
+  );
+  const found = await fetchImpl(`${API}/files?q=${q}&fields=files(id,name)`, { headers: auth(token) });
+  if (!found.ok) return null;
+  const { files } = await found.json();
+  return files?.length ? files[0].id : null;
 }
 
 /** Multipart upload: metadata and bytes in one request. */
