@@ -55,8 +55,9 @@ export const PLANS: Plan[] = [
   { minutes: 135, name: 'משולש', shekels: 300, icon: '🚀', kind: 'triple', slides: 14, duration: 'שעתיים ורבע', description: 'שיעור אינטנסיבי לקראת מבחן' },
 ];
 
-/** The badge on the recommended plan, on the landing page and in booking. */
-export const RECOMMENDED_BADGE = '⭐ הכי פופולרי';
+/** The badge on the recommended plan, on the landing page and in booking.
+ *  A recommendation, not a popularity claim. */
+export const RECOMMENDED_BADGE = '⭐ מומלץ';
 
 export const planFor = (minutes: unknown): Plan | null =>
   PLANS.find(p => p.minutes === Number(minutes)) ?? null;
