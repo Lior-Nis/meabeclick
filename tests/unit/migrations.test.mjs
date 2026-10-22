@@ -235,15 +235,6 @@ test('003 preserves existing payment rows exactly', async () => {
   assert.deepEqual(db.prepare(`SELECT * FROM payments`).all(), rows);
 });
 
-/** The column PR #58's migration 030 adds. Not that migration's full SQL —
- *  only the part that shares a database with game_filler, so this test can
- *  run before that PR is merged. It does not touch game_filler. */
-const BOOKING_SOURCE = {
-  version: 30,
-  name: '030_booking_source',
-  sql: `ALTER TABLE bookings_v2 ADD COLUMN heard_from_detail TEXT;`,
-};
-
 function versions(db) {
   return db.prepare(`SELECT version FROM schema_version ORDER BY version`).all().map(r => r.version);
 }
@@ -252,12 +243,17 @@ function hasColumn(db, table, column) {
   return db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
 }
 
+/** True once PR #58's migration 030 is in this tree. The merge-order tests
+ *  below do not assume either answer: they build the "before 30" registry
+ *  by filtering, and they expect `heard_from_detail` only when that
+ *  version is actually registered. */
+const has30 = () => MIGRATIONS.some(m => m.version === 30);
+
 test('migration versions are unique and game_filler is 31', () => {
   const nums = MIGRATIONS.map(m => m.version);
   assert.equal(new Set(nums).size, nums.length);
   const filler = MIGRATIONS.find(m => m.name === '031_game_filler');
   assert.equal(filler.version, 31);
-  assert.equal(MIGRATIONS.some(m => m.version === 30), false);
   assert.doesNotMatch(filler.sql, /bookings_v2|marketing_events|heard_from/);
 });
 
@@ -272,40 +268,45 @@ test('a duplicated version is refused before any statement runs', async () => {
   assert.equal(db.prepare(`SELECT name FROM sqlite_master WHERE name = 'schema_version'`).get(), undefined);
 });
 
-test('version 31 applies when 30 is not in the registry, and 30 still applies afterwards', async () => {
+test('version 31 applies when 30 is absent, and a later 30 still applies', async () => {
   const db = await freshDb();
-  // This PR merged first: the shipped registry has 31 and no 30.
-  migrate(db);
+  // This PR merged first. Filtering is what makes the same setup true
+  // after 030 has landed in MIGRATIONS: the stand-in copy of that
+  // migration is not re-added here, so the version cannot be registered twice.
+  const before30 = MIGRATIONS.filter(m => m.version !== 30);
+  migrate(db, before30);
   assert.equal(versions(db).includes(30), false);
   assert.equal(versions(db).includes(31), true);
   assert.ok(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c > 0);
   assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), false);
 
-  // PR #58 merges later. The runner must apply the missing lower version
-  // even though a higher one is already stamped. List order is reversed
-  // on purpose: pending() sorts by version, not by array order.
-  const both = [BOOKING_SOURCE, ...MIGRATIONS].reverse();
-  migrate(db, both);
-  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
-  assert.deepEqual(versions(db).filter(v => v === 30 || v === 31), [30, 31]);
+  // The shipped list, reversed on purpose: pending() sorts by version,
+  // not by array order. When 030 is registered this fills the gap under
+  // an already-stamped 31. When it is not, nothing is pending.
+  const shipped = [...MIGRATIONS].reverse();
+  migrate(db, shipped);
+  assert.equal(versions(db).includes(30), has30());
+  assert.equal(versions(db).includes(31), true);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), has30());
   const rows = db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c;
-  migrate(db, both);
+  migrate(db, shipped);
   assert.equal(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c, rows);
 });
 
-test('version 31 still applies when 30 is already recorded', async () => {
+test('version 31 still applies when every lower version is already recorded', async () => {
   const db = await freshDb();
-  // PR #58 merged first.
-  migrate(db, [...MIGRATIONS.filter(m => m.version !== 31), BOOKING_SOURCE]);
-  assert.equal(versions(db).includes(30), true);
+  // PR #58 merged first, once 030 is in the registry: 30 is stamped and
+  // 31 is not. Before that merge the same filter is every version except 31.
+  migrate(db, MIGRATIONS.filter(m => m.version !== 31));
+  assert.equal(versions(db).includes(30), has30());
   assert.equal(versions(db).includes(31), false);
-  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), has30());
   assert.equal(db.prepare(`SELECT name FROM sqlite_master WHERE name = 'game_filler'`).get(), undefined);
 
-  migrate(db, [...MIGRATIONS, BOOKING_SOURCE]);
+  migrate(db, [...MIGRATIONS].reverse());
   assert.equal(versions(db).includes(31), true);
   assert.ok(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c > 0);
-  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), has30());
 });
 
 test('003 leaves the foreign keys biting after the table rebuild', async () => {
