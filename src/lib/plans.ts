@@ -49,15 +49,6 @@ export interface Plan {
   recommended?: boolean;
 }
 
-/**
- * Why כפול is the plan to leave with: one lesson of 90 minutes is the week
- * the revenue target is built on (PRODUCT.md, "Ninety minutes by default").
- * Reasons only — continuity, real progress, homework — and no count of
- * families, no "most popular". Those would be invented.
- */
-export const RECOMMENDED_PITCH =
-  'שעה וחצי בשבוע: רצף בין השיעורים, התקדמות אמיתית, וזמן לעבור על שיעורי הבית.';
-
 export const PLANS: Plan[] = [
   { minutes: 45,  name: 'יחיד',  shekels: 120, icon: '⚡', kind: 'single', slides: 8,  duration: '45 דקות',      description: 'שיעור ממוקד על נושא אחד' },
   { minutes: 90,  name: 'כפול',  shekels: 215, icon: '📚', kind: 'double', slides: 11, duration: 'שעה וחצי',     description: 'רצף, התקדמות, וזמן לשיעורי הבית', recommended: true },
@@ -66,7 +57,7 @@ export const PLANS: Plan[] = [
 
 /** The badge on the recommended plan, on the landing page and in booking.
  *  A recommendation, not a popularity claim. */
-export const RECOMMENDED_BADGE = '⭐ מומלץ לשבוע';
+export const RECOMMENDED_BADGE = '⭐ מומלץ';
 
 export const planFor = (minutes: unknown): Plan | null =>
   PLANS.find(p => p.minutes === Number(minutes)) ?? null;

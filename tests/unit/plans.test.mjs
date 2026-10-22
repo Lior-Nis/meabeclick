@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { PLANS, kindFor, formatAgorot, agorot, RECOMMENDED_PITCH } from '../../src/lib/plans.ts';
+import { PLANS, kindFor, formatAgorot, agorot } from '../../src/lib/plans.ts';
 
 test('every plan carries the kind the payments table expects', () => {
   assert.deepEqual(PLANS.map(p => p.kind), ['single', 'double', 'triple']);
@@ -49,16 +49,13 @@ test('exactly one plan is recommended, and it is the 90-minute כפול', async 
   assert.equal(recommended[0].minutes, 90);
   assert.equal(recommended[0].name, 'כפול');
   assert.equal(recommended[0].shekels, 215);
-  assert.equal(RECOMMENDED_BADGE, '⭐ מומלץ לשבוע');
+  assert.equal(RECOMMENDED_BADGE, '⭐ מומלץ');
 });
 
-test('the כפול pitch sells a weekly 90 minutes without an invented stat', () => {
+test('the כפול card description is unchanged and invents no stat', () => {
   const recommended = PLANS.find(p => p.recommended);
-  assert.equal(RECOMMENDED_PITCH, 'שעה וחצי בשבוע: רצף בין השיעורים, התקדמות אמיתית, וזמן לעבור על שיעורי הבית.');
-  assert.match(recommended.description, /רצף/);
-  assert.match(recommended.description, /התקדמות/);
-  assert.match(recommended.description, /שיעורי הבית/);
-  assert.doesNotMatch(`${RECOMMENDED_PITCH} ${recommended.description}`, /הכי פופולרי|רוב המשפחות|%|לקוחות/);
+  assert.equal(recommended.description, 'רצף, התקדמות, וזמן לשיעורי הבית');
+  assert.doesNotMatch(recommended.description, /הכי פופולרי|רוב המשפחות|%|לקוחות|שעה וחצי בשבוע/);
 });
 
 test('prices, lengths, and slide counts are unchanged', () => {

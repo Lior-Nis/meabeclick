@@ -34,18 +34,32 @@ test('the booking page marks the recommended card', () => {
   assert.match(booking, /class:recommended=\{plan\.recommended\}/);
 });
 
+test('on a phone the continue bar sticks, and the selection ring is solid', () => {
+  const cardRule = booking.slice(booking.indexOf('.dur-card.selected'), booking.indexOf('.dur-card:focus-visible'));
+  assert.match(cardRule, /0 0 0 3px var\(--accent\)/);
+  assert.doesNotMatch(cardRule, /accent-dim/);
+  const badge = booking.slice(booking.indexOf('.dur-badge {'), booking.indexOf('.dur-icon'));
+  const chosen = booking.slice(booking.indexOf('.dur-chosen {'), booking.indexOf('.plan-continue'));
+  assert.match(badge, /font-size:\s*0\.8rem/);
+  assert.match(chosen, /font-size:\s*0\.8rem/);
+  assert.doesNotMatch(booking, /plan-pitch|RECOMMENDED_PITCH/);
+  assert.match(booking, /position:\s*sticky/);
+  assert.match(booking, /padding-bottom: calc\(0\.9rem \+ env\(safe-area-inset-bottom\)\)/);
+  assert.match(booking, /#step-duration \{ padding-bottom: calc\(4\.25rem \+ env\(safe-area-inset-bottom\)\)/);
+});
+
 test('booking pre-selects the recommended plan and advances only from continue', () => {
   // A card click used to set the plan and leave the step in one function.
   // Pre-selecting inside that function would have skipped the choice.
   assert.match(booking, /PLANS\.find\(\(p\) => p\.recommended\)/);
   assert.match(booking, /function continueWithPlan\(\)/);
   assert.match(booking, /class="btn-primary plan-continue"/);
-  assert.match(booking, /RECOMMENDED_PITCH/);
   assert.doesNotMatch(booking, /function selectPlan/);
   assert.doesNotMatch(booking, /onclick=\{\(\) => selectPlan/);
 });
 
-test('the landing page and the FAQ sell the same weekly pitch', () => {
-  assert.match(landing, /RECOMMENDED_PITCH/);
+test('the landing cards keep each plan description, and the pitch line is gone', () => {
   assert.match(landing, /plan\.description/);
+  assert.doesNotMatch(landing, /RECOMMENDED_PITCH|pricing-pitch/);
+  assert.doesNotMatch(booking, /RECOMMENDED_PITCH|plan-pitch/);
 });

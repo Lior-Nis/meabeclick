@@ -1,8 +1,9 @@
 <script lang="ts">
-  import { onMount } from 'svelte';
+  import { onMount, tick } from 'svelte';
   import Icon from '$lib/icons/Icon.svelte';
   import BrandMark from '$lib/components/BrandMark.svelte';
-  import { PLANS, formatPrice, RECOMMENDED_BADGE, RECOMMENDED_PITCH, type Plan } from '$lib/plans.ts';
+  import { PLANS, formatPrice, RECOMMENDED_BADGE, type Plan } from '$lib/plans.ts';
+  import { planRadioMove } from '$lib/plan-radios.ts';
   import { SUBJECT } from '$lib/subjects.ts';
   import { lockScroll } from '$lib/scroll-lock.ts';
   import { initMarketing, track, attribution } from '$lib/marketing.ts';
@@ -69,6 +70,24 @@
     step = 'slots';
     track('booking_started');
     loadSlots();
+  }
+
+  /* Roving tabindex: only the checked radio is in the tab order. Arrow
+     keys move the check and the focus together. Left/Right follow the
+     page direction; the helper is what the unit test pins. */
+  let planCards: HTMLButtonElement[] = [];
+
+  async function onPlanKeydown(e: KeyboardEvent) {
+    const cards = planCards.filter(Boolean);
+    const current = cards.indexOf(e.currentTarget as HTMLButtonElement);
+    const from = current >= 0 ? current : 0;
+    const rtl = document.documentElement.dir === 'rtl';
+    const next = planRadioMove(from, e.key, rtl, PLANS.length);
+    if (next === null) return;
+    e.preventDefault();
+    selectedPlan = PLANS[next];
+    await tick();
+    planCards[next]?.focus();
   }
 
   function goBack() {
@@ -558,22 +577,25 @@
   {#if step === 'duration'}
     <div id="step-duration">
       <p class="subtitle">איזה שיעור מתאים לכם?</p>
-      <p class="plan-pitch">{RECOMMENDED_PITCH}</p>
-      <div class="duration-grid" role="group" aria-label="סוג שיעור">
-        {#each PLANS as plan (plan.minutes)}
+      <div class="duration-grid" role="radiogroup" aria-label="סוג שיעור">
+        {#each PLANS as plan, i (plan.minutes)}
           <button
             type="button"
             class="dur-card"
             class:recommended={plan.recommended}
             class:selected={selectedPlan?.minutes === plan.minutes}
-            aria-pressed={selectedPlan?.minutes === plan.minutes}
+            role="radio"
+            aria-checked={selectedPlan?.minutes === plan.minutes}
+            tabindex={(selectedPlan ? selectedPlan.minutes === plan.minutes : i === 0) ? 0 : -1}
+            bind:this={planCards[i]}
             onclick={() => (selectedPlan = plan)}
+            onkeydown={onPlanKeydown}
           >
             {#if plan.recommended}<span class="dur-badge">{RECOMMENDED_BADGE}</span>{/if}
-            <div class="dur-icon">{plan.icon}</div>
+            <div class="dur-icon" aria-hidden="true">{plan.icon}</div>
             <div class="dur-name">
               {plan.name}
-              {#if selectedPlan?.minutes === plan.minutes}<span class="dur-chosen">נבחר</span>{/if}
+              {#if selectedPlan?.minutes === plan.minutes}<span class="dur-chosen" aria-hidden="true">נבחר</span>{/if}
             </div>
             <div class="dur-price">{formatPrice(plan.shekels)}</div>
             <div class="dur-time">{plan.minutes} דקות</div>
@@ -1066,14 +1088,7 @@
   }
 
   h1 { font-size: 1.7rem; color: var(--text-primary); margin-bottom: 0.4rem; }
-  .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 0.35rem; }
-  .plan-pitch {
-    color: var(--text-primary);
-    font-size: 0.95rem;
-    font-weight: 700;
-    line-height: 1.55;
-    margin: 0 0 1.35rem;
-  }
+  .subtitle { color: var(--text-muted); font-size: 0.95rem; margin-bottom: 1.6rem; }
 
   /* ── step indicator ──────────────────────────── */
   .steps-bar { display: flex; align-items: center; margin-bottom: 2rem; }
@@ -1132,14 +1147,15 @@
     border-color: var(--pricing-featured-border);
     box-shadow: 0 4px 24px var(--accent2-glow);
   }
-  /* Selection is a word ("נבחר") plus the ring, so it is not colour alone,
-     and it stays visible on the orange recommended card. */
+  /* Selection is a word ("נבחר") plus a solid ring. --accent-dim is an 8%
+     wash and disappears on the peach card; #2563eb clears 3:1 on white and
+     on that wash. */
   .dur-card.selected {
     border-color: var(--accent);
-    box-shadow: 0 0 0 3px var(--accent-dim);
+    box-shadow: 0 0 0 3px var(--accent);
   }
   .dur-card.recommended.selected {
-    box-shadow: 0 0 0 3px var(--accent-dim), 0 4px 24px var(--accent2-glow);
+    box-shadow: 0 0 0 3px var(--accent), 0 4px 24px var(--accent2-glow);
   }
   .dur-card:focus-visible {
     outline: 3px solid var(--accent);
@@ -1152,7 +1168,7 @@
     transform: translateX(-50%);
     background: var(--accent2);
     color: var(--btn-text);
-    font-size: 0.72rem;
+    font-size: 0.8rem;
     font-weight: 800;
     padding: 0.2rem 0.85rem;
     border-radius: 20px;
@@ -1166,7 +1182,7 @@
     font-size: 1.1rem; font-weight: 800; color: var(--text-primary);
   }
   .dur-chosen {
-    font-size: 0.72rem; font-weight: 800; color: var(--accent-deep);
+    font-size: 0.8rem; font-weight: 800; color: var(--accent-deep);
     background: var(--accent-dim); border-radius: 999px; padding: 0.12rem 0.5rem;
   }
   .plan-continue { display: block; width: 100%; margin-top: 1.25rem; }
@@ -1644,6 +1660,15 @@
     .dur-card { flex-direction: row; flex-wrap: wrap; text-align: right; gap: 0.1rem 0.7rem; padding: 1rem; }
     .dur-card .dur-icon { font-size: 1.4rem; }
     .dur-card .dur-desc { flex-basis: 100%; }
+    /* The continue bar stays on screen while the cards scroll, and the
+       step's own padding is the room that keeps the last card above it. */
+    #step-duration { padding-bottom: calc(4.25rem + env(safe-area-inset-bottom)); }
+    .plan-continue {
+      position: sticky;
+      bottom: 0;
+      z-index: 4;
+      padding-bottom: calc(0.9rem + env(safe-area-inset-bottom));
+    }
 
     /* Full-screen, not a card inside a nested scroller. */
     .sheet-overlay { padding: 0; align-items: stretch; }
