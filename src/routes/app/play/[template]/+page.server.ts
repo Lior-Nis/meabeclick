@@ -15,6 +15,7 @@
  */
 import { error } from '@sveltejs/kit';
 import { readContent } from '$server/content.ts';
+import { readGameFiller } from '$server/game-filler.ts';
 import { verifyGameSignature } from '$server/urls.ts';
 // Two `getBest`s, deliberately imported under distinct names: db.ts's is
 // keyed on the legacy display name and reads the retired table; results.ts's
@@ -40,12 +41,21 @@ export const load: PageServerLoad = async ({ params, url }) => {
     error(403, 'קישור לא תקין');
   }
 
+  /* Catalog examples are rows in game_filler. Anything else — a lesson
+     the engine just published — is still a file under DATA_DIR. The
+     database wins when both exist, so a leftover copy of an example file
+     on the volume cannot shadow the row this deploy inserted. */
   let gameData: GameData;
-  try {
-    const body = await readContent('games-data', dataId);
-    gameData = JSON.parse(body.toString('utf8')) as GameData;
-  } catch {
-    error(404, `לא נמצא קובץ המשחק ${dataId}.json`);
+  const fromDb = readGameFiller(dataId);
+  if (fromDb !== null) {
+    gameData = JSON.parse(fromDb) as GameData;
+  } else {
+    try {
+      const body = await readContent('games-data', dataId);
+      gameData = JSON.parse(body.toString('utf8')) as GameData;
+    } catch {
+      error(404, `לא נמצא קובץ המשחק ${dataId}.json`);
+    }
   }
 
   /* `student` is whatever the signed link carries — a stable code on links

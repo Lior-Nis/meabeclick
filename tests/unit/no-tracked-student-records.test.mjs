@@ -24,6 +24,30 @@ test('the knowledgebase student and payment folders stay untracked', () => {
   assert.deepEqual(tracked('mea-beclick-kb/students', 'mea-beclick-kb/pricing'), []);
 });
 
+test('catalog examples named after students are not files in git', () => {
+  assert.deepEqual(tracked('seed/games-data'), ['seed/games-data/nikol-derivrules-speed.json']);
+  assert.deepEqual(tracked('seed/games-data/noga-integrals-quiz.json', 'seed/games-data/yonatan-fractions-numberline.json'), []);
+});
+
+test('the unused gavriel images are not tracked and nothing references them', () => {
+  assert.deepEqual(tracked(
+    'static/images/gavriel.png',
+    'static/images/gavriel-modified.png',
+    'static/images/gavriel_acc.jpeg',
+  ), []);
+  let hits = '';
+  try {
+    hits = execFileSync('git', ['grep', '-I', '-l', 'gavriel'], { cwd: ROOT, encoding: 'utf8' });
+  } catch (err) {
+    if (err.status !== 1) throw err;
+  }
+  // The only mention left is this test, which lists the paths so a
+  // later reference fails it. Nothing in the app loads the files.
+  assert.deepEqual(hits.trim().split('\n').filter(Boolean), [
+    'tests/unit/no-tracked-student-records.test.mjs',
+  ]);
+});
+
 test('the portal directory itself still exists in a fresh clone', () => {
   // paths.ts defaults PORTAL_DIR to ./portal and boot-checks.ts refuses to
   // start when it is missing, so local `npm run dev` needs the directory

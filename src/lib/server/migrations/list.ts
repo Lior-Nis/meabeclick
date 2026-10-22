@@ -28,6 +28,7 @@ import { sql as sql027 } from './027_lesson_mode.ts';
 import { sql as sql028 } from './028_tutor_setup.ts';
 import { sql as sql029 } from './029_per_tutor_booking.ts';
 import { sql as sql030 } from './030_booking_source.ts';
+import { sql as sql031 } from './030_game_filler.ts';
 
 export interface Migration {
   version: number;
@@ -71,4 +72,5 @@ export const MIGRATIONS: Migration[] = [
   { version: 28, name: '028_tutor_setup', sql: sql028 },
   { version: 29, name: '029_per_tutor_booking', sql: sql029 },
   { version: 30, name: '030_booking_source', sql: sql030 },
+  { version: 31, name: '031_game_filler', sql: sql031 },
 ];

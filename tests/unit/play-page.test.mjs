@@ -134,3 +134,21 @@ test('the real play-page loader still renders an old display-name-carrying link,
   assert.equal(result.best, 5, 'an unresolvable link must fall back to the legacy name-keyed best');
   void orA;
 });
+
+test('a catalog example is served from the database, not from a file of the same id', async () => {
+  const F = await import('../../src/lib/server/game-filler.ts');
+  const filler = JSON.parse(F.readGameFiller('example-integrals-quiz'));
+  await writeFile(
+    join(DATA_DIR, 'games-data', 'example-integrals-quiz.json'),
+    JSON.stringify({ title: 'FROM FILE', subject: 'x' }),
+  );
+
+  const viaNewId = await load({ params: { template: 'quiz' }, url: urlFor('noga', 'example-integrals-quiz') });
+  assert.equal(viaNewId.gameData.title, filler.title);
+  assert.notEqual(viaNewId.gameData.title, 'FROM FILE');
+  assert.equal(viaNewId.dataId, 'example-integrals-quiz');
+
+  const viaOldId = await load({ params: { template: 'quiz' }, url: urlFor('noga', 'noga-integrals-quiz') });
+  assert.equal(viaOldId.gameData.title, filler.title);
+  assert.equal(viaOldId.dataId, 'noga-integrals-quiz', 'the signed id is what the page reports');
+});

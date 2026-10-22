@@ -26,7 +26,7 @@ test('migrate creates the entity tables and records the version', async () => {
     `SELECT name FROM sqlite_master WHERE type='table' ORDER BY name`
   ).all().map(r => r.name);
 
-  for (const t of ['accounts', 'enrollments', 'homework', 'payments', 'teachers', 'join_codes']) {
+  for (const t of ['accounts', 'enrollments', 'homework', 'payments', 'teachers', 'join_codes', 'game_filler']) {
     assert.ok(tables.includes(t), `expected table ${t}, got ${tables.join(', ')}`);
   }
   assert.equal(db.prepare(`SELECT MAX(version) AS v FROM schema_version`).get().v, LATEST);
