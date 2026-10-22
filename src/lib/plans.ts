@@ -51,7 +51,7 @@ export interface Plan {
 
 export const PLANS: Plan[] = [
   { minutes: 45,  name: 'יחיד',  shekels: 120, icon: '⚡', kind: 'single', slides: 8,  duration: '45 דקות',      description: 'שיעור ממוקד על נושא אחד' },
-  { minutes: 90,  name: 'כפול',  shekels: 215, icon: '📚', kind: 'double', slides: 11, duration: 'שעה וחצי',     description: 'רצף, התקדמות, וזמן לשיעורי הבית', recommended: true },
+  { minutes: 90,  name: 'כפול',  shekels: 215, icon: '📚', kind: 'double', slides: 11, duration: 'שעה וחצי',     description: 'שיעור מקיף עם זמן לתרגול', recommended: true },
   { minutes: 135, name: 'משולש', shekels: 300, icon: '🚀', kind: 'triple', slides: 14, duration: 'שעתיים ורבע', description: 'שיעור אינטנסיבי לקראת מבחן' },
 ];
 

@@ -52,10 +52,12 @@ test('exactly one plan is recommended, and it is the 90-minute כפול', async 
   assert.equal(RECOMMENDED_BADGE, '⭐ מומלץ');
 });
 
-test('the כפול card description is unchanged and invents no stat', () => {
-  const recommended = PLANS.find(p => p.recommended);
-  assert.equal(recommended.description, 'רצף, התקדמות, וזמן לשיעורי הבית');
-  assert.doesNotMatch(recommended.description, /הכי פופולרי|רוב המשפחות|%|לקוחות|שעה וחצי בשבוע/);
+test('plan descriptions match main', () => {
+  assert.deepEqual(PLANS.map(p => p.description), [
+    'שיעור ממוקד על נושא אחד',
+    'שיעור מקיף עם זמן לתרגול',
+    'שיעור אינטנסיבי לקראת מבחן',
+  ]);
 });
 
 test('prices, lengths, and slide counts are unchanged', () => {

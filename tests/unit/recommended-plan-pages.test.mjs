@@ -58,8 +58,9 @@ test('booking pre-selects the recommended plan and advances only from continue',
   assert.doesNotMatch(booking, /onclick=\{\(\) => selectPlan/);
 });
 
-test('the landing cards keep each plan description, and the pitch line is gone', () => {
-  assert.match(landing, /plan\.description/);
+test('the landing pricing cards show each plan description, and the pitch line is gone', () => {
+  assert.match(landing, /class="pricing-card-why">\{plan\.description\}/);
+  assert.match(landing, /\.pricing-card-why/);
   assert.doesNotMatch(landing, /RECOMMENDED_PITCH|pricing-pitch/);
   assert.doesNotMatch(booking, /RECOMMENDED_PITCH|plan-pitch/);
 });
