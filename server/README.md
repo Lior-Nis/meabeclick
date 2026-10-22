@@ -904,6 +904,36 @@ mute. To look without sending:
 
     curl -sS -H "X-Cron-Key: $CRON_KEY" 'http://127.0.0.1:3000/api/health/generation?days=7'
 
+Since the ops health check arrived, a failure of this unit (503/502, or
+the app not answering) also triggers the host-side alert below.
+
+### Ops health (daily)
+
+`meabeclick-ops-health.timer` runs every morning at 08:00 Israel time and
+`POST`s `/api/health/ops` (cron key). Same channel, same rules and same
+code as the generation check (`src/lib/server/ops-alert.ts`): **one**
+message when anything failed, nothing on a healthy day, 503 with no
+channel, 502 when a channel refused. Everything it does is read-only.
+
+| check | what fails it |
+|---|---|
+| uptime | `SITE_URL` (the public site, through DNS, Caddy and TLS) not answering 2xx within 15s, or its TLS certificate under 14 days from expiry (Caddy renews at 30, so it has stopped) |
+| backups | on Drive (the off-box copy; same `GOOGLE_OAUTH_*` login the uploader uses): the newest `results-<date>.db` older than 26 hours or empty, or no `files-<date>.tar.gz` beside it. No Drive login, a revoked token or no backup folder is a failure too: the nightly job is built never to fail on Drive, so this is where that shows up |
+| mail | the Gmail credentials refused at SMTP login (nodemailer `verify`; nothing is sent), or not set |
+| calendar | any unresolved `calendar_failures` row (reported every morning until it is marked resolved on the dashboard, by booking id and lesson time, never by family name); the calendar robot unable to sign in; or unable to see an active tutor's lesson calendar (`events.list`, one row) |
+
+To look without sending:
+
+    curl -sS -H "X-Cron-Key: $CRON_KEY" http://127.0.0.1:3000/api/health/ops
+
+**When the app itself is down** it cannot send anything, so both health
+units carry `OnFailure=meabeclick-health-alert@%n.service`. That runs
+`server/health-alert.sh` on the host, which sends one message through the
+same `OPS_SLACK_WEBHOOK_URL` / `OPS_CALLMEBOT_*` (read by name from `.env`;
+the webhook goes to curl on stdin, not argv) with the failed unit's last log
+lines. At most one per hour, so two units failing together is one message.
+If it cannot send either, it fails itself and says so in the journal.
+
 ## Scheduling: the lesson-report prompt and the booking reminder
 
 Two more `systemd --user` timers, the same shape as the backup timer above:
@@ -969,7 +999,7 @@ Install once:
 ```bash
 cp server/meabeclick-*.{service,timer} ~/.config/systemd/user/
 systemctl --user daemon-reload
-systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer meabeclick-generation-health.timer
+systemctl --user enable --now meabeclick-report-prompt.timer meabeclick-remind.timer meabeclick-remind-family.timer meabeclick-generation-health.timer meabeclick-ops-health.timer
 systemctl --user list-timers
 ```
 

@@ -75,3 +75,26 @@ test('the generation-health timer runs every morning, Israel time, and survives 
   assert.match(read('.env.example'), /OPS_SLACK_WEBHOOK_URL/);
   assert.match(read('.env.example'), /GENERATION_HEALTH_STALE_DAYS/);
 });
+
+test('the ops-health unit POSTs /api/health/ops with the key, fails loudly, and reads only the cron-key file', () => {
+  const unit = read('server/meabeclick-ops-health.service');
+  assert.match(unit, /-X POST/);
+  assert.match(unit, /http:\/\/127\.0\.0\.1:3000\/api\/health\/ops/);
+  assert.match(unit, /X-Cron-Key: \$\{CRON_KEY\}/);
+  assert.match(unit, /curl[^\n]*--fail/);
+  assert.match(unit, /EnvironmentFile=%h\/mea-beclick\/\.cron-key\.env/);
+  assert.doesNotMatch(unit, /EnvironmentFile=%h\/mea-beclick\/\.env\b/);
+  const timer = read('server/meabeclick-ops-health.timer');
+  assert.match(timer, /OnCalendar=\*-\*-\* 0[6-9]:\d\d:\d\d Asia\/Jerusalem/);
+  assert.match(timer, /Persistent=true/);
+  assert.match(read('server/README.md'), /meabeclick-ops-health\.timer/);
+});
+
+test('both health units hand a failure to the host-side alert, so a down app is still reported', () => {
+  for (const u of ['meabeclick-ops-health.service', 'meabeclick-generation-health.service']) {
+    assert.match(read(`server/${u}`), /^OnFailure=meabeclick-health-alert@%n\.service$/m, u);
+  }
+  const alert = read('server/meabeclick-health-alert@.service');
+  assert.match(alert, /ExecStart=\/bin\/bash %h\/mea-beclick\/server\/health-alert\.sh %i/);
+  assert.doesNotMatch(alert, /EnvironmentFile=/, 'the alert reads only the OPS_ variables it needs, never the full .env into systemd');
+});

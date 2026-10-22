@@ -39,7 +39,7 @@
 import type { DatabaseSync } from 'node:sqlite';
 import { handle } from '../db.ts';
 import { autopilotCovers } from '../../subjects.ts';
-import type { WhatsAppChannel } from './queue.ts';
+import { deliverAlert, type AlertChannel, type AlertChannels, type SendResult } from '../ops-alert.ts';
 
 export const WINDOW_HOURS = 24;
 /** Far beyond any engine timeout (prep.ts LESSON_TIMEOUT_MS, 20 min for
@@ -233,99 +233,16 @@ export function formatAlert(h: GenerationHealth): string | null {
   return lines.join('\n');
 }
 
-/* ── Where the alert goes ─────────────────────────────────────────────
- *
- * Slack first. OPS_SLACK_WEBHOOK_URL is an Incoming Webhook into a channel
- * Lior reads (#meabeclick). It is official, rate-limit-free at this volume
- * (one message a day), and puts no phone number at risk.
- *
- * WhatsApp is optional: OPS_CALLMEBOT_PHONE + OPS_CALLMEBOT_API_KEY. CallMeBot
- * is an unofficial, free, personal-use bot (see the PR for the ban-risk
- * notes); set it only as a second channel, on a personal (not WhatsApp
- * Business) number.
- *
- * Every configured ops channel gets the one summary. Only when NO ops
- * channel is set does it fall back to the tutor's existing CallMeBot
- * channel (CALLMEBOT_API_KEY), and says so. Nothing configured, or a
- * half-configured channel, is a 503: never guessed, never silent.
- */
-export type AlertChannel =
-  | { kind: 'slack'; webhookUrl: string }
-  | { kind: 'whatsapp-ops'; to: WhatsAppChannel }
-  | { kind: 'whatsapp-tutor'; to: null };
-
-export type AlertChannels =
-  | { ok: true; channels: AlertChannel[] }
-  | { ok: false; reason: string };
-
-/** Slack's own Incoming Webhook host. Anything else is a typo or a paste of
- *  the wrong thing, and posting the report there would leak it. */
-const SLACK_WEBHOOK = /^https:\/\/hooks\.slack\.com\/services\/[A-Za-z0-9_/-]+$/;
-
-export function alertChannels(env: NodeJS.ProcessEnv = process.env): AlertChannels {
-  const channels: AlertChannel[] = [];
-  const slack = env.OPS_SLACK_WEBHOOK_URL?.trim();
-  if (slack) {
-    if (!SLACK_WEBHOOK.test(slack)) {
-      return { ok: false, reason: 'OPS_SLACK_WEBHOOK_URL is not a https://hooks.slack.com/services/… URL' };
-    }
-    channels.push({ kind: 'slack', webhookUrl: slack });
-  }
-  const phone = env.OPS_CALLMEBOT_PHONE?.trim();
-  const apiKey = env.OPS_CALLMEBOT_API_KEY?.trim();
-  if (phone || apiKey) {
-    if (!(phone && apiKey)) {
-      return { ok: false, reason: 'only one of OPS_CALLMEBOT_PHONE / OPS_CALLMEBOT_API_KEY is set; set both or neither' };
-    }
-    channels.push({ kind: 'whatsapp-ops', to: { phone, apiKey } });
-  }
-  if (!channels.length && env.CALLMEBOT_API_KEY?.trim()) channels.push({ kind: 'whatsapp-tutor', to: null });
-  if (!channels.length) {
-    return { ok: false, reason: 'no alert channel: set OPS_SLACK_WEBHOOK_URL (recommended), or OPS_CALLMEBOT_PHONE + OPS_CALLMEBOT_API_KEY' };
-  }
-  return { ok: true, channels };
-}
-
-/** How a channel is named in logs and responses — never the URL or a key. */
-export const channelLabel = (c: AlertChannel): string =>
-  c.kind === 'slack' ? 'slack (OPS_SLACK_WEBHOOK_URL)'
-    : c.kind === 'whatsapp-ops' ? 'whatsapp (OPS_CALLMEBOT_PHONE)'
-    : 'whatsapp (tutor CALLMEBOT_PHONE fallback)';
-
-export type SendResult = { ok: true } | { ok: false; error: string };
-
-/** Posts to a Slack Incoming Webhook. Never throws, and never puts the URL
- *  (which IS the credential) into what it returns: Slack's answer is a short
- *  code like `invalid_token` or `channel_not_found`, kept; anything that
- *  might echo the URL is replaced. */
-export async function sendSlack(text: string, webhookUrl: string, fetchImpl: typeof fetch = fetch): Promise<SendResult> {
-  const scrub = (m: string) => m.split(webhookUrl).join('<webhook>').replace(/https:\/\/hooks\.slack\.com\/\S*/g, '<webhook>');
-  try {
-    const r = await fetchImpl(webhookUrl, {
-      method: 'POST',
-      headers: { 'Content-Type': 'application/json' },
-      /* Slack reads <…> as links/mentions and & as an entity: escaped, so a
-         problem text can never ping a channel or turn into a link. */
-      body: JSON.stringify({ text: text.replace(/&/g, '&amp;').replace(/</g, '&lt;').replace(/>/g, '&gt;') }),
-      signal: AbortSignal.timeout(15_000),
-    });
-    const body = (await r.text()).trim();
-    if (!r.ok || body !== 'ok') return { ok: false, error: scrub(`Slack answered ${r.status} ${body.slice(0, 60)}`) };
-    return { ok: true };
-  } catch (err) {
-    return { ok: false, error: scrub(`Slack request failed: ${(err as Error)?.message ?? 'unknown'}`) };
-  }
-}
+/* Where the alert goes, and the 503/502/200 rules, are shared with the ops
+   health check: $server/ops-alert.ts. Re-exported so callers and tests of
+   this check keep their imports. */
+export { alertChannels, channelLabel, sendSlack } from '../ops-alert.ts';
+export type { AlertChannel, AlertChannels, SendResult } from '../ops-alert.ts';
 
 /**
  * The morning run, minus HTTP: what POST /api/health/generation answers.
- * Kept here so the never-silent rules are unit-tested with the network
- * mocked, not only through a server that cannot reach Slack.
- *
- *  503  no channel (or a half/mis-configured one), every run, healthy or not
- *  200  healthy, nothing sent
- *  200  failures found, every configured channel got the one summary
- *  502  any configured channel could not be reached, even if another was
+ * The never-silent rules (503 mute, 200 silent when healthy, 502 on any
+ * failed send) live in deliverAlert, shared with the ops health check.
  */
 export async function runHealthCheck({ health, channels, send, log = console }: {
   health: GenerationHealth;
@@ -333,33 +250,7 @@ export async function runHealthCheck({ health, channels, send, log = console }: 
   send: (text: string, c: AlertChannel) => Promise<SendResult>;
   log?: Pick<Console, 'error' | 'warn'>;
 }): Promise<{ status: number; body: Record<string, unknown> }> {
-  const message = formatAlert(health);
-
-  if (!channels.ok) {
-    log.error(`[generation-health] ALERT CHANNEL NOT CONFIGURED — ${channels.reason}. `
-      + `Generation is ${health.ok ? 'healthy' : 'FAILING'} and nobody can be told.`
-      + (message ? ` Would have sent: ${message.replace(/\n/g, ' | ')}` : ''));
-    return { status: 503, body: { error: 'alert channel not configured', reason: channels.reason, sent: [], ...health } };
-  }
-  const labels = channels.channels.map(channelLabel);
-  if (channels.channels[0].kind === 'whatsapp-tutor') {
-    log.warn('[generation-health] no OPS_ channel set; alerts go to the tutor channel (CALLMEBOT_PHONE).');
-  }
-  if (!message) return { status: 200, body: { sent: [], alertChannels: labels, ...health } };
-
-  log.error(`[generation-health] ${message.replace(/\n/g, ' | ')}`);
-  const sent: string[] = [];
-  const sendFailures: { channel: string; error: string }[] = [];
-  for (const c of channels.channels) {
-    const r = await send(message, c);
-    if (r.ok) sent.push(channelLabel(c));
-    else sendFailures.push({ channel: channelLabel(c), error: r.error });
-  }
-  /* A dead channel found today is one that cannot fail silently on the day
-     it is the only one left: any failure fails the run. */
-  if (sendFailures.length) {
-    for (const f of sendFailures) log.error(`[generation-health] COULD NOT SEND the alert via ${f.channel}: ${f.error}`);
-    return { status: 502, body: { error: 'alert not sent', sendFailures, sent, alertChannels: labels, ...health } };
-  }
-  return { status: 200, body: { sent, alertChannels: labels, ...health } };
+  return deliverAlert({
+    tag: 'generation-health', ok: health.ok, message: formatAlert(health), report: health, channels, send, log,
+  });
 }
