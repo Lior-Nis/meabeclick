@@ -15,7 +15,7 @@
  */
 import { error } from '@sveltejs/kit';
 import { readContent } from '$server/content.ts';
-import { readGameFiller } from '$server/game-filler.ts';
+import { GAME_FILLER_ALIASES, readGameFiller } from '$server/game-filler.ts';
 import { verifyGameSignature } from '$server/urls.ts';
 // Two `getBest`s, deliberately imported under distinct names: db.ts's is
 // keyed on the legacy display name and reads the retired table; results.ts's
@@ -27,6 +27,22 @@ import { isKnownTemplate } from '$server/lesson/registry.ts';
 import { practiceGoal } from '$server/lesson/targeting.ts';
 import type { GameData } from '$lib/games/engine.ts';
 import type { PageServerLoad } from './$types';
+
+/** A file at a legacy alias id is the lesson. The catalog row is used
+ *  only when that file is not on the volume. A file that is present but
+ *  not JSON still throws — falling back would hide the broken lesson
+ *  behind the catalog example. */
+async function readLegacyAlias(dataId: string): Promise<GameData> {
+  try {
+    const body = await readContent('games-data', dataId);
+    return JSON.parse(body.toString('utf8')) as GameData;
+  } catch (err) {
+    if ((err as NodeJS.ErrnoException).code !== 'ENOENT') throw err;
+  }
+  const fromDb = readGameFiller(dataId);
+  if (fromDb === null) error(404, `לא נמצא קובץ המשחק ${dataId}.json`);
+  return JSON.parse(fromDb) as GameData;
+}
 
 export const load: PageServerLoad = async ({ params, url }) => {
   if (!isKnownTemplate(params.template)) {
@@ -41,20 +57,31 @@ export const load: PageServerLoad = async ({ params, url }) => {
     error(403, 'קישור לא תקין');
   }
 
-  /* Catalog examples are rows in game_filler. Anything else — a lesson
-     the engine just published — is still a file under DATA_DIR. The
-     database wins when both exist, so a leftover copy of an example file
-     on the volume cannot shadow the row this deploy inserted. */
+  /* Generic catalog ids (`example-*`) are rows in game_filler. The
+     database wins when a file of that same id is also on the volume, so
+     a leftover copy cannot shadow the row this deploy inserted.
+
+     The eleven legacy alias ids are the exception. prep.ts names a
+     lesson `${student}-${topic}-${template}` with no timestamp, which
+     is exactly `noga-integrals-quiz` and the other keys in
+     GAME_FILLER_ALIASES. For those ids a file on the volume is the
+     lesson and wins; the catalog row is only the fallback when no file
+     exists, which is what an old link still needs. queue.ts slugs carry
+     a timestamp, so a generated lesson never lands on this branch. */
   let gameData: GameData;
-  const fromDb = readGameFiller(dataId);
-  if (fromDb !== null) {
-    gameData = JSON.parse(fromDb) as GameData;
+  if (Object.hasOwn(GAME_FILLER_ALIASES, dataId)) {
+    gameData = await readLegacyAlias(dataId);
   } else {
-    try {
-      const body = await readContent('games-data', dataId);
-      gameData = JSON.parse(body.toString('utf8')) as GameData;
-    } catch {
-      error(404, `לא נמצא קובץ המשחק ${dataId}.json`);
+    const fromDb = readGameFiller(dataId);
+    if (fromDb !== null) {
+      gameData = JSON.parse(fromDb) as GameData;
+    } else {
+      try {
+        const body = await readContent('games-data', dataId);
+        gameData = JSON.parse(body.toString('utf8')) as GameData;
+      } catch {
+        error(404, `לא נמצא קובץ המשחק ${dataId}.json`);
+      }
     }
   }
 

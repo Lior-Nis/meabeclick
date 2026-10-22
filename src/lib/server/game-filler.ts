@@ -6,7 +6,11 @@
  *
  * Per-lesson games are not in this table. They stay files under
  * DATA_DIR/games-data, and /app/play reads the file when this returns null.
- * The speed-drill example is one of those files
+ * The eleven keys below are the exception the route handles itself: prep.ts
+ * can save a real lesson under that same id (`${student}-${topic}-${template}`,
+ * no timestamp), and that file wins. This function still returns the catalog
+ * body; the route uses it for those ids only when the file is missing.
+ * The speed-drill example is not an alias and not a row. It stays a file
  * (seed/games-data/nikol-derivrules-speed.json).
  */
 import { handle } from './db.ts';

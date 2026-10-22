@@ -17,7 +17,9 @@
  * the first request, with no copy step and with nothing named after a
  * student in the image. Per-lesson games are a different store: they are
  * still files under DATA_DIR/games-data, written at generation time, and
- * /app/play reads those when this table has no row.
+ * /app/play reads those when this table has no row. A file whose name is
+ * one of the eleven legacy alias ids wins over the row; the row is what
+ * an old link gets once that file is gone.
  *
  * The speed-drill example (nikol-derivrules-speed.json) is not one of
  * these rows. It is still a file under seed/games-data/.
