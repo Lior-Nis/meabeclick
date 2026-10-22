@@ -37,16 +37,20 @@ cd ~/mea-beclick
 have them. Create `data/portal` and `data/games-data` **before the first
 `docker compose up`** — otherwise Docker creates the bind-mount source
 itself, root-owned, and the app container (which runs as uid 1000, the
-`node` user) can't write to it. Both need seeding from git-tracked seed
-directories — see **Portal data** below for why this is a separate step,
-not something the image or a mount handles for you:
+`node` user) can't write to it. Create them before the first
+`docker compose up` — see **Portal data** below for why this is a
+separate step, not something the image or a mount handles for you:
 
 ```bash
 mkdir -p data/portal data/games-data
 # Portal records are real student data and are not in git. On a box that
 # replaces an existing one, restore data/ from the Drive backup (server/restore-db.sh,
 # see "Backups"); a brand-new install starts with an empty data/portal.
-cp seed/games-data/*.json data/games-data/
+# Catalog examples other than speed-drill are not files. The first time
+# the app opens SQLite, migration 031 inserts them into game_filler.
+# There is no copy step for those eleven, and they are not in the image.
+# Only the speed-drill example is still a file:
+cp seed/games-data/nikol-derivrules-speed.json data/games-data/
 # Own by uid 1000 (the container's `node` user) but KEEP the host group
 # that already owns data/ — on the live VPS that is meabeclick (gid 1002),
 # and the backup timer runs as that user, so a blanket `1000:1000` would
@@ -54,11 +58,18 @@ cp seed/games-data/*.json data/games-data/
 chown -R 1000:"$(stat -c %g data)" data
 ```
 
-(`seed/games-data/` holds a dozen demo/example game-data files referenced
-by `games/registry.json`'s `example` field — e.g. the "try the example"
-links on `/app/games`. They used to be tracked directly at
-`data/games-data/*.json`, inside the app's writable `DATA_DIR` mount; see
-**Cutover** below for why that was a bug and why they moved to `seed/`.)
+(`seed/games-data/` holds the speed-drill catalog example,
+`nikol-derivrules-speed.json`, referenced by `games/registry.json`. The
+other "try the example" links on `/app/games` read `game_filler`, which
+migration 031 fills on boot from the exercise JSON that used to live in
+this directory under ids named after students. Those files are not in
+git. A volume copy of one of them, if a previous `cp seed/games-data/*`
+left it in `data/games-data/`, is not what `/app/play` serves: the row
+wins. Old links keep working because `src/lib/server/game-filler.ts`
+maps the old id onto the generic one. Per-lesson games are untouched —
+they are still files under `data/games-data/`, and the play route reads
+the file when `game_filler` has no row. See **Cutover** below for why
+these fixtures were never supposed to live inside the writable mount.)
 
 Put the calendar robot's key at `service-account.json` (mode 400), owned by
 uid 1000 so the container can read it — see "The calendar robot" below for
@@ -358,9 +369,10 @@ do, by hand, once.
    untracked, and invisible to `git status` — nothing about the migration
    flags them for you. Skipping this step means `/lessons/<slug>` 404s for
    every pre-cutover lesson ever sent to a family, and every draft the
-   tutor hadn't reviewed yet is gone. `games/data/` is the OLD bind-mount
-   source for per-lesson game JSON — distinct from this repo's
-   `seed/games-data/`, which only holds a dozen demo fixtures.)
+   tutor hadn't reviewed yet is gone.    `games/data/` is the OLD bind-mount
+   source for per-lesson game JSON — distinct from the demo fixtures,
+   which later moved into `game_filler` (migration 031) except
+   `seed/games-data/nikol-derivrules-speed.json`.)
 
 3. **Convert the LIVE portal file(s) to the new `{template,dataId}` record
    shape.** Ruling P13 required whole-file replacement before any

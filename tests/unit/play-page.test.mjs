@@ -1,6 +1,6 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
-import { mkdtemp, mkdir, writeFile } from 'node:fs/promises';
+import { mkdtemp, mkdir, rm, writeFile } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { join, dirname } from 'node:path';
 import { fileURLToPath, pathToFileURL } from 'node:url';
@@ -133,4 +133,59 @@ test('the real play-page loader still renders an old display-name-carrying link,
   );
   assert.equal(result.best, 5, 'an unresolvable link must fall back to the legacy name-keyed best');
   void orA;
+});
+
+test('a catalog example is served from the database, not from a file of the same id', async () => {
+  const F = await import('../../src/lib/server/game-filler.ts');
+  const filler = JSON.parse(F.readGameFiller('example-integrals-quiz'));
+  await writeFile(
+    join(DATA_DIR, 'games-data', 'example-integrals-quiz.json'),
+    JSON.stringify({ title: 'FROM FILE', subject: 'x' }),
+  );
+
+  const viaNewId = await load({ params: { template: 'quiz' }, url: urlFor('noga', 'example-integrals-quiz') });
+  assert.equal(viaNewId.gameData.title, filler.title);
+  assert.notEqual(viaNewId.gameData.title, 'FROM FILE');
+  assert.equal(viaNewId.dataId, 'example-integrals-quiz');
+
+  const viaOldId = await load({ params: { template: 'quiz' }, url: urlFor('noga', 'noga-integrals-quiz') });
+  assert.equal(viaOldId.gameData.title, filler.title);
+  assert.equal(viaOldId.dataId, 'noga-integrals-quiz', 'the signed id is what the page reports');
+});
+
+test('a legacy alias falls back to the catalog row when no file exists', async () => {
+  const F = await import('../../src/lib/server/game-filler.ts');
+  await rm(join(DATA_DIR, 'games-data', 'noga-integrals-quiz.json'), { force: true });
+  const filler = JSON.parse(F.readGameFiller('noga-integrals-quiz'));
+
+  const result = await load({
+    params: { template: 'quiz' },
+    url: urlFor('noga', 'noga-integrals-quiz'),
+  });
+
+  assert.equal(result.dataId, 'noga-integrals-quiz');
+  assert.deepEqual(result.gameData, filler);
+});
+
+test('a lesson file at a legacy alias id wins over the catalog row', async () => {
+  const F = await import('../../src/lib/server/game-filler.ts');
+  const filler = JSON.parse(F.readGameFiller('noga-integrals-quiz'));
+  const lesson = {
+    title: 'חידון אינטגרלים — שיעור',
+    subject: 'מתמטיקה · אינטגרלים',
+    questions: [{ q: 'שאלה מהשיעור', options: ['א'], answer: 0, why: 'כי' }],
+  };
+  await writeFile(
+    join(DATA_DIR, 'games-data', 'noga-integrals-quiz.json'),
+    JSON.stringify(lesson),
+  );
+
+  const result = await load({
+    params: { template: 'quiz' },
+    url: urlFor('noga', 'noga-integrals-quiz'),
+  });
+
+  assert.equal(result.dataId, 'noga-integrals-quiz');
+  assert.deepEqual(result.gameData, lesson);
+  assert.notDeepEqual(result.gameData, filler);
 });
