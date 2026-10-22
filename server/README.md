@@ -869,6 +869,17 @@ and not shipped in the image; pipe it in:
 
     ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module -' < scripts/vision-metrics.mjs
 
+### Skills covered (weekly, for Growth)
+
+`scripts/skills-covered.mjs` counts the skills marked covered (`plan_events`
+rows of type `covered`, written when a lesson report is filed or a skill is
+marked «נלמד» by hand) in the last `--days` (default 7), grouped by the
+template's skill key, and keeps those covered with at least
+`--min-students` (default 2) distinct students. It prints topic and skill
+names with counts, never a student. Read-only, not shipped in the image:
+
+    ssh mea 'docker exec -i $(docker ps -qf name=mea-beclick-app) node --input-type=module - --days 7 --json' < scripts/skills-covered.mjs
+
 ### Generation health (daily)
 
 `meabeclick-generation-health.timer` runs every morning at 08:00 Israel
