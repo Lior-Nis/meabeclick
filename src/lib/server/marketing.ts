@@ -22,14 +22,23 @@ import { handle } from './db.ts';
 export type MarketingEventName =
   | 'landing_visit'
   | 'cta_click'
+  | 'booking_start'
   | 'booking_started'
+  | 'plan_selected'
+  | 'time_selected'
   | 'booking_submitted'
   | 'lesson_scheduled';
 
 export type MarketingTarget = 'booking' | 'whatsapp' | 'phone';
 
+/** Which plan a `plan_selected` event may name. The booking page sends
+ *  `Plan.kind` (src/lib/plans.ts). Anything else is rejected, so this
+ *  column cannot become a place to write free text. */
+export const PLAN_DETAILS: ReadonlySet<string> = new Set(['single', 'double', 'triple']);
+
 const EVENTS: ReadonlySet<string> = new Set([
-  'landing_visit', 'cta_click', 'booking_started', 'booking_submitted', 'lesson_scheduled',
+  'landing_visit', 'cta_click', 'booking_start', 'booking_started',
+  'plan_selected', 'time_selected', 'booking_submitted', 'lesson_scheduled',
 ]);
 const TARGETS: ReadonlySet<string> = new Set(['booking', 'whatsapp', 'phone']);
 
@@ -40,6 +49,37 @@ const TARGETS: ReadonlySet<string> = new Set(['booking', 'whatsapp', 'phone']);
  *  there always fits the `marketing_events` row the server-written
  *  `lesson_scheduled` event copies it into. */
 const MAX_LEN = 100;
+
+const OWN_HOSTS = new Set(['meabeclick.com', 'www.meabeclick.com']);
+
+/** An external http(s) origin, or null. A path, query, userinfo or this
+ *  site's own host is dropped: the referrer is a source, not a URL we
+ *  keep verbatim. Shared by /api/events and /api/book. */
+export function sanitizeReferrer(v: unknown): string | null {
+  if (typeof v !== 'string') return null;
+  const s = v.trim();
+  if (!s || s.length > 500) return null;
+  try {
+    const u = new URL(s);
+    if (u.protocol !== 'http:' && u.protocol !== 'https:') return null;
+    if (!u.hostname || u.username || u.password) return null;
+    if (OWN_HOSTS.has(u.hostname.toLowerCase())) return null;
+    return u.origin.slice(0, MAX_LEN);
+  } catch {
+    return null;
+  }
+}
+
+/** `plan_selected` may carry a plan key. Every other event must leave
+ *  `detail` empty — the same shape rule `target` has for `cta_click`.
+ *  Returns `false` when the value is present and not allowed, so the
+ *  caller writes nothing rather than storing the string. */
+function resolveDetail(event: string, raw: unknown): string | null | false {
+  const s = raw == null ? '' : String(raw).trim();
+  if (event !== 'plan_selected') return s ? false : null;
+  if (!s) return null;
+  return PLAN_DETAILS.has(s) ? s : false;
+}
 
 function trimmed(v: unknown): string | null {
   if (v == null) return null;
@@ -86,6 +126,10 @@ export interface RecordEventInput {
     content?: string | null;
   };
   bookingId?: number | null;
+  /** Plan key on `plan_selected` only (`single` / `double` / `triple`). */
+  detail?: string | null;
+  /** Landing referrer. Stored as an external origin, or dropped. */
+  referrer?: string | null;
   /** ISO timestamp. Defaults to now — a caller only ever overrides this in
    *  a test, so `pruneEvents` and `funnel` can be exercised deterministically. */
   at?: string;
@@ -105,11 +149,13 @@ export function recordEvent(e: RecordEventInput): boolean {
     if (!TARGETS.has(e.target)) return false;
     if (e.event !== 'cta_click') return false;
   }
+  const detail = resolveDetail(e.event, e.detail);
+  if (detail === false) return false;
 
   handle().prepare(`
     INSERT INTO marketing_events
-      (at, visitor_id, event, target, path, utm_source, utm_medium, utm_campaign, utm_content, booking_id)
-    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
+      (at, visitor_id, event, target, path, utm_source, utm_medium, utm_campaign, utm_content, booking_id, detail, referrer)
+    VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?)
   `).run(
     e.at ?? new Date().toISOString(),
     trimmed(e.visitorId),
@@ -121,6 +167,8 @@ export function recordEvent(e: RecordEventInput): boolean {
     trimmed(e.utm?.campaign),
     trimmed(e.utm?.content),
     e.bookingId ?? null,
+    detail,
+    sanitizeReferrer(e.referrer),
   );
   return true;
 }

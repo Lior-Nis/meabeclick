@@ -23,13 +23,23 @@ export interface HeardFromOption {
   label: string;
 }
 
+/**
+ * The question a family sees. The stored values stay the original keys so a
+ * booking saved before the wording changed still finds its label: `instagram`
+ * now reads "פייסבוק/אינסטגרם", `school` reads "בית הספר".
+ */
 export const HEARD_FROM_OPTIONS: readonly HeardFromOption[] = [
-  { value: 'friend', label: 'חבר/ה או משפחה' },
-  { value: 'instagram', label: 'אינסטגרם' },
+  { value: 'friend', label: 'חבר/ה המליץ/ה' },
   { value: 'google', label: 'גוגל' },
-  { value: 'school', label: 'בית ספר או מורה' },
+  { value: 'instagram', label: 'פייסבוק/אינסטגרם' },
+  { value: 'school', label: 'בית הספר' },
   { value: 'other', label: 'אחר' },
 ];
+
+/** Cap for the optional free text after "אחר". Short on purpose: the
+ *  question is skippable, and the text is stored on the booking, never on
+ *  an anonymous event. */
+export const HEARD_DETAIL_MAX = 80;
 
 /** Exactly the values api/book's isComplete-adjacent sanitizeHeardFrom
  *  checks a submitted answer against — see that file's HEARD_FROM_VALUES

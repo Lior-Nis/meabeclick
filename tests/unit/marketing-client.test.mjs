@@ -166,6 +166,53 @@ test('track() still sends (with no attribution) when nothing has been stored', a
   assert.equal(body.visitorId, undefined);
 });
 
+test('a first touch keeps the external referrer origin, and a later visit does not replace it', () => {
+  const storage = fakeStorage();
+  initMarketing(urlWith('utm_source=google'), storage, 'https://www.google.com/search?q=%D7%9E%D7%AA%D7%9E%D7%98%D7%99%D7%A7%D7%94');
+  const stored = JSON.parse(storage._map.get('mb_first_touch'));
+  assert.equal(stored.referrer, 'https://www.google.com');
+  assert.equal(stored.utm.source, 'google');
+
+  initMarketing(urlWith('utm_source=fb'), storage, 'https://l.facebook.com/l.php?u=1');
+  const after = JSON.parse(storage._map.get('mb_first_touch'));
+  assert.equal(after.utm.source, 'google', 'the original first touch must survive a second visit');
+  assert.equal(after.referrer, 'https://www.google.com');
+  assert.equal(attribution(storage).referrer, 'https://www.google.com');
+});
+
+test('a same-site or non-http referrer is not stored', () => {
+  const storage = fakeStorage();
+  initMarketing(urlWith('utm_source=direct'), storage, 'https://meabeclick.com/booking');
+  assert.equal(JSON.parse(storage._map.get('mb_first_touch')).referrer, undefined);
+
+  const other = fakeStorage();
+  initMarketing(urlWith(''), other, 'javascript:alert(1)');
+  assert.equal(JSON.parse(other._map.get('mb_first_touch')).referrer, undefined);
+});
+
+test('track() sends the stored referrer with the event', async () => {
+  const storage = fakeStorage();
+  initMarketing(urlWith('utm_source=google'), storage, 'https://www.google.com/search?q=secret');
+
+  const calls = [];
+  const realFetch = globalThis.fetch;
+  globalThis.fetch = (url, init) => {
+    calls.push({ url, init });
+    return Promise.resolve(new Response(null, { status: 204 }));
+  };
+  try {
+    track('booking_start', {}, storage);
+    await Promise.resolve();
+  } finally {
+    globalThis.fetch = realFetch;
+  }
+
+  const body = JSON.parse(calls[0].init.body);
+  assert.equal(body.event, 'booking_start');
+  assert.equal(body.referrer, 'https://www.google.com');
+  assert.equal(body.utm.source, 'google');
+});
+
 test('a fetch failure inside track() is swallowed', async () => {
   const storage = fakeStorage();
   const realFetch = globalThis.fetch;

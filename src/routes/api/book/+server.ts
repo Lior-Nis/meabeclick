@@ -28,8 +28,8 @@ import { bookingCandidates, heldCandidates, type Candidates } from '$server/tuto
 import { assignTutor, calendarBusyAround, tutorsToAsk, type Assignment } from '$server/tutor-assign.ts';
 import type { BusyInterval } from '$server/calendar.ts';
 import { holdBooking, pendingById, claimPending, confirmLink } from '$server/pending-bookings.ts';
-import { recordEvent, VISITOR_ID_RE } from '$server/marketing.ts';
-import { HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
+import { recordEvent, sanitizeReferrer, VISITOR_ID_RE } from '$server/marketing.ts';
+import { HEARD_DETAIL_MAX, HEARD_FROM_VALUES } from '$lib/marketing-labels.ts';
 import { addPayment, lessonDateInIsrael, voidChargeForBooking } from '$server/payments.ts';
 import { enrollFromBooking, EnrollError, type EnrollResult } from '$server/enroll.ts';
 import { sendBookingEmail, sendFamilyBookingEmail, sendConfirmBookingEmail, type EnrolledForEmail } from '$server/email.ts';
@@ -71,9 +71,13 @@ interface BookBody {
   attribution?: {
     utm?: { source?: string; medium?: string; campaign?: string; content?: string };
     visitorId?: string;
+    /** External origin of the landing visit, when the client captured one. */
+    referrer?: string;
   };
   /** The optional "איך שמעתם עלינו?" self-report — see HEARD_FROM_VALUES. */
   heardFrom?: string;
+  /** Optional free text after "אחר". Kept only when heardFrom is `other`. */
+  heardDetail?: string;
   /** Online or in person ($lib/lesson-mode.ts). Anything else is refused;
    *  absent is accepted as "never said" — see POST. */
   mode?: LessonMode;
@@ -121,6 +125,7 @@ function attributionString(v: unknown): string | undefined {
 interface Attribution {
   utm: { source?: string; medium?: string; campaign?: string; content?: string };
   visitorId?: string;
+  referrer?: string;
 }
 
 /**
@@ -154,8 +159,9 @@ function sanitizeAttribution(raw: unknown): Attribution | null {
 
   const rawVisitorId = attributionString(r.visitorId);
   const visitorId = rawVisitorId && VISITOR_ID_RE.test(rawVisitorId) ? rawVisitorId : undefined;
-  if (!Object.keys(utm).length && !visitorId) return null;
-  return { utm, visitorId };
+  const referrer = sanitizeReferrer(r.referrer) ?? undefined;
+  if (!Object.keys(utm).length && !visitorId && !referrer) return null;
+  return { utm, visitorId, ...(referrer ? { referrer } : {}) };
 }
 
 /** One of the five self-report choices, or null for anything else — a
@@ -163,6 +169,16 @@ function sanitizeAttribution(raw: unknown): Attribution | null {
  *  rejected booking over what is explicitly an optional question. */
 function sanitizeHeardFrom(raw: unknown): string | null {
   return typeof raw === 'string' && HEARD_FROM_VALUES.has(raw) ? raw : null;
+}
+
+/** The optional sentence after "אחר". Kept only together with that choice,
+ *  trimmed, and cut at HEARD_DETAIL_MAX. Anything else — a detail sent with
+ *  a different choice, a non-string, whitespace — becomes null, and never
+ *  rejects the booking. */
+function sanitizeHeardDetail(raw: unknown, heardFrom: string | null): string | null {
+  if (heardFrom !== 'other' || typeof raw !== 'string') return null;
+  const s = raw.replace(/[\u0000-\u001f\u007f]/g, ' ').replace(/\s+/g, ' ').trim().slice(0, HEARD_DETAIL_MAX);
+  return s || null;
 }
 
 /** `request` is the current field name; `topic` is a deprecated one-line
@@ -395,6 +411,7 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   // backstop: even a stale client or a forged request must not attach a
   // self-report answer to a family the tutor already knows how she reached.
   const heardFrom = locals.family ? null : sanitizeHeardFrom(body.heardFrom);
+  const heardFromDetail = sanitizeHeardDetail(body.heardDetail, heardFrom);
 
   /* A family we already know by the email typed in, and a visitor who is
      not signed in as them and is not the tutor booking for them. Anyone who
@@ -405,11 +422,11 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   const signedInAs = locals.family?.kind === 'account' ? locals.family.id : null;
   const known = findAccountByEmail(body.email);
   if (known && known.id !== signedInAs && !locals.authenticated) {
-    return holdForConfirmation(body, known, { attribution, heardFrom });
+    return holdForConfirmation(body, known, { attribution, heardFrom, heardFromDetail });
   }
 
   return completeBooking(body, {
-    cookies, sessionAccountId: signedInAs, byTutor: !!locals.authenticated, attribution, heardFrom,
+    cookies, sessionAccountId: signedInAs, byTutor: !!locals.authenticated, attribution, heardFrom, heardFromDetail,
   });
 };
 
@@ -432,6 +449,7 @@ interface CompleteCtx {
   byTutor: boolean;
   attribution: Attribution | null;
   heardFrom: string | null;
+  heardFromDetail: string | null;
   /** A confirmed hold's tutor (pending_bookings.teacher_id): it books with
    *  them, and only their hour is checked again. */
   heldTutorId?: number | null;
@@ -448,7 +466,7 @@ const candidatesFor = (body: ConfirmedBookBody, heldTutorId?: number | null): Ca
  *  is awaited between the check and the hold, as with reserveBooking. */
 async function holdForConfirmation(
   body: ConfirmedBookBody, account: AccountRow,
-  extra: { attribution: Attribution | null; heardFrom: string | null },
+  extra: { attribution: Attribution | null; heardFrom: string | null; heardFromDetail: string | null },
 ): Promise<Response> {
   /* The choice completeBooking would make, so the hold is with the tutor
      the booking will be. Calendars first; from the choice to holdBooking
@@ -459,7 +477,12 @@ async function holdForConfirmation(
   if (!assigned.tutor) return noTutorFree(candidates, assigned);
   const id = holdBooking({
     accountId: account.id, teacherId: assigned.tutor.id,
-    body: { ...body, attribution: extra.attribution, heardFrom: extra.heardFrom },
+    body: {
+      ...body,
+      attribution: extra.attribution,
+      heardFrom: extra.heardFrom,
+      heardDetail: extra.heardFromDetail,
+    },
   });
   const held = pendingById(id);
   const emailed = held && account.email
@@ -493,12 +516,15 @@ async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
   if (!held) {
     return json({ error: 'הקישור לאישור לא תקף — ייתכן שפג תוקפו או שהשיעור כבר אושר' }, { status: 410 });
   }
-  const { attribution, heardFrom, ...booking } = held.body as unknown as ConfirmedBookBody & {
-    attribution?: Attribution | null; heardFrom?: string | null;
+  const { attribution, heardFrom, heardDetail, ...booking } = held.body as unknown as ConfirmedBookBody & {
+    attribution?: Attribution | null; heardFrom?: string | null; heardDetail?: string | null;
   };
+  const confirmedHeardFrom = heardFrom ?? null;
   const res = await completeBooking(booking as ConfirmedBookBody, {
     cookies, sessionAccountId: held.accountId, byTutor: false,
-    attribution: attribution ?? null, heardFrom: heardFrom ?? null,
+    attribution: attribution ?? null,
+    heardFrom: confirmedHeardFrom,
+    heardFromDetail: sanitizeHeardDetail(heardDetail, confirmedHeardFrom),
     heldTutorId: held.teacherId, calendar,
   });
   if (res.status === 200) setFamilySession(cookies, { kind: 'account', id: held.accountId });
@@ -508,8 +534,14 @@ async function confirmHeld(token: string, cookies: Cookies): Promise<Response> {
 /** Everything after the decision to book: enrolment, the hour, the charge,
  *  calendar and email (book()), generation, and the response. */
 async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promise<Response> {
-  const { attribution, heardFrom, cookies } = ctx;
-  const sourceUtm = attribution ? JSON.stringify({ utm: attribution.utm, visitorId: attribution.visitorId ?? null }) : null;
+  const { attribution, heardFrom, heardFromDetail, cookies } = ctx;
+  const sourceUtm = attribution
+    ? JSON.stringify({
+        utm: attribution.utm,
+        visitorId: attribution.visitorId ?? null,
+        ...(attribution.referrer ? { referrer: attribution.referrer } : {}),
+      })
+    : null;
 
   /* Who may teach this lesson (tutor-candidates.ts), and when each of them
      is busy in their own calendars. These are the only awaits before the
@@ -601,6 +633,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
       durationMin: body.durationMin ?? null,
       sourceUtm,
       heardFrom,
+      heardFromDetail,
       mode: isLessonMode(body.mode) ? body.mode : null,
       teacherId: tutor.id,
     });
@@ -715,6 +748,7 @@ async function completeBooking(body: ConfirmedBookBody, ctx: CompleteCtx): Promi
           bookingId,
           visitorId: attribution?.visitorId,
           utm: attribution?.utm,
+          referrer: attribution?.referrer,
         });
       } catch (e) {
         console.error('[book] recordEvent(lesson_scheduled) failed:', e);

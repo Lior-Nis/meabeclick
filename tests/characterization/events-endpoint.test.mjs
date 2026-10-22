@@ -187,3 +187,37 @@ test('the 61st event in the window is not stored', async () => {
     assert.equal(await rowCount(dbPath), 60, 'the 61st event within the window must not be stored');
   } finally { await stop(); }
 });
+
+test('booking_start and plan_selected are stored, and a plan detail that is not a plan key is not', async () => {
+  const { baseUrl, dbPath, stop } = await startServer();
+  try {
+    const ok = await post(baseUrl, {
+      event: 'plan_selected',
+      detail: 'double',
+      referrer: 'https://www.google.com/search?q=secret',
+      visitorId: '3f6a1c2e-9b7d-4e2a-8c1f-0a5b6d7e8f90',
+    });
+    assert.equal(ok.status, 204);
+    const started = await post(baseUrl, { event: 'booking_start' });
+    assert.equal(started.status, 204);
+    const bad = await post(baseUrl, { event: 'plan_selected', detail: 'השם שלי' });
+    assert.equal(bad.status, 204);
+
+    const rows = await allRows(dbPath);
+    const plan = rows.find(r => r.event === 'plan_selected');
+    assert.ok(plan);
+    assert.equal(plan.detail, 'double');
+    assert.equal(plan.referrer, 'https://www.google.com', 'a referrer keeps its origin and drops the query');
+    assert.ok(rows.some(r => r.event === 'booking_start'));
+    assert.equal(rows.filter(r => r.event === 'plan_selected').length, 1, 'the free-text detail must not be stored');
+  } finally { await stop(); }
+});
+
+test('time_selected with a detail is not stored', async () => {
+  const { baseUrl, dbPath, stop } = await startServer();
+  try {
+    const r = await post(baseUrl, { event: 'time_selected', detail: '10:00' });
+    assert.equal(r.status, 204);
+    assert.equal(await rowCount(dbPath), 0);
+  } finally { await stop(); }
+});

@@ -476,9 +476,10 @@ export function slotTakenFor(teacherId: number, start: string, end: string): boo
  * parents booking the same hour. The caller must run this before any
  * `await`, or the gap between the check and the insert becomes a race.
  *
- * `sourceUtm` and `heardFrom` (migration 016) are written in this SAME
- * INSERT, not a follow-up UPDATE — there is no separate step where they
- * could land on the row without the booking, or vice versa. `sourceUtm` is
+ * `sourceUtm`, `heardFrom` (migration 016) and `heardFromDetail` (migration
+ * 030, the optional "אחר" text) are written in this SAME INSERT, not a
+ * follow-up UPDATE — there is no separate step where they could land on
+ * the row without the booking, or vice versa. `sourceUtm` is
  * already-sanitized JSON (or null) built by the caller (/api/book); this
  * function does not interpret it.
  */
@@ -490,6 +491,8 @@ export function reserveBooking(b: {
   durationMin?: number | null;
   sourceUtm?: string | null;
   heardFrom?: string | null;
+  /** Optional free text after "אחר" (migration 030). Null otherwise. */
+  heardFromDetail?: string | null;
   /** Online or in person (migration 027); null when the request never said. */
   mode?: LessonMode | null;
   /** Who teaches it (migration 029); omitted, the default tutor. */
@@ -501,11 +504,11 @@ export function reserveBooking(b: {
   if (teacherId == null ? slotTaken(b.start, b.end) : slotTakenFor(teacherId, b.start, b.end)) return null;
 
   const info = handle().prepare(`
-    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from, mode, teacher_id)
-    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?)
+    INSERT INTO bookings_v2 (student_id, enrollment_id, start, "end", duration, at, status, source_utm, heard_from, heard_from_detail, mode, teacher_id)
+    VALUES (?, ?, ?, ?, ?, ?, 'confirmed', ?, ?, ?, ?, ?)
   `).run(b.studentId, b.enrollmentId ?? null, b.start, b.end,
          b.durationMin ?? null, new Date().toISOString(),
-         b.sourceUtm ?? null, b.heardFrom ?? null, b.mode ?? null, teacherId);
+         b.sourceUtm ?? null, b.heardFrom ?? null, b.heardFromDetail ?? null, b.mode ?? null, teacherId);
 
   return Number(info.lastInsertRowid);
 }
