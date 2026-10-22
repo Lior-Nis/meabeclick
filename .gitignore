@@ -11,7 +11,7 @@ node_modules/
 # noga.json, pre-move) and a dozen games-data fixtures dirty the VPS
 # working tree and block `git pull` on deploy (see server/README.md's
 # Cutover section). Those demo fixtures later left git entirely: migration
-# 030 inserts them into game_filler. seed/games-data/ now holds only the
+# 031 inserts them into game_filler. seed/games-data/ now holds only the
 # speed-drill example, which is still copied into data/games-data/ once.
 /data/
 # Real student portal records. The app reads them from PORTAL_DIR under the

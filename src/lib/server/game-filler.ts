@@ -1,5 +1,5 @@
 /**
- * Catalog example games. The bodies live in `game_filler` (migration 030),
+ * Catalog example games. The bodies live in `game_filler` (migration 031),
  * not in a file named after a student. `games/registry.json` points at the
  * generic id. A link already sent still carries the old id — the first
  * name was part of that id — and this map is what opens the same exercise.

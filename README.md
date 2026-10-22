@@ -17,7 +17,7 @@
 | `src/lib/games/` | מנוע המשחקים המשותף (`engine.ts`) שמריץ את 12 תבניות המשחק כרכיבי Svelte |
 | `src/lib/components/` | פריסה ורכיבים משותפים |
 | `games/registry.json` | תצורה סטטית: אילו תבניות משחק קיימות, מה הצורה של קובץ הנתונים שלהן, ואיזו תבנית מתאימה לאיזו מטרת למידה — נקרא בזמן ריצה, לא נבנה לתוך התמונה בנפרד |
-| `seed/games-data/` | דוגמת קרב המהירות (`nikol-derivrules-speed.json`), עדיין קובץ שמועתק ל-`DATA_DIR/games-data`. שאר דוגמאות הקטלוג הן שורות ב-`game_filler`, שמיגרציה 030 מכניסה ל-SQLite בהפעלה |
+| `seed/games-data/` | דוגמת קרב המהירות (`nikol-derivrules-speed.json`), עדיין קובץ שמועתק ל-`DATA_DIR/games-data`. שאר דוגמאות הקטלוג הן שורות ב-`game_filler`, שמיגרציה 031 מכניסה ל-SQLite בהפעלה |
 | `static/` | נכסים סטטיים (תמונות וכו') שמועתקים לתוך ה-build |
 | `server/` | תצורת פריסה עצמית: Dockerfile-adjacent scripts, Caddyfile, גיבוי, ותיעוד ה-VPS המלא — [`server/README.md`](server/README.md) |
 | `scripts/` | כלי שורת פקודה למפתחת (למשל `prepare-lesson.mjs` ליצירת שיעור מהטרמינל) |

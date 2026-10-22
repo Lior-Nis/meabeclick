@@ -47,7 +47,7 @@ mkdir -p data/portal data/games-data
 # replaces an existing one, restore data/ from the Drive backup (server/restore-db.sh,
 # see "Backups"); a brand-new install starts with an empty data/portal.
 # Catalog examples other than speed-drill are not files. The first time
-# the app opens SQLite, migration 030 inserts them into game_filler.
+# the app opens SQLite, migration 031 inserts them into game_filler.
 # There is no copy step for those eleven, and they are not in the image.
 # Only the speed-drill example is still a file:
 cp seed/games-data/nikol-derivrules-speed.json data/games-data/
@@ -61,7 +61,7 @@ chown -R 1000:"$(stat -c %g data)" data
 (`seed/games-data/` holds the speed-drill catalog example,
 `nikol-derivrules-speed.json`, referenced by `games/registry.json`. The
 other "try the example" links on `/app/games` read `game_filler`, which
-migration 030 fills on boot from the exercise JSON that used to live in
+migration 031 fills on boot from the exercise JSON that used to live in
 this directory under ids named after students. Those files are not in
 git. A volume copy of one of them, if a previous `cp seed/games-data/*`
 left it in `data/games-data/`, is not what `/app/play` serves: the row
@@ -371,7 +371,7 @@ do, by hand, once.
    every pre-cutover lesson ever sent to a family, and every draft the
    tutor hadn't reviewed yet is gone.    `games/data/` is the OLD bind-mount
    source for per-lesson game JSON — distinct from the demo fixtures,
-   which later moved into `game_filler` (migration 030) except
+   which later moved into `game_filler` (migration 031) except
    `seed/games-data/nikol-derivrules-speed.json`.)
 
 3. **Convert the LIVE portal file(s) to the new `{template,dataId}` record

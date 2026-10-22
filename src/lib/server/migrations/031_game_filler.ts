@@ -1,5 +1,9 @@
 /**
- * Migration 030 — catalog example games live in SQLite, not in git.
+ * Migration 031 — catalog example games live in SQLite, not in git.
+ *
+ * Version 30 belongs to the booking-source migration (heard_from_detail
+ * on bookings_v2, PR #58). These statements do not touch that table or
+ * marketing_events, so this can apply before or after version 30.
  *
  * The eleven bodies are the former seed/games-data fillers (derivatives,
  * integrals, a parabola, a number line). The JSON is an exercise: it has

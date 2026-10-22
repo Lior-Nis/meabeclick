@@ -235,6 +235,79 @@ test('003 preserves existing payment rows exactly', async () => {
   assert.deepEqual(db.prepare(`SELECT * FROM payments`).all(), rows);
 });
 
+/** The column PR #58's migration 030 adds. Not that migration's full SQL —
+ *  only the part that shares a database with game_filler, so this test can
+ *  run before that PR is merged. It does not touch game_filler. */
+const BOOKING_SOURCE = {
+  version: 30,
+  name: '030_booking_source',
+  sql: `ALTER TABLE bookings_v2 ADD COLUMN heard_from_detail TEXT;`,
+};
+
+function versions(db) {
+  return db.prepare(`SELECT version FROM schema_version ORDER BY version`).all().map(r => r.version);
+}
+
+function hasColumn(db, table, column) {
+  return db.prepare(`PRAGMA table_info(${table})`).all().some(c => c.name === column);
+}
+
+test('migration versions are unique and game_filler is 31', () => {
+  const nums = MIGRATIONS.map(m => m.version);
+  assert.equal(new Set(nums).size, nums.length);
+  const filler = MIGRATIONS.find(m => m.name === '031_game_filler');
+  assert.equal(filler.version, 31);
+  assert.equal(MIGRATIONS.some(m => m.version === 30), false);
+  assert.doesNotMatch(filler.sql, /bookings_v2|marketing_events|heard_from/);
+});
+
+test('a duplicated version is refused before any statement runs', async () => {
+  const db = await freshDb();
+  const dup = { version: 31, name: '031_other', sql: 'CREATE TABLE should_not_exist (id INTEGER);' };
+  assert.throws(
+    () => migrate(db, [...MIGRATIONS, dup]),
+    /migration version 31 is registered twice \(031_game_filler and 031_other\)/,
+  );
+  assert.equal(db.prepare(`SELECT name FROM sqlite_master WHERE name = 'should_not_exist'`).get(), undefined);
+  assert.equal(db.prepare(`SELECT name FROM sqlite_master WHERE name = 'schema_version'`).get(), undefined);
+});
+
+test('version 31 applies when 30 is not in the registry, and 30 still applies afterwards', async () => {
+  const db = await freshDb();
+  // This PR merged first: the shipped registry has 31 and no 30.
+  migrate(db);
+  assert.equal(versions(db).includes(30), false);
+  assert.equal(versions(db).includes(31), true);
+  assert.ok(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c > 0);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), false);
+
+  // PR #58 merges later. The runner must apply the missing lower version
+  // even though a higher one is already stamped. List order is reversed
+  // on purpose: pending() sorts by version, not by array order.
+  const both = [BOOKING_SOURCE, ...MIGRATIONS].reverse();
+  migrate(db, both);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
+  assert.deepEqual(versions(db).filter(v => v === 30 || v === 31), [30, 31]);
+  const rows = db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c;
+  migrate(db, both);
+  assert.equal(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c, rows);
+});
+
+test('version 31 still applies when 30 is already recorded', async () => {
+  const db = await freshDb();
+  // PR #58 merged first.
+  migrate(db, [...MIGRATIONS.filter(m => m.version !== 31), BOOKING_SOURCE]);
+  assert.equal(versions(db).includes(30), true);
+  assert.equal(versions(db).includes(31), false);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
+  assert.equal(db.prepare(`SELECT name FROM sqlite_master WHERE name = 'game_filler'`).get(), undefined);
+
+  migrate(db, [...MIGRATIONS, BOOKING_SOURCE]);
+  assert.equal(versions(db).includes(31), true);
+  assert.ok(db.prepare(`SELECT COUNT(*) AS c FROM game_filler`).get().c > 0);
+  assert.equal(hasColumn(db, 'bookings_v2', 'heard_from_detail'), true);
+});
+
 test('003 leaves the foreign keys biting after the table rebuild', async () => {
   const db = await freshDb();
   db.exec(`PRAGMA foreign_keys = ON`);
