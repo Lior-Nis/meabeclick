@@ -53,6 +53,7 @@ verify_existing() {
   "${COMPOSE[@]}" ps
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed node synthetic/verify.mjs
   node synthetic/http-smoke.mjs "http://127.0.0.1:${PORT}"
+  node synthetic/browser-smoke.mjs "http://127.0.0.1:${PORT}"
   verified=1
   trap - ERR EXIT
 }
@@ -76,6 +77,7 @@ up() {
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed node synthetic/verify.mjs
   "${COMPOSE[@]}" up -d --wait gateway
   node synthetic/http-smoke.mjs "http://127.0.0.1:${PORT}"
+  node synthetic/browser-smoke.mjs "http://127.0.0.1:${PORT}"
   ready=1
   trap - ERR EXIT
   printf '[synthetic] ready at http://127.0.0.1:%s\n' "$PORT"

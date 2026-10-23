@@ -85,12 +85,9 @@ test('deterministic seed is visibly fictional and covers the release-test model'
   assert.match(portalFixture, /synthetic-quadratic-formulas/);
 });
 
-test('state-changing lifecycle commands use one fixed secure inter-process lock', () => {
+test('state-changing lifecycle commands use one fixed retained inter-process lock', () => {
   assert.match(lifecycle, /\/tmp\/meabeclick-synthetic-\$\{UID\}\.lock\.d/);
   assert.match(lifecycle, /command -v flock/);
-  assert.match(lifecycle, /-L "\$LOCK_DIR"/);
-  assert.match(lifecycle, /stat -c '%u'/);
-  assert.match(lifecycle, /stat -c '%a'/);
   assert.match(lifecycle, /flock -n/);
   assert.match(lifecycle, /up\|verify\|down\|rebuild/);
   assert.doesNotMatch(lifecycle, /rm .*meabeclick-synthetic.*\.lock/);

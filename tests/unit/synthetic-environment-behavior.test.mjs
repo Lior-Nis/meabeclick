@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtemp, writeFile, mkdir, readFile, readdir, chmod, access, rm } from 'node:fs/promises';
+import { mkdtemp, writeFile, mkdir, readFile, readdir, chmod, access, rm, symlink, chown } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -70,7 +70,13 @@ case " $* " in
   *" \${FAKE_NODE_FAIL_MATCH:-__never__} "*) exit 43 ;;
 esac
 `, { mode: 0o755 });
-  return { dir, bin, log, lifecycle: fixtureLifecycle };
+  return {
+    dir,
+    bin,
+    log,
+    lifecycle: fixtureLifecycle,
+    lockDir: join(dir, 'lifecycle.lock.d'),
+  };
 }
 
 function lifecycleEnv(fixture, extra = {}) {
@@ -148,11 +154,12 @@ test('lifecycle starts gateway only after seed and database verification', async
   const verify = log.indexOf('<seed> <node> <synthetic/verify.mjs>');
   const gateway = log.indexOf('<up> <-d> <--wait> <gateway>');
   const smoke = log.indexOf('node <synthetic/http-smoke.mjs> <http://127.0.0.1:4273>');
+  const browserSmoke = log.indexOf('node <synthetic/browser-smoke.mjs> <http://127.0.0.1:4273>');
   assert.ok(gatewayRemoval >= 0 && gatewayRemoval < app, log);
   assert.ok(app < seed, log);
   assert.ok(seed < verify, log);
   assert.ok(verify < gateway, log);
-  assert.ok(gateway < smoke, log);
+  assert.ok(gateway < smoke && smoke < browserSmoke, log);
 });
 
 test('rerunning up removes an existing gateway before rebuild and keeps it absent through verification', async () => {
@@ -219,6 +226,19 @@ test('lifecycle fails closed when the magic-link student portal HTTP smoke fails
   const smoke = log.indexOf('node <synthetic/http-smoke.mjs> <http://127.0.0.1:4273>');
   const cleanup = log.lastIndexOf('<down> <--volumes> <--remove-orphans>');
   assert.ok(gateway >= 0 && gateway < smoke && smoke < cleanup, log);
+});
+
+test('lifecycle fails closed when the rendered-browser student portal smoke fails', async () => {
+  const fixture = await fakeLifecycleTools();
+  const result = run('bash', [fixture.lifecycle, 'up'], {
+    env: lifecycleEnv(fixture, { FAKE_NODE_FAIL_MATCH: 'synthetic/browser-smoke.mjs' }),
+  });
+  assert.notEqual(result.status, 0);
+  const log = await readLog(fixture.log);
+  const httpSmoke = log.indexOf('node <synthetic/http-smoke.mjs> <http://127.0.0.1:4273>');
+  const browserSmoke = log.indexOf('node <synthetic/browser-smoke.mjs> <http://127.0.0.1:4273>');
+  const cleanup = log.lastIndexOf('<down> <--volumes> <--remove-orphans>');
+  assert.ok(httpSmoke >= 0 && httpSmoke < browserSmoke && browserSmoke < cleanup, log);
 });
 
 test('standalone verification failure also removes the synthetic project and volume', async () => {
@@ -296,6 +316,52 @@ test('lifecycle lock rejects concurrent fixed-project commands before Docker is 
     await holderClosed;
     await rm(fixture.dir, { recursive: true, force: true });
   }
+});
+
+for (const unsafeTarget of [
+  {
+    name: 'symlink',
+    prepare: async (fixture) => {
+      const target = join(fixture.dir, 'lock-target');
+      await mkdir(target, { mode: 0o700 });
+      await symlink(target, fixture.lockDir);
+    },
+  },
+  {
+    name: 'non-directory',
+    prepare: async (fixture) => writeFile(fixture.lockDir, 'not a directory\n', { mode: 0o600 }),
+  },
+  {
+    name: 'wrong-mode directory',
+    prepare: async (fixture) => mkdir(fixture.lockDir, { mode: 0o755 }),
+  },
+]) {
+  test(`lifecycle rejects an unsafe ${unsafeTarget.name} lock target before Docker is invoked`, async () => {
+    const fixture = await fakeLifecycleTools();
+    await unsafeTarget.prepare(fixture);
+
+    const result = run('bash', [fixture.lifecycle, 'down'], { env: lifecycleEnv(fixture) });
+
+    assert.equal(result.status, 73, result.stderr);
+    assert.match(result.stderr, /user-owned mode-700 directory/i);
+    await assert.rejects(readLog(fixture.log), { code: 'ENOENT' });
+    await rm(fixture.dir, { recursive: true, force: true });
+  });
+}
+
+test('lifecycle rejects a foreign-owned lock directory before Docker is invoked when ownership can be changed', {
+  skip: typeof process.getuid !== 'function' || process.getuid() !== 0,
+}, async () => {
+  const fixture = await fakeLifecycleTools();
+  await mkdir(fixture.lockDir, { mode: 0o700 });
+  await chown(fixture.lockDir, 65534, 65534);
+
+  const result = run('bash', [fixture.lifecycle, 'down'], { env: lifecycleEnv(fixture) });
+
+  assert.equal(result.status, 73, result.stderr);
+  assert.match(result.stderr, /user-owned mode-700 directory/i);
+  await assert.rejects(readLog(fixture.log), { code: 'ENOENT' });
+  await rm(fixture.dir, { recursive: true, force: true });
 });
 
 test('lifecycle validates SYNTHETIC_PORT before invoking Docker', async () => {
@@ -577,6 +643,75 @@ test('HTTP smoke never follows a returned fixture redirect off the synthetic ori
   assert.notEqual(result.status, 0);
   assert.match(result.stderr, /signed game smoke returned HTTP 302/);
   assert.equal(escapedRequests, 0, 'HTTP smoke followed a redirect off the synthetic origin');
+});
+
+test('HTTP smoke rejects a lesson redirect without contacting its foreign target', async () => {
+  let escapedRequests = 0;
+  const escaped = createServer((_request, response) => {
+    escapedRequests += 1;
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      .end('<h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p>');
+  });
+  await new Promise((resolve) => escaped.listen(0, '127.0.0.1', resolve));
+  const escapedAddress = escaped.address();
+  assert.ok(escapedAddress && typeof escapedAddress === 'object');
+
+  const server = createServer((request, response) => {
+    if (request.url?.startsWith('/enter?t=s.92001.')) {
+      response.writeHead(303, {
+        location: '/app/student?s=synthetic-student-gamma',
+        'set-cookie': 'maab_family=fixed-test-session; Path=/; HttpOnly; SameSite=Lax',
+      }).end();
+    } else if (request.url === '/app/student?s=synthetic-student-gamma') {
+      response.writeHead(200).end('student page');
+    } else if (request.url === '/api/portal/synthetic-student-gamma') {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({
+        name: 'תלמידת בדיקה גמא',
+        lessons: [{ slidesUrl: '/lessons/synthetic-quadratic-formulas' }],
+        games: [{
+          dataId: 'synthetic-linear-formulas',
+          url: '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature',
+        }],
+        homework: [{
+          id: 95001,
+          task: 'פתרו x² = 16 והסבירו את שתי התשובות — משימת בדיקה',
+          submitted: true,
+          graded: true,
+          grade: 'ok',
+          gradedBy: 'teacher',
+          template: 'quiz',
+          dataId: 'synthetic-linear-formulas',
+        }],
+      }));
+    } else if (request.url === '/lessons/synthetic-quadratic-formulas') {
+      response.writeHead(302, { location: `http://127.0.0.1:${escapedAddress.port}/sentinel` }).end();
+    } else {
+      response.writeHead(404).end();
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+
+  try {
+    const result = await new Promise((resolve) => {
+      const child = spawn(process.execPath, ['synthetic/http-smoke.mjs', `http://127.0.0.1:${address.port}`], {
+        cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+      });
+      let stdout = '';
+      let stderr = '';
+      child.stdout.on('data', (chunk) => { stdout += chunk; });
+      child.stderr.on('data', (chunk) => { stderr += chunk; });
+      child.on('close', (status) => resolve({ status, stdout, stderr }));
+    });
+
+    assert.notEqual(result.status, 0);
+    assert.match(result.stderr, /lesson material smoke returned HTTP 302/);
+    assert.equal(escapedRequests, 0, 'HTTP smoke contacted the foreign lesson redirect target');
+  } finally {
+    await new Promise((resolve) => server.close(resolve));
+    await new Promise((resolve) => escaped.close(resolve));
+  }
 });
 
 test('portal fixture is deterministic, exact, atomic, and cleans stale files on rerun', async () => {
