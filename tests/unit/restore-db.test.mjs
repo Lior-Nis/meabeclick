@@ -16,6 +16,7 @@ import assert from 'node:assert/strict';
 import { spawnSync } from 'node:child_process';
 import {
   chmodSync,
+  copyFileSync,
   existsSync,
   mkdirSync,
   mkdtempSync,
@@ -49,6 +50,14 @@ test('integrity_check must be exactly ok before the target is removed', () => {
   const before = beforeTargetRemoval();
   assert.match(before, /PRAGMA integrity_check/);
   assert.match(before, /\[\s*"\$integrity"\s*=\s*"ok"\s*\]/);
+});
+
+test('the restore installs the copy that passed the check', () => {
+  const checked = script.indexOf('require_integrity "$ro"');
+  const installed = script.indexOf('cp "$scratch/results.db" "$TARGET/data/results.db"');
+  assert.ok(checked > 0, 'the pre-check should still run against the scratch copy');
+  assert.ok(installed > checked, 'the checked copy is what gets installed, not a second read of the backup');
+  assert.doesNotMatch(script.slice(checked), /cp "\$DB"/);
 });
 
 test('a dangerous target is refused before anything is deleted', () => {
@@ -142,8 +151,19 @@ function harness(shape = 'healthy') {
   return { work, backups, home, log, bin };
 }
 
-function run(h, args, { allow = [], extraEnv = {} } = {}) {
-  const result = spawnSync('bash', [scriptPath, ...args], {
+// The script cds to its own repo root and, with no target, writes
+// ./restore-drill there. A copy under the temp dir is that root, so the
+// default-target test never creates or deletes the checkout's drill.
+function repoLayout(work) {
+  const repo = join(work, 'layout');
+  const copy = join(repo, 'server', 'restore-db.sh');
+  mkdirSync(dirname(copy), { recursive: true });
+  copyFileSync(scriptPath, copy);
+  return { script: copy, drill: join(repo, 'restore-drill') };
+}
+
+function run(h, args, { allow = [], extraEnv = {}, script = scriptPath } = {}) {
+  const result = spawnSync('bash', [script, ...args], {
     cwd: h.work,
     encoding: 'utf8',
     env: {
@@ -216,14 +236,13 @@ describe('restore-db.sh', { concurrency: false }, () => {
   test('with no target, the restore lands in ./restore-drill', (t) => {
     if (skipWithoutSqlite(t)) return;
     const h = harness();
-    const dest = join(root, 'restore-drill');
+    const layout = repoLayout(h.work);
     try {
-      const r = run(h, [STAMP], { allow: [dest] });
+      const r = run(h, [STAMP], { script: layout.script });
       assert.equal(r.status, 0, r.stderr);
-      assert.ok(existsSync(join(dest, 'data', 'results.db')));
+      assert.ok(existsSync(join(layout.drill, 'data', 'results.db')));
       assert.match(r.stdout, /restore-drill/);
     } finally {
-      rmSync(dest, { recursive: true, force: true });
       rmSync(h.work, { recursive: true, force: true });
     }
   });
@@ -395,15 +414,14 @@ describe('restore-db.sh', { concurrency: false }, () => {
   test('an empty target is refused', (t) => {
     if (skipWithoutSqlite(t)) return;
     const h = harness();
-    const dest = join(root, 'restore-drill');
+    const layout = repoLayout(h.work);
     try {
-      const r = run(h, [STAMP, '']);
+      const r = run(h, [STAMP, ''], { script: layout.script });
       assert.equal(r.status, 1, r.stderr);
       assert.match(r.stderr, /refusing restore target/);
       assert.equal(r.rmLog, '');
-      assert.equal(existsSync(dest), false);
+      assert.equal(existsSync(layout.drill), false);
     } finally {
-      rmSync(dest, { recursive: true, force: true });
       rmSync(h.work, { recursive: true, force: true });
     }
   });

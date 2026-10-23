@@ -110,7 +110,9 @@ if [ -n "${DATA_DIR:-}" ]; then
 fi
 
 # A copy, opened read-only, so the check cannot modify the backup and a
-# failure leaves the previous restore where it is.
+# failure leaves the previous restore where it is. What gets installed is
+# this copy — not a second read of the backup, which could have changed
+# between the check and the copy.
 scratch="$(mktemp -d)"
 trap 'rm -rf "$scratch"' EXIT
 cp "$DB" "$scratch/results.db"
@@ -124,7 +126,7 @@ fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
 
 echo "restoring $STAMP into $TARGET"
 rm -rf "$TARGET"; mkdir -p "$TARGET/data"
-cp "$DB" "$TARGET/data/results.db"
+cp "$scratch/results.db" "$TARGET/data/results.db"
 
 if [ -s "$FILES" ]; then
   tar -xzf "$FILES" -C "$TARGET/data"
