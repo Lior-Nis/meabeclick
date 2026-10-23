@@ -26,6 +26,8 @@ import { dirname, join } from 'node:path';
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const compose = readFileSync(join(root, 'docker-compose.yml'), 'utf8');
 const workflow = readFileSync(join(root, '.github/workflows/deploy.yml'), 'utf8');
+const runbook = readFileSync(join(root, 'server', 'README.md'), 'utf8');
+const restoreScript = readFileSync(join(root, 'server', 'restore-db.sh'), 'utf8');
 
 test('the app image is pinned to the commit being deployed, not a moving tag', () => {
   // The line may carry a `:?` message containing spaces, so match to EOL
@@ -205,4 +207,49 @@ test('Compose pulls from the same repository namespace that CI publishes', () =>
   const image = compose.match(/^\s*image:\s*(ghcr\.io\/[^:\s]+):/m)?.[1];
   assert.equal(image, `ghcr.io/${repository}`,
     'Compose must use the namespace published from github.repository');
+});
+
+test('current clone, rollback, and restore-smoke instructions use the current repository', () => {
+  assert.match(runbook, /git clone https:\/\/github\.com\/its-nix\/meabeclick\.git/,
+    'a fresh box must clone the current repository');
+
+  const rollback = runbook.slice(runbook.indexOf('### Rollback'), runbook.indexOf('## Backups'));
+  assert.match(rollback, /ghcr\.io\/its-nix\/meabeclick:\$APP_TAG/,
+    'rollback must pull the image CI currently publishes');
+  assert.doesNotMatch(rollback, /ghcr\.io\/lior-nis\/meabeclick/i,
+    'rollback must not use the repository namespace from before the transfer');
+
+  assert.match(restoreScript, /ghcr\.io\/its-nix\/meabeclick:/,
+    'the isolated restore smoke test must use the current image repository');
+});
+
+test('fresh-clone bootstrap commands pass APP_TAG explicitly', () => {
+  const install = runbook.slice(0, runbook.indexOf('## Cutover from the Express deployment'));
+  assert.match(install, /APP_TAG=latest docker compose pull app/,
+    'a fresh box must explicitly request the bootstrap tag when pulling');
+  assert.match(install, /APP_TAG=latest docker compose up -d --no-build/,
+    'a fresh box must explicitly request the bootstrap tag when starting');
+});
+
+test('rollback and restore smoke tests name APP_TAG explicitly', () => {
+  const rollback = runbook.slice(runbook.indexOf('### Rollback'), runbook.indexOf('## Backups'));
+  assert.match(rollback, /export APP_TAG=<previous-sha>/,
+    'rollback must select the immutable previous image tag explicitly');
+  assert.match(rollback, /docker pull ghcr\.io\/its-nix\/meabeclick:\$APP_TAG[\s\S]*docker compose up -d --no-build/,
+    'rollback must pull and start the image selected by APP_TAG');
+  assert.doesNotMatch(rollback, /docker tag[\s\S]*:latest/,
+    'rollback must not mutate latest or depend on a moving tag');
+
+  assert.match(restoreScript, /APP_TAG=.*docker inspect/,
+    'the restore smoke command must name the running image tag');
+  assert.match(restoreScript, /ghcr\.io\/its-nix\/meabeclick:\$APP_TAG/,
+    'the restore smoke image must consume that explicit APP_TAG');
+});
+
+test('the documented forced command satisfies Compose\'s APP_TAG contract', () => {
+  const forcedCommand = runbook.match(/^command="([^"]+)"$/m)?.[1] ?? '';
+  assert.match(forcedCommand, /git pull --ff-only && export APP_TAG=\$\(git rev-parse HEAD\)/,
+    'the forced command must derive APP_TAG only after updating the checkout');
+  assert.match(forcedCommand, /docker compose pull app && docker compose up -d --no-build$/,
+    'the same exported APP_TAG must select both the pulled and started image');
 });
