@@ -78,11 +78,12 @@ else
 fi
 
 echo "Restored to $TARGET. To smoke-test it without touching production:"
+echo "  APP_TAG=\$(docker inspect mea-beclick-app-1 --format '{{.Config.Image}}' | sed 's/.*://')"
 echo "  docker run --rm -p 3100:3000 -v $TARGET/data:/app/data \\"
 echo "    -e PORT=3000 -e ORIGIN=http://localhost:3100 -e PROTOCOL_HEADER=x-forwarded-proto \\"
 echo "    -e DATA_DIR=/app/data -e PORTAL_DIR=/app/data/portal -e SITE_URL=http://localhost:3100 \\"
 echo "    -e SESSION_SECRET=drill-only -e ADMIN_PASSWORD=drill-only \\"
-echo "    ghcr.io/lior-nis/meabeclick:\$(docker inspect mea-beclick-app-1 --format '"'"'{{.Config.Image}}'"'"' | sed '"'"'s/.*://'"'"')"
+echo '    ghcr.io/its-nix/meabeclick:$APP_TAG'
 echo
 echo "  (the tag matters: :latest is whatever this box last CACHED, which on a"
 echo "   long-lived box is ancient — testing a fresh restore against old code"

@@ -24,9 +24,9 @@ on:
   workflow_dispatch: {}
 
 env:
-  # GHCR requires an all-lowercase image path; github.repository can have
-  # uppercase (this repo is Lior-Nis/meabeclick), so lowercase it below
-  # rather than hardcoding it here.
+  # GHCR requires an all-lowercase image path. Derive it from
+  # github.repository rather than hardcoding the owner/repository here, so a
+  # future transfer cannot make CI publish somewhere Compose never pulls.
   REGISTRY: ghcr.io
 
 jobs:

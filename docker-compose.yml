@@ -118,8 +118,8 @@ services:
       #
       # One-time setup on the VPS, as the user that owns ./codex-home:
       #   mkdir -p codex-home
-      #   docker compose run --rm -e CODEX_HOME=/app/.codex app codex login
-      # then confirm `docker compose exec app codex login status` says
+      #   APP_TAG=latest docker compose run --rm -e CODEX_HOME=/app/.codex app codex login
+      # then confirm `APP_TAG=latest docker compose exec app codex login status` says
       # "Logged in". The directory must be writable by uid 1000 (the image's
       # `node` user): chown -R 1000:1000 codex-home
       #

@@ -29,16 +29,16 @@ from the Express deployment** below FIRST — doing the steps below on a live
 box in the wrong order destroys real student data irrecoverably.
 
 ```bash
-git clone https://github.com/Lior-Nis/meabeclick.git ~/mea-beclick
+git clone https://github.com/its-nix/meabeclick.git ~/mea-beclick
 cd ~/mea-beclick
 ```
 
 `data/` and `service-account.json` are gitignored, so a fresh clone doesn't
 have them. Create `data/portal` and `data/games-data` **before the first
-`docker compose up`** — otherwise Docker creates the bind-mount source
+Compose start** — otherwise Docker creates the bind-mount source
 itself, root-owned, and the app container (which runs as uid 1000, the
 `node` user) can't write to it. Create them before the first
-`docker compose up` — see **Portal data** below for why this is a
+Compose start — see **Portal data** below for why this is a
 separate step, not something the image or a mount handles for you:
 
 ```bash
@@ -219,12 +219,12 @@ Saturday after the 503 landed. The email fallback is what closes that.
 To get the key anyway (WhatsApp is still the better channel): from the
 phone that should receive the reminders, message `+34 644 59 78 46` with
 "I allow callmebot to send me messages", then put the key it replies with
-in `.env` and `docker compose up -d` with `APP_TAG` set.
+in `.env` and recreate the app with the pinned-running-image command below.
 
 **Rotating `CRON_KEY` needs a restart, not just an edit.** The app container
 reads `process.env` once, at container start, so changing `.env` alone
-leaves it checking requests against the OLD key until `docker compose up -d`
-recreates it. The two timers (below) read `.env` fresh on every run, so
+leaves it checking requests against the OLD key until the app container is
+recreated. The two timers (below) read `.env` fresh on every run, so
 they pick up the new key immediately — meaning a rotation without a
 restart makes every run in between answer 401: up to an hour for the
 report-prompt timer, or up to a week for the Saturday reminder. Rotate with:
@@ -261,8 +261,8 @@ mkdir -p codex-home
 # uid 1000 = the image's `node` user; keep the host group that owns data/,
 # for the same reason as the data/ chown above.
 chown -R 1000:"$(stat -c %g data)" codex-home
-docker compose run --rm app codex login       # follow the printed URL
-docker compose exec app codex login status    # expect: Logged in
+APP_TAG=latest docker compose run --rm app codex login       # follow the printed URL
+APP_TAG=latest docker compose exec app codex login status    # expect: Logged in
 ```
 
 **Create this directory before the first deploy of this change.** It is a
@@ -291,8 +291,9 @@ your browser cannot reach.
 **Verifying it works**, without waiting for a real family to book:
 
 ```bash
+export APP_TAG=$(docker inspect mea-beclick-app-1 --format '{{.Config.Image}}' | sed 's/.*://')
 docker compose logs app | grep -i 'WARNING.*lesson\|no credentials'   # boot check
-docker compose exec app codex exec --skip-git-repo-check -                   # then type a prompt
+docker compose exec app codex exec --skip-git-repo-check -            # then type a prompt
 ```
 
 Boot warns (never fails) when the CLI is missing or unauthenticated, and the
@@ -305,8 +306,8 @@ its whole life because that key was never set here. There is nothing extra
 to configure for it.
 
 ```bash
-docker compose build   # or: docker compose pull, once CI is publishing images
-APP_TAG=latest docker compose up -d   # bootstrap only; every later deploy names a commit
+APP_TAG=latest docker compose pull app
+APP_TAG=latest docker compose up -d --no-build   # bootstrap only; every later deploy names a commit
 curl -s https://meabeclick.com/api/me
 ```
 
@@ -333,8 +334,9 @@ checkout`, `git reset` — anything that can touch the working tree).
 > since that commit. There is no undo.
 >
 > This is also why the deploy's forced SSH command
-> (`git pull && docker compose pull app && docker compose up -d
-> --no-build`) is chained with `&&`: if `git pull` aborts on the dirty
+> (`git pull --ff-only && export APP_TAG=$(git rev-parse HEAD) && docker
+> compose pull app && docker compose up -d --no-build`) is chained with
+> `&&`: if `git pull` aborts on the dirty
 > `portal/` path (which it will, until this section is done), the pull AND
 > the redeploy never run — the site just silently keeps serving whatever
 > was already running, with no error visible anywhere. This section is
@@ -490,10 +492,13 @@ container recreates in the `caddy_data` named volume.
 ## Operating
 
 ```bash
+export APP_TAG=$(docker inspect mea-beclick-app-1 --format '{{.Config.Image}}' | sed 's/.*://')
 docker compose logs -f app
 docker compose logs -f caddy
 docker compose restart app
-APP_TAG=$(git rev-parse HEAD) docker compose pull app && APP_TAG=$(git rev-parse HEAD) docker compose up -d --no-build   # after a git pull
+# After a git pull, select that checkout explicitly before redeploying:
+export APP_TAG=$(git rev-parse HEAD)
+docker compose pull app && docker compose up -d --no-build
 ```
 
 ## Deploy
@@ -583,12 +588,14 @@ nothing. After it, deploys fast-forward normally again. This happened on
 
 ### Rollback
 
-Re-pull a previous tag — every image is tagged with its commit SHA, so any
-past build stays addressable in GHCR:
+Select and re-pull a previous tag — every image is tagged with its full commit
+SHA, so any past build stays addressable in GHCR. This deliberately leaves the
+checkout on `main`; the next forced-command deploy advances the image to that
+checkout's SHA again.
 
 ```bash
-docker pull ghcr.io/lior-nis/meabeclick:<previous-sha>
-docker tag ghcr.io/lior-nis/meabeclick:<previous-sha> ghcr.io/lior-nis/meabeclick:latest
+export APP_TAG=<previous-sha>
+docker pull ghcr.io/its-nix/meabeclick:$APP_TAG
 docker compose up -d --no-build
 ```
 
@@ -1008,7 +1015,7 @@ chmod 600 ~/mea-beclick/.cron-key.env
 **Rotating the key means updating both files and restarting the app** (see
 the `.env` section above) — the timers pick up `.cron-key.env` on their
 next run automatically, but the app container itself only re-reads `.env`
-at `docker compose up -d`.
+when it is recreated.
 
 Install once:
 
