@@ -28,7 +28,7 @@ verify_existing() {
   "${COMPOSE[@]}" config --quiet
   "${COMPOSE[@]}" ps
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed node synthetic/verify.mjs
-  node -e "fetch('http://127.0.0.1:${PORT}/api/me').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);console.log('[synthetic] HTTP smoke: '+r.status)}).catch(e=>{console.error(e.message);process.exit(1)})"
+  node synthetic/http-smoke.mjs "http://127.0.0.1:${PORT}"
   verified=1
   trap - ERR EXIT
 }
@@ -51,7 +51,7 @@ up() {
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed node synthetic/verify.mjs
   "${COMPOSE[@]}" up -d --wait gateway
-  node -e "fetch('http://127.0.0.1:${PORT}/api/me').then(r=>{if(!r.ok)throw new Error('HTTP '+r.status);console.log('[synthetic] HTTP smoke: '+r.status)}).catch(e=>{console.error(e.message);process.exit(1)})"
+  node synthetic/http-smoke.mjs "http://127.0.0.1:${PORT}"
   ready=1
   trap - ERR EXIT
   printf '[synthetic] ready at http://127.0.0.1:%s\n' "$PORT"

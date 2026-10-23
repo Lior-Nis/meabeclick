@@ -96,6 +96,14 @@ function requireRow(condition, table, detail) {
  * @param {import('node:sqlite').DatabaseSync} db
  */
 export function verifySyntheticDatabase(db) {
+  const foreignKeyViolations = db.prepare('PRAGMA foreign_key_check').all();
+  if (foreignKeyViolations.length) {
+    const details = foreignKeyViolations
+      .map((violation) => `${violation.table}:${violation.rowid ?? '-'}`)
+      .join(',');
+    throw new Error(`[synthetic] foreign key violations: ${details}`);
+  }
+
   const actualTables = tableNames(db);
   const expectedTables = Object.keys(DATA_TABLE_POLICY).sort();
   if (!sameKeys(actualTables, expectedTables)) {

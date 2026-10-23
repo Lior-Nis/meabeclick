@@ -1,11 +1,12 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtemp, writeFile, mkdir } from 'node:fs/promises';
+import { mkdtemp, writeFile, mkdir, readFile, readdir, chmod } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
-import { spawnSync } from 'node:child_process';
+import { spawn, spawnSync } from 'node:child_process';
+import { createServer } from 'node:http';
 
 import { FORBIDDEN_EXTERNAL_CONFIG } from '../../synthetic/integration-guard.mjs';
 import {
@@ -13,6 +14,15 @@ import {
   purgeApplicationData,
   verifySyntheticDatabase,
 } from '../../synthetic/database-policy.mjs';
+import {
+  PORTAL_FILE_NAME,
+  PORTAL_FILE_TEXT,
+  seedSyntheticPortal,
+  verifySyntheticPortal,
+} from '../../synthetic/portal-fixture.mjs';
+import { loopbackUrlIssue } from '../../synthetic/runtime-policy.mjs';
+import { seedSyntheticRows } from '../../synthetic/seed-data.mjs';
+import { replaceSyntheticDatabase } from '../../synthetic/database-seed.mjs';
 import { STORAGE } from '../../src/lib/server/storage-inventory.ts';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
@@ -44,6 +54,9 @@ esac
 printf 'node' >> "$FAKE_CALL_LOG"
 printf ' <%s>' "$@" >> "$FAKE_CALL_LOG"
 printf '\n' >> "$FAKE_CALL_LOG"
+case " $* " in
+  *" \${FAKE_NODE_FAIL_MATCH:-__never__} "*) exit 43 ;;
+esac
 `, { mode: 0o755 });
   return { dir, bin, log };
 }
@@ -109,10 +122,12 @@ test('lifecycle starts gateway only after seed and database verification', async
   const seed = log.indexOf('<run> <--rm> <--no-deps> <seed>');
   const verify = log.indexOf('<seed> <node> <synthetic/verify.mjs>');
   const gateway = log.indexOf('<up> <-d> <--wait> <gateway>');
+  const smoke = log.indexOf('node <synthetic/http-smoke.mjs> <http://127.0.0.1:4273>');
   assert.ok(gatewayRemoval >= 0 && gatewayRemoval < app, log);
   assert.ok(app < seed, log);
   assert.ok(seed < verify, log);
   assert.ok(verify < gateway, log);
+  assert.ok(gateway < smoke, log);
 });
 
 test('rerunning up removes an existing gateway before rebuild and keeps it absent through verification', async () => {
@@ -168,6 +183,19 @@ for (const failure of [
   });
 }
 
+test('lifecycle fails closed when the magic-link student portal HTTP smoke fails', async () => {
+  const fixture = await fakeLifecycleTools();
+  const result = run('bash', [lifecycle, 'up'], {
+    env: lifecycleEnv(fixture, { FAKE_NODE_FAIL_MATCH: 'synthetic/http-smoke.mjs' }),
+  });
+  assert.notEqual(result.status, 0);
+  const log = await readLog(fixture.log);
+  const gateway = log.indexOf('<up> <-d> <--wait> <gateway>');
+  const smoke = log.indexOf('node <synthetic/http-smoke.mjs> <http://127.0.0.1:4273>');
+  const cleanup = log.lastIndexOf('<down> <--volumes> <--remove-orphans>');
+  assert.ok(gateway >= 0 && gateway < smoke && smoke < cleanup, log);
+});
+
 test('standalone verification failure also removes the synthetic project and volume', async () => {
   const fixture = await fakeLifecycleTools();
   const result = run('bash', [lifecycle, 'verify'], {
@@ -175,6 +203,17 @@ test('standalone verification failure also removes the synthetic project and vol
   });
   assert.notEqual(result.status, 0);
   const log = await readLog(fixture.log);
+  assert.match(log, /<down> <--volumes> <--remove-orphans>\s*$/);
+});
+
+test('standalone verify fails closed when the student portal HTTP smoke fails', async () => {
+  const fixture = await fakeLifecycleTools();
+  const result = run('bash', [lifecycle, 'verify'], {
+    env: lifecycleEnv(fixture, { FAKE_NODE_FAIL_MATCH: 'synthetic/http-smoke.mjs' }),
+  });
+  assert.notEqual(result.status, 0);
+  const log = await readLog(fixture.log);
+  assert.match(log, /node <synthetic\/http-smoke\.mjs> <http:\/\/127\.0\.0\.1:4273>/);
   assert.match(log, /<down> <--volumes> <--remove-orphans>\s*$/);
 });
 
@@ -209,6 +248,115 @@ test('entrypoint rejects every external integration and engine control variable'
   }
 });
 
+test('loopback URL validation accepts only an exact credential-free root URL and matching values', () => {
+  assert.equal(loopbackUrlIssue('http://127.0.0.1:4173', 'http://127.0.0.1:4173'), null);
+  for (const [origin, siteUrl] of [
+    ['http://127.0.0.1:4173', 'http://127.0.0.1:4273'],
+    ['https://127.0.0.1:4173', 'https://127.0.0.1:4173'],
+    ['http://localhost:4173', 'http://localhost:4173'],
+    ['http://127.0.0.1:4173@evil.example', 'http://127.0.0.1:4173@evil.example'],
+    ['http://127.0.0.1.evil.example:4173', 'http://127.0.0.1.evil.example:4173'],
+    ['http://2130706433:4173', 'http://2130706433:4173'],
+    ['http://0177.0.0.1:4173', 'http://0177.0.0.1:4173'],
+    ['http://user:pass@127.0.0.1:4173', 'http://user:pass@127.0.0.1:4173'],
+    ['http://127.0.0.1', 'http://127.0.0.1'],
+    ['http://127.0.0.1:80', 'http://127.0.0.1:80'],
+    ['http://127.0.0.1:65536', 'http://127.0.0.1:65536'],
+    ['http://127.0.0.1:4173/portal', 'http://127.0.0.1:4173/portal'],
+    ['http://127.0.0.1:4173/?poison=1', 'http://127.0.0.1:4173/?poison=1'],
+    ['http://127.0.0.1:4173/#poison', 'http://127.0.0.1:4173/#poison'],
+    ['not a url', 'not a url'],
+  ]) {
+    assert.notEqual(loopbackUrlIssue(origin, siteUrl), null, `${origin} / ${siteUrl}`);
+  }
+});
+
+test('HTTP smoke refuses a normalized numeric loopback alias before any request', () => {
+  const result = run(process.execPath, ['synthetic/http-smoke.mjs', 'http://2130706433:4173']);
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /HTTP smoke target rejected/);
+});
+
+test('HTTP smoke exercises enter, student page, and portal API with the established cookie', async () => {
+  const requests = [];
+  const server = createServer((request, response) => {
+    requests.push({ url: request.url, cookie: request.headers.cookie });
+    if (request.url?.startsWith('/enter?t=s.92001.')) {
+      response.writeHead(303, {
+        location: '/app/student?s=synthetic-student-gamma',
+        'set-cookie': 'maab_family=fixed-test-session; Path=/; HttpOnly; SameSite=Lax',
+      }).end();
+    } else if (request.url === '/app/student?s=synthetic-student-gamma') {
+      response.writeHead(request.headers.cookie === 'maab_family=fixed-test-session' ? 200 : 401).end('student page');
+    } else if (request.url === '/api/portal/synthetic-student-gamma') {
+      response.writeHead(request.headers.cookie === 'maab_family=fixed-test-session' ? 200 : 401, {
+        'content-type': 'application/json',
+      }).end(JSON.stringify({
+        name: 'תלמידת בדיקה גמא',
+        lessons: [{ slidesUrl: '/lessons/synthetic-quadratic-formulas' }],
+        games: [{ dataId: 'synthetic-linear-formulas' }],
+        homework: [{ id: 95001 }],
+      }));
+    } else {
+      response.writeHead(404).end();
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+
+  const result = await new Promise((resolve) => {
+    const child = spawn(process.execPath, ['synthetic/http-smoke.mjs', `http://127.0.0.1:${address.port}`], {
+      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
+  });
+  await new Promise((resolve) => server.close(resolve));
+
+  assert.equal(result.status, 0, result.stderr);
+  assert.match(result.stdout, /magic-link and student portal HTTP smoke passed/);
+  assert.equal(requests.length, 3);
+});
+
+test('portal fixture is deterministic, exact, atomic, and cleans stale files on rerun', async () => {
+  const portalDir = await mkdtemp(join(tmpdir(), 'synthetic-portal-'));
+  await writeFile(join(portalDir, 'real-student-sentinel.json'), '{"name":"must disappear"}\n');
+  await mkdir(join(portalDir, 'stale-directory'));
+  await writeFile(join(portalDir, 'stale-directory', 'nested'), 'must disappear');
+
+  seedSyntheticPortal(portalDir);
+  assert.deepEqual(await readdir(portalDir), [PORTAL_FILE_NAME]);
+  assert.equal(await readFile(join(portalDir, PORTAL_FILE_NAME), 'utf8'), PORTAL_FILE_TEXT);
+  const portal = JSON.parse(PORTAL_FILE_TEXT);
+  assert.deepEqual(portal.lessons, [{
+    date: '2026-01-15', topic: 'שיעור בדיקה: y = x²', slug: 'synthetic-quadratic-formulas',
+  }]);
+  assert.doesNotThrow(() => verifySyntheticPortal(portalDir));
+
+  await chmod(join(portalDir, PORTAL_FILE_NAME), 0o644);
+  await writeFile(join(portalDir, PORTAL_FILE_NAME), '{"name":"corrupt"}\n');
+  await writeFile(join(portalDir, '.stale-seed.tmp'), 'partial');
+  seedSyntheticPortal(portalDir);
+  assert.deepEqual(await readdir(portalDir), [PORTAL_FILE_NAME]);
+  assert.equal(await readFile(join(portalDir, PORTAL_FILE_NAME), 'utf8'), PORTAL_FILE_TEXT);
+  assert.doesNotThrow(() => verifySyntheticPortal(portalDir));
+});
+
+test('portal verification rejects changed content and every unexpected portal entry', async () => {
+  const portalDir = await mkdtemp(join(tmpdir(), 'synthetic-portal-verify-'));
+  seedSyntheticPortal(portalDir);
+  await chmod(join(portalDir, PORTAL_FILE_NAME), 0o644);
+  await writeFile(join(portalDir, PORTAL_FILE_NAME), '{"name":"changed"}\n');
+  assert.throws(() => verifySyntheticPortal(portalDir), /content/);
+  seedSyntheticPortal(portalDir);
+  await writeFile(join(portalDir, 'unexpected.json'), '{}');
+  assert.throws(() => verifySyntheticPortal(portalDir), /unexpected/);
+});
+
 test('shared guard inventory includes every current high-risk engine and integration control', () => {
   const required = [
     'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'BOOKING_EMAIL_TO',
@@ -236,15 +384,15 @@ function createPolicyFixture() {
         db.prepare('INSERT INTO schema_version VALUES (?, ?, ?)').run(version, `migration-${version}`, '2026-01-01T00:00:00.000Z');
       }
     } else if (table === 'accounts') db.exec('CREATE TABLE accounts (id INTEGER PRIMARY KEY, name TEXT, phone TEXT, credential TEXT, is_self INTEGER, created_at TEXT, email TEXT, legacy_code TEXT)');
-    else if (table === 'students_v2') db.exec('CREATE TABLE students_v2 (id INTEGER PRIMARY KEY, code TEXT, name TEXT, emoji TEXT, account_id INTEGER, progress INTEGER, progress_note TEXT, credential TEXT, created_at TEXT, goals TEXT, style TEXT, notes TEXT)');
+    else if (table === 'students_v2') db.exec('CREATE TABLE students_v2 (id INTEGER PRIMARY KEY, code TEXT, name TEXT, emoji TEXT, account_id INTEGER REFERENCES accounts(id), progress INTEGER, progress_note TEXT, credential TEXT, created_at TEXT, goals TEXT, style TEXT, notes TEXT)');
     else if (table === 'teachers') db.exec('CREATE TABLE teachers (id INTEGER PRIMARY KEY, name TEXT, phone TEXT, active INTEGER, meet_url TEXT, meet_account TEXT, setup_hash TEXT, setup_expires TEXT, calendar_id TEXT, busy_ics TEXT, teaching_hours TEXT)');
-    else if (table === 'enrollments') db.exec('CREATE TABLE enrollments (id INTEGER PRIMARY KEY, student_id INTEGER, subject TEXT, level TEXT, teacher_id INTEGER)');
-    else if (table === 'bookings_v2') db.exec('CREATE TABLE bookings_v2 (id INTEGER PRIMARY KEY, student_id INTEGER, enrollment_id INTEGER, start TEXT, end TEXT, duration INTEGER, at TEXT, status TEXT, source_utm TEXT, heard_from TEXT, mode TEXT, teacher_id INTEGER, heard_from_detail TEXT)');
+    else if (table === 'enrollments') db.exec('CREATE TABLE enrollments (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), subject TEXT, level TEXT, teacher_id INTEGER REFERENCES teachers(id))');
+    else if (table === 'bookings_v2') db.exec('CREATE TABLE bookings_v2 (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), enrollment_id INTEGER REFERENCES enrollments(id), start TEXT, end TEXT, duration INTEGER, at TEXT, status TEXT, source_utm TEXT, heard_from TEXT, mode TEXT, teacher_id INTEGER REFERENCES teachers(id), heard_from_detail TEXT)');
     else if (table === 'lessons') db.exec('CREATE TABLE lessons (id INTEGER PRIMARY KEY, slug TEXT, student TEXT, subject TEXT, level TEXT, topic TEXT, title TEXT, context TEXT, at TEXT, lesson_at TEXT, status TEXT, problem TEXT, slides TEXT, homework TEXT, games TEXT)');
-    else if (table === 'homework') db.exec('CREATE TABLE homework (id INTEGER PRIMARY KEY, lesson_id INTEGER, student_id INTEGER, task TEXT, template TEXT, data_id TEXT, assigned_at TEXT, due_at TEXT, submitted_at TEXT, submitted_by TEXT, graded_at TEXT, grade TEXT, graded_by TEXT, node_id INTEGER, booking_id INTEGER, held_until TEXT, answer TEXT)');
-    else if (table === 'results_v2') db.exec('CREATE TABLE results_v2 (id INTEGER PRIMARY KEY, student_id INTEGER, at TEXT, data_id TEXT, template TEXT, score INTEGER, total INTEGER, tries INTEGER, stars INTEGER, seconds INTEGER, missed TEXT, hints INTEGER)');
+    else if (table === 'homework') db.exec('CREATE TABLE homework (id INTEGER PRIMARY KEY, lesson_id INTEGER, student_id INTEGER REFERENCES students_v2(id), task TEXT, template TEXT, data_id TEXT, assigned_at TEXT, due_at TEXT, submitted_at TEXT, submitted_by TEXT, graded_at TEXT, grade TEXT, graded_by TEXT, node_id INTEGER, booking_id INTEGER REFERENCES bookings_v2(id), held_until TEXT, answer TEXT)');
+    else if (table === 'results_v2') db.exec('CREATE TABLE results_v2 (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), at TEXT, data_id TEXT, template TEXT, score INTEGER, total INTEGER, tries INTEGER, stars INTEGER, seconds INTEGER, missed TEXT, hints INTEGER)');
     else if (table === 'game_filler') db.exec('CREATE TABLE game_filler (id TEXT PRIMARY KEY, body TEXT)');
-    else if (table === 'lesson_reports') db.exec('CREATE TABLE lesson_reports (id INTEGER PRIMARY KEY, booking_id INTEGER, student_id INTEGER, enrollment_id INTEGER, note TEXT, created_at TEXT, updated_at TEXT)');
+    else if (table === 'lesson_reports') db.exec('CREATE TABLE lesson_reports (id INTEGER PRIMARY KEY, booking_id INTEGER REFERENCES bookings_v2(id), student_id INTEGER REFERENCES students_v2(id), enrollment_id INTEGER REFERENCES enrollments(id), note TEXT, created_at TEXT, updated_at TEXT)');
     else db.exec(`CREATE TABLE "${table}" (id INTEGER PRIMARY KEY)`);
     assert.ok(policy, table);
   }
@@ -303,4 +451,34 @@ test('database verification rejects extra IDs and altered synthetic identity/con
     assert.throws(() => verifySyntheticDatabase(db), new RegExp(table));
     db.close();
   }
+});
+
+test('foreign-key enforcement rejects violations and verifier independently detects existing ones', () => {
+  const db = createPolicyFixture();
+  db.exec('PRAGMA foreign_keys = ON');
+  assert.throws(
+    () => db.prepare("INSERT INTO students_v2 (id, code, account_id) VALUES (1, 'orphan', 999999)").run(),
+    /FOREIGN KEY constraint failed/,
+  );
+
+  const seeded = createPolicyFixture();
+  seedSyntheticRows(seeded);
+  seeded.exec('PRAGMA foreign_keys = OFF');
+  seeded.exec('UPDATE students_v2 SET account_id = 999999 WHERE id = 92001');
+  assert.throws(() => verifySyntheticDatabase(seeded), /foreign key/i);
+  db.close();
+  seeded.close();
+});
+
+test('synthetic seed transaction keeps FK enforcement on and rolls back a deferred violation before commit', () => {
+  const db = createPolicyFixture();
+  assert.throws(() => replaceSyntheticDatabase(db, {
+    afterSeed: (transaction) => {
+      assert.equal(transaction.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+      transaction.exec('UPDATE students_v2 SET account_id = 999999 WHERE id = 92001');
+    },
+  }), /foreign key/i);
+  assert.equal(db.prepare('PRAGMA foreign_keys').get().foreign_keys, 1);
+  assert.equal(db.prepare('SELECT COUNT(*) AS n FROM students_v2').get().n, 0);
+  db.close();
 });

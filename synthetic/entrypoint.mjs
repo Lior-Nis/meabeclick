@@ -1,6 +1,7 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
 import { integrationGuardIssues } from './integration-guard.mjs';
+import { loopbackUrlIssue } from './runtime-policy.mjs';
 
 const DATA_DIR = '/synthetic-data';
 const DB_PATH = '/synthetic-data/synthetic.db';
@@ -22,9 +23,8 @@ if (process.env.SYNTHETIC_TEST_MODE !== '1') refuse('SYNTHETIC_TEST_MODE must be
 if (process.env.DATA_DIR !== DATA_DIR) refuse(`DATA_DIR must be ${DATA_DIR}`);
 if (process.env.DB_PATH !== DB_PATH) refuse(`DB_PATH must be ${DB_PATH}`);
 if (process.env.PORTAL_DIR !== `${DATA_DIR}/portal`) refuse('PORTAL_DIR must stay inside the synthetic volume');
-if (process.env.ORIGIN !== process.env.SITE_URL || !process.env.ORIGIN?.startsWith('http://127.0.0.1:')) {
-  refuse('ORIGIN and SITE_URL must be the same loopback-only URL');
-}
+const urlIssue = loopbackUrlIssue(process.env.ORIGIN, process.env.SITE_URL);
+if (urlIssue) refuse(`ORIGIN and SITE_URL must be the same loopback-only URL: ${urlIssue}`);
 
 mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(MARKER)) {

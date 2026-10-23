@@ -1,9 +1,10 @@
 import { DatabaseSync } from 'node:sqlite';
 import { existsSync, readFileSync } from 'node:fs';
-import { purgeApplicationData, verifySyntheticDatabase } from './database-policy.mjs';
-import { seedSyntheticRows } from './seed-data.mjs';
+import { replaceSyntheticDatabase } from './database-seed.mjs';
+import { seedSyntheticPortal, verifySyntheticPortal } from './portal-fixture.mjs';
 
 const DB_PATH = '/synthetic-data/synthetic.db';
+const PORTAL_DIR = '/synthetic-data/portal';
 const MARKER = process.env.SYNTHETIC_DATA_MARKER || '/synthetic-data/.meabeclick-synthetic-volume';
 const MARKER_BODY = 'meabeclick-synthetic-volume-v1\n';
 
@@ -21,20 +22,14 @@ if (!existsSync(MARKER) || readFileSync(MARKER, 'utf8') !== MARKER_BODY) {
 if (!existsSync(DB_PATH)) refuse('database does not exist; start the synthetic app so migrations run first');
 
 const db = new DatabaseSync(DB_PATH);
-db.exec('PRAGMA foreign_keys = ON');
-
-db.exec('PRAGMA foreign_keys = OFF');
-db.exec('BEGIN IMMEDIATE');
 try {
-  purgeApplicationData(db, { manageForeignKeys: false });
-  seedSyntheticRows(db);
-  verifySyntheticDatabase(db);
-  db.exec('COMMIT');
-} catch (error) {
-  db.exec('ROLLBACK');
-  throw error;
+  replaceSyntheticDatabase(db, {
+    afterSeed: () => {
+      seedSyntheticPortal(PORTAL_DIR);
+      verifySyntheticPortal(PORTAL_DIR);
+    },
+  });
 } finally {
-  db.exec('PRAGMA foreign_keys = ON');
   db.close();
 }
 

@@ -1,6 +1,7 @@
 import { DatabaseSync } from 'node:sqlite';
 import { readFileSync } from 'node:fs';
 import { verifySyntheticDatabase } from './database-policy.mjs';
+import { verifySyntheticPortal } from './portal-fixture.mjs';
 
 const dbPath = process.env.DB_PATH;
 const markerPath = process.env.SYNTHETIC_DATA_MARKER;
@@ -13,5 +14,6 @@ if (!markerPath || readFileSync(markerPath, 'utf8') !== 'meabeclick-synthetic-vo
 
 const db = new DatabaseSync(dbPath, { readOnly: true });
 const counts = verifySyntheticDatabase(db);
+verifySyntheticPortal('/synthetic-data/portal');
 db.close();
 console.log(`[synthetic] database verification passed: ${JSON.stringify(counts)}`);

@@ -12,8 +12,9 @@ This stack is for UX and release testing with fictional data only. It does not d
 - Access: the data-less gateway publishes `127.0.0.1:4173` by default and forwards only to `app:3000`. There is no public listener, Caddy service, DNS change, or TLS automation.
 - Every lifecycle call pins Docker Compose to `--env-file /dev/null`, so Compose never implicitly reads the project-root production `.env`. `SYNTHETIC_PORT` is the only supported shell override and must be an integer from 1024 through 65535. No `.env`, host `data/`, service-account JSON, Codex home, protected knowledgebase path, production database, or other host path is mounted.
 - The entrypoint rejects a shared source-controlled inventory of integration credentials/config and all lesson/question engine, binary, model, effort, and timeout redirects. It also refuses Codex credential files, paths outside `/synthetic-data`, and non-loopback URLs.
-- The named volume is marked before first database creation. An unmarked non-empty data directory is refused. After migrations, the seeder removes every application row except migration bookkeeping—including migration-created named tutors and generic catalog exercises—then inserts the deterministic fixture in one transaction.
-- Final verification is exhaustive against `src/lib/server/storage-inventory.ts`: every known data table is either constrained to exact synthetic IDs/content or required to be empty. Unknown/missing tables, real/default tutor fields, extra bookings/enrollments/payments/reports/results, and altered formula/homework/submission fixtures fail verification.
+- The named volume is marked before first database creation. An unmarked non-empty data directory is refused. After migrations, the seeder removes every application row except migration bookkeeping—including migration-created named tutors and generic catalog exercises—then inserts the deterministic fixture in one transaction with foreign-key enforcement enabled and deferred until the complete graph exists.
+- The seeder also cleans the portal directory and atomically creates exactly `/synthetic-data/portal/synthetic-student-gamma.json`. Its obviously fictional, deterministic content includes the seeded lesson and game. Reruns replace corruption or stale temporary files and remove every unexpected portal entry.
+- Final verification is exhaustive against `src/lib/server/storage-inventory.ts`: every known data table is either constrained to exact synthetic IDs/content or required to be empty. It independently runs SQLite's `foreign_key_check` and verifies the exact portal path/content and absence of other portal files. Unknown/missing tables, broken references, real/default tutor fields, extra bookings/enrollments/payments/reports/results, and altered formula/homework/submission fixtures fail verification.
 - Gmail/SMTP, Calendar, Drive, Meet OAuth, CallMeBot/WhatsApp, Slack alerts, and Codex/OpenAI credentials are absent. The application network blocks egress as a second, independent control. The access gateway cannot read the database or invoke anything except the fixed app target.
 
 The fixed tutor password is `synthetic-tutor-only`. It is intentionally public and valid only in this isolated stack. All seeded names contain `בדיקה`, all email addresses use reserved `example.invalid`, and phone/content values are obvious fixtures.
@@ -34,11 +35,11 @@ Validate the fully rendered configuration without starting anything:
 ./scripts/synthetic-vps.sh up
 ```
 
-This first stops and removes any existing synthetic `gateway`, then builds the local image and starts only the internal synthetic `app`. While no host port exists, it waits for migrations/health, replaces all application data with the deterministic fixture, and runs exhaustive database verification. Only then does it recreate the loopback gateway and perform the HTTP smoke check. This ordering also applies when `up` is rerun over an existing stack, so the previous loopback listener cannot expose the app during rebuild, migration, seed, or verification.
+This first stops and removes any existing synthetic `gateway`, then builds the local image and starts only the internal synthetic `app`. While no host port exists, it waits for migrations/health, replaces all application data with the deterministic fixture, and runs exhaustive database and portal-file verification. Only then does it recreate the loopback gateway. The HTTP smoke uses the fixed synthetic signing secret and fictional student ID to visit `/enter`, verifies that a student session cookie and the exact student redirect are established, opens the normal student page, and checks the normal portal API exposes the seeded lesson, game, and completed homework. The smoke refuses any target except an exact `http://127.0.0.1:<1024-65535>` root URL. This ordering also applies when `up` is rerun over an existing stack, so the previous loopback listener cannot expose the app during rebuild, migration, seed, or verification.
 
 If app startup, seeding, database verification, gateway startup, or the HTTP smoke fails, the command fails closed and removes the entire fixed synthetic Compose project, including its named data volume. A partially seeded or unverified environment is never left available.
 
-Open `http://127.0.0.1:4173`. Use `/login` and the fixed synthetic tutor password for the tutor flow. The seeded account/student, completed homework, formula-rich quiz (`y = x²`), game result, booking, lesson, and report appear in the normal application views.
+Open `http://127.0.0.1:4173`. Use `/login` and the fixed synthetic tutor password for the tutor flow. The seeded account/student, completed homework, formula-rich quiz (`y = x²`), game result, booking, lesson, and report appear in the normal application views. To explicitly rerun the same normal student magic-link and portal flow checked by `up` and `verify`, run `node synthetic/http-smoke.mjs http://127.0.0.1:4173`; it mints only a short-lived link for fixed fictional student `92001` and prints no token or record content.
 
 To use another loopback port:
 
@@ -65,7 +66,7 @@ Expected evidence includes:
 - Compose config validation succeeds.
 - Only `meabeclick-synthetic-*` resources are shown.
 - Database verification reports exact allowlisted fixture counts (1 account, 1 student, 2 tutors, 1 enrollment, 1 booking, 1 lesson, 1 submitted homework item, 1 result, 1 report, and 1 synthetic game catalog row) and zero rows in every other application data table.
-- HTTP smoke returns 200.
+- Magic-link exchange, student page, and student portal API smoke all succeed against the exact loopback origin.
 
 The check prints counts only; it does not print seeded records.
 

@@ -14,6 +14,8 @@ const entrypoint = read('synthetic/entrypoint.mjs');
 const integrationGuard = read('synthetic/integration-guard.mjs');
 const seed = read('synthetic/seed.mjs');
 const seedData = read('synthetic/seed-data.mjs');
+const databaseSeed = read('synthetic/database-seed.mjs');
+const portalFixture = read('synthetic/portal-fixture.mjs');
 const lifecycle = read('scripts/synthetic-vps.sh');
 const dockerfile = read('Dockerfile');
 const docs = read('docs/synthetic-vps.md');
@@ -75,8 +77,11 @@ test('deterministic seed is visibly fictional and covers the release-test model'
   assert.match(seedData, /INSERT INTO results_v2/);
   assert.match(seedData, /submitted_at/);
   assert.match(seedData, /x²|x\^2/);
-  assert.match(seed, /purgeApplicationData/);
-  assert.match(seed, /verifySyntheticDatabase/);
+  assert.match(databaseSeed, /purgeApplicationData/);
+  assert.match(databaseSeed, /verifySyntheticDatabase/);
+  assert.match(seed, /seedSyntheticPortal/);
+  assert.match(portalFixture, /synthetic-student-gamma\.json/);
+  assert.match(portalFixture, /synthetic-quadratic-formulas/);
 });
 
 test('teardown is hard-scoped to only the synthetic project and volume', () => {
