@@ -152,7 +152,15 @@ fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
 if [ -s "$FILES" ]; then
   # Extract here, before the previous restore is touched. A truncated
   # archive fails this command and the trap throws the scratch tree away.
-  tar -xzf "$FILES" -C "$scratch/data" || {
+  # Never let the archive replace the database that just passed. A backup
+  # tarball is the file tree, not a second copy of results.db; a member
+  # named results.db (or its -wal/-shm siblings, with or without ./) would
+  # overwrite the checked file underneath the re-check.
+  tar -xzf "$FILES" -C "$scratch/data" \
+    --exclude='results.db' \
+    --exclude='results.db-*' \
+    --exclude='./results.db' \
+    --exclude='./results.db-*' || {
     echo "files archive is corrupt: $FILES" >&2
     exit 1
   }
@@ -163,9 +171,14 @@ else
 fi
 
 mkdir -p "$scratch/data/portal"
-# The archive is unpacked on top of the checked database. Re-check before
-# the swap so a tarball that replaced results.db cannot land.
+# Re-check before the swap. The excludes above are what stop a tarball from
+# replacing results.db; these two checks are what stop the swap if it did.
 require_integrity "$ro" "$DB"
+fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
+  echo "foreign key check failed for $DB" >&2
+  exit 1
+}
+[ "$fk_src" = "0" ] || { echo "FOREIGN KEY VIOLATIONS IN BACKUP" >&2; exit 1; }
 
 echo "restoring $STAMP into $TARGET"
 # Move the old tree aside, then rename the scratch dir into its place.

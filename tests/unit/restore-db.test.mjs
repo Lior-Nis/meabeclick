@@ -66,6 +66,11 @@ test('the scratch tree is beside the target and removed on exit', () => {
   const before = beforeReplace();
   assert.match(before, /mktemp -d "\$\(dirname -- "\$TARGET"\)\/\.restore-scratch\.XXXXXX"/);
   assert.match(before, /tar -xzf "\$FILES" -C "\$scratch\/data"/);
+  assert.match(before, /--exclude='results\.db'/);
+  assert.match(before, /--exclude='results\.db-\*'/);
+  assert.match(before, /--exclude='\.\/results\.db'/);
+  assert.match(before, /--exclude='\.\/results\.db-\*'/);
+  assert.equal(before.split('PRAGMA foreign_key_check').length - 1, 2);
   assert.match(script, /trap cleanup EXIT/);
   assert.match(script, /rm -rf "\$scratch"/);
 });
@@ -475,6 +480,46 @@ describe('restore-db.sh', { concurrency: false }, () => {
       assert.equal(existsSync(join(target, 'data', 'KEEP')), false);
       assert.equal(readFileSync(join(parent, 'KEEP'), 'utf8'), 'sibling');
       assert.deepEqual(readdirSync(parent).filter((n) => n.startsWith('.restore-')), []);
+    } finally {
+      rmSync(h.work, { recursive: true, force: true });
+    }
+  });
+
+  test('a tarball cannot replace the database that was already checked', (t) => {
+    if (skipWithoutSqlite(t)) return;
+    const h = harness();
+    const stage = join(h.work, 'stage');
+    mkdirSync(join(stage, 'portal'), { recursive: true });
+    writeFileSync(join(stage, 'portal', 'board.json'), '{"fake":true}\n');
+    const badPath = join(stage, 'results.db');
+    const bad = new DatabaseSync(badPath);
+    bad.exec(`CREATE TABLE accounts (id INTEGER PRIMARY KEY, name TEXT);
+      INSERT INTO accounts (name) VALUES ('from-tarball');`);
+    bad.close();
+    const buf = readFileSync(badPath);
+    assert.ok(buf.length > 4100, 'bad database is too small to corrupt');
+    buf[4100] ^= 0xff;
+    writeFileSync(badPath, buf);
+    writeFileSync(join(stage, 'results.db-wal'), 'wal-garbage');
+    writeFileSync(join(stage, 'results.db-shm'), 'shm-garbage');
+    const packed = spawnSync('tar', ['-czf', join(h.backups, `files-${STAMP}.tar.gz`), '-C', stage,
+      './results.db', './results.db-wal', './results.db-shm', './portal'], { encoding: 'utf8' });
+    assert.equal(packed.status, 0, packed.stderr);
+    const parent = join(h.work, 'parent');
+    const target = previousRestore(parent);
+    writeFileSync(join(parent, 'KEEP'), 'sibling');
+    try {
+      const r = run(h, [STAMP, target]);
+      assert.equal(r.status, 0, r.stderr);
+      const db = new DatabaseSync(join(target, 'data', 'results.db'), { readOnly: true });
+      const row = db.prepare('SELECT name FROM accounts').get();
+      db.close();
+      assert.equal(row.name, 'fixture');
+      assert.equal(readFileSync(join(target, 'data', 'portal', 'board.json'), 'utf8'), '{"fake":true}\n');
+      assert.equal(existsSync(join(target, 'data', 'results.db-wal')), false);
+      assert.equal(existsSync(join(target, 'data', 'results.db-shm')), false);
+      assert.equal(readFileSync(join(parent, 'KEEP'), 'utf8'), 'sibling');
+      assert.equal(existsSync(join(target, 'data', 'KEEP')), false);
     } finally {
       rmSync(h.work, { recursive: true, force: true });
     }
