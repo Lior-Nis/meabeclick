@@ -44,6 +44,7 @@ import { SUBJECT } from '$lib/subjects.ts';
 import { isLessonMode, lessonPlace, type LessonMode } from '$lib/lesson-mode.ts';
 import { bookingEvent } from '$server/booking-event.ts';
 import { serviceAccount, insertLessonEvent } from '$server/lesson-calendar.ts';
+import { isValidEmailAddress, normalizeEmail } from '$server/email-address.ts';
 
 interface BookBody {
   name?: string;
@@ -381,6 +382,15 @@ export const POST: RequestHandler = async ({ request, cookies, locals }) => {
   if (!isComplete(body)) {
     return json({ error: 'חסרים פרטים' }, { status: 400 });
   }
+
+  /* Reject at the public boundary, before an account lookup, calendar read,
+     enrollment, or mail composition. Runtime JSON is not BookBody: arrays
+     and nested recipient structures can otherwise stringify into a mailbox,
+     while very long values reach Nodemailer's address parser. */
+  if (!isValidEmailAddress(body.email)) {
+    return json({ error: 'צריך כתובת מייל כדי לשלוח את הקישור לדף האישי' }, { status: 400 });
+  }
+  body.email = normalizeEmail(body.email);
 
   /* Real times, the start before the end, checked before anything reads
      them: an unparseable time used to reach a server error inside the
