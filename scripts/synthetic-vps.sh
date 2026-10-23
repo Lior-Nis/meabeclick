@@ -46,6 +46,7 @@ up() {
   }
   trap cleanup_failed_up ERR EXIT
 
+  "${COMPOSE[@]}" rm --stop --force gateway
   "${COMPOSE[@]}" up -d --build --wait app
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed
   "${COMPOSE[@]}" --profile tools run --rm --no-deps seed node synthetic/verify.mjs

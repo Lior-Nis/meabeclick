@@ -34,7 +34,7 @@ Validate the fully rendered configuration without starting anything:
 ./scripts/synthetic-vps.sh up
 ```
 
-This builds the local image and starts only the internal synthetic `app`. While no host port exists, it waits for migrations/health, replaces all application data with the deterministic fixture, and runs exhaustive database verification. Only then does it start the loopback gateway and perform the HTTP smoke check.
+This first stops and removes any existing synthetic `gateway`, then builds the local image and starts only the internal synthetic `app`. While no host port exists, it waits for migrations/health, replaces all application data with the deterministic fixture, and runs exhaustive database verification. Only then does it recreate the loopback gateway and perform the HTTP smoke check. This ordering also applies when `up` is rerun over an existing stack, so the previous loopback listener cannot expose the app during rebuild, migration, seed, or verification.
 
 If app startup, seeding, database verification, gateway startup, or the HTTP smoke fails, the command fails closed and removes the entire fixed synthetic Compose project, including its named data volume. A partially seeded or unverified environment is never left available.
 

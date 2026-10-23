@@ -104,13 +104,51 @@ test('lifecycle starts gateway only after seed and database verification', async
   const result = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
   assert.equal(result.status, 0, result.stderr);
   const log = await readLog(fixture.log);
+  const gatewayRemoval = log.indexOf('<rm> <--stop> <--force> <gateway>');
   const app = log.indexOf('<up> <-d> <--build> <--wait> <app>');
   const seed = log.indexOf('<run> <--rm> <--no-deps> <seed>');
   const verify = log.indexOf('<seed> <node> <synthetic/verify.mjs>');
   const gateway = log.indexOf('<up> <-d> <--wait> <gateway>');
-  assert.ok(app >= 0 && app < seed, log);
+  assert.ok(gatewayRemoval >= 0 && gatewayRemoval < app, log);
+  assert.ok(app < seed, log);
   assert.ok(seed < verify, log);
   assert.ok(verify < gateway, log);
+});
+
+test('rerunning up removes an existing gateway before rebuild and keeps it absent through verification', async () => {
+  const fixture = await fakeLifecycleTools();
+  const first = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
+  assert.equal(first.status, 0, first.stderr);
+  const second = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
+  assert.equal(second.status, 0, second.stderr);
+
+  const lines = (await readLog(fixture.log)).trim().split('\n');
+  const removals = lines
+    .map((line, index) => line.includes('<rm> <--stop> <--force> <gateway>') ? index : -1)
+    .filter((index) => index >= 0);
+  const appStarts = lines
+    .map((line, index) => line.includes('<up> <-d> <--build> <--wait> <app>') ? index : -1)
+    .filter((index) => index >= 0);
+  const verifications = lines
+    .map((line, index) => line.includes('<seed> <node> <synthetic/verify.mjs>') ? index : -1)
+    .filter((index) => index >= 0);
+  const gatewayStarts = lines
+    .map((line, index) => line.includes('<up> <-d> <--wait> <gateway>') ? index : -1)
+    .filter((index) => index >= 0);
+
+  assert.equal(removals.length, 2, lines.join('\n'));
+  assert.equal(appStarts.length, 2, lines.join('\n'));
+  assert.equal(verifications.length, 2, lines.join('\n'));
+  assert.equal(gatewayStarts.length, 2, lines.join('\n'));
+  assert.ok(gatewayStarts[0] < removals[1], lines.join('\n'));
+  assert.ok(removals[1] < appStarts[1], lines.join('\n'));
+  assert.ok(appStarts[1] < verifications[1], lines.join('\n'));
+  assert.ok(verifications[1] < gatewayStarts[1], lines.join('\n'));
+  assert.equal(
+    gatewayStarts.filter((index) => index > removals[1] && index < verifications[1]).length,
+    0,
+    lines.join('\n'),
+  );
 });
 
 for (const failure of [
