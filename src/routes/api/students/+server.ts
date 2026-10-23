@@ -23,6 +23,7 @@ import {
   upsertEnrollment, defaultTeacher, normalizeEmail,
 } from '$server/entities.ts';
 import { makeCode, writePortalFile } from '$server/enroll.ts';
+import { isValidEmailAddress } from '$server/email-address.ts';
 import type { RequestHandler } from './$types';
 
 export const GET: RequestHandler = async (event) => {
@@ -54,6 +55,9 @@ export const POST: RequestHandler = async (event) => {
     return json({ error: 'הקוד חייב להיות באנגלית קטנה, בלי רווחים' }, { status: 400 });
   }
   if (requested && getStudentByCode(requested)) return json({ error: 'הקוד הזה כבר תפוס' }, { status: 409 });
+  if (email && !isValidEmailAddress(body?.email)) {
+    return json({ error: 'צריך כתובת מייל תקינה' }, { status: 400 });
+  }
   const code = requested || makeCode(name, null);
 
   /* An address is optional here, unlike at booking. The tutor sometimes

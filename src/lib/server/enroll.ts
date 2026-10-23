@@ -45,6 +45,7 @@ import {
 } from './entities.ts';
 import { portalDir } from './paths.ts';
 import { inTransaction } from './db.ts';
+import { isValidEmailAddress } from './email-address.ts';
 
 const PORTAL = portalDir();
 
@@ -231,15 +232,11 @@ export interface EnrollResult {
  *                      booking without one would enrol a family that can
  *                      never reach what was enrolled.
  */
-const EMAIL_SHAPE = /^[^\s@]+@[^\s@]+\.[^\s@]+$/;
-
 export function enrollFromBooking(booking: BookingInput, teacher: TeacherRow | null = defaultTeacher()): EnrollResult {
   const email = normalizeEmail(booking.email);
-  // The same rule the booking form applies client-side: one local part, one
-  // @, a domain with a dot, no whitespace. "Contains an @" let "orit@",
-  // "@example.com" and "a@b@c.com" enroll a family whose magic link could
-  // never arrive — and the link is their only way back in.
-  if (!EMAIL_SHAPE.test(email)) {
+  // Defense in depth for callers other than the public booking route: one
+  // bounded mailbox string, never an address list or structured value.
+  if (!isValidEmailAddress(booking.email)) {
     throw new EnrollError('צריך כתובת מייל כדי לשלוח את הקישור לדף האישי', 'EMAIL_REQUIRED');
   }
 
