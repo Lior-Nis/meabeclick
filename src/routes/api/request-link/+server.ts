@@ -32,7 +32,8 @@
  * whose confirmation had just failed to come here for a new link.
  */
 import { json } from '@sveltejs/kit';
-import { findAccountByEmail, normalizeEmail } from '$server/entities.ts';
+import { findAccountByEmail } from '$server/entities.ts';
+import { isValidEmailAddress, normalizeEmail } from '$server/email-address.ts';
 import { accountLink } from '$server/family-auth.ts';
 import { sendPortalLinkEmail, mailCredentialsRejected } from '$server/email.ts';
 import { readJson } from '$server/http.ts';
@@ -71,14 +72,15 @@ export const POST: RequestHandler = async ({ request }) => {
   const parsed = await readJson(request);
   if (parsed instanceof Response) return parsed;
 
-  const email = normalizeEmail((parsed as Record<string, unknown>)?.email);
+  const rawEmail = (parsed as Record<string, unknown>)?.email;
 
   // The one thing worth answering differently, because it is about the
   // request rather than about who exists: a value that is not an address at
   // all can be corrected by the person typing it.
-  if (!email || !email.includes('@')) {
+  if (!isValidEmailAddress(rawEmail)) {
     return json({ error: 'צריך כתובת מייל תקינה' }, { status: 400 });
   }
+  const email = normalizeEmail(rawEmail);
 
   /* The mailer being down is not a per-address fact. It is true for every
      address at once, so saying it reveals nothing about who is on file —
