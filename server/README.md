@@ -638,18 +638,22 @@ alone; delete them once you are happy with `~/backups`.
 ### Restoring
 
 `server/restore-db.sh` restores into an isolated directory and checks it. It
-**never writes to `./data`** — promoting a verified restore into production
-is a separate, deliberate act, because overwriting live student records is
-the mistake this exists to prevent.
+**never writes to `./data`**, and it refuses a target that is `./data`, the
+repo root, `/`, `$HOME`, or anything inside `./data` (including a symlink
+that resolves there) before it deletes anything. Promoting a verified
+restore into production is a separate, deliberate act, because overwriting
+live student records is the mistake this exists to prevent.
 
 ```bash
 bash server/restore-db.sh                    # newest -> ./restore-drill
 bash server/restore-db.sh 2026-09-08 /tmp/r  # a specific day, elsewhere
 ```
 
-It runs `integrity_check` and `foreign_key_check`, fails on any violation,
-prints counts only (never records), and finishes by printing the `docker run`
-that smoke-tests the restore on port 3100 without touching the live stack.
+It runs `integrity_check` and `foreign_key_check` on the backup before it
+replaces the target, and fails unless `integrity_check` is exactly `ok`.
+A corrupt backup leaves any previous restore in place. It prints counts
+only (never records), and finishes by printing the `docker run` that
+smoke-tests the restore on port 3100 without touching the live stack.
 
 **Run it after any change to what gets backed up, and before any cutover.** A
 backup nobody has restored is a hope, not a backup.

@@ -7,6 +7,12 @@
 # student records is exactly the mistake this whole exercise exists to
 # prevent.
 #
+# The target is resolved to a canonical path (symlinks included) and refused
+# — nothing deleted — when it is empty, /, $HOME, the repo root, ./data, or
+# $DATA_DIR, an ancestor of any of those, or anything inside ./data or
+# $DATA_DIR. The backup is integrity-checked on a read-only copy before the
+# previous restore is removed, so a corrupt file cannot wipe a good drill.
+#
 # The point is that a backup nobody has restored is a hope, not a backup.
 # Run this after any change to what gets backed up, and before any cutover.
 #
@@ -17,7 +23,13 @@ cd "$(dirname "$0")/.."
 
 SRC="${BACKUP_DIR:-$HOME/backups}"
 STAMP="${1:-}"
-TARGET="${2:-$PWD/restore-drill}"
+# An explicit empty target is a refusal, not a request for the default.
+# `${2:-...}` would treat "" as unset and restore into ./restore-drill.
+if [ "$#" -ge 2 ]; then
+  TARGET="$2"
+else
+  TARGET="$PWD/restore-drill"
+fi
 
 if [ -z "$STAMP" ]; then
   newest="$(ls -1 "$SRC"/results-*.db 2>/dev/null | tail -1 || true)"
@@ -28,6 +40,87 @@ fi
 DB="$SRC/results-$STAMP.db"
 FILES="$SRC/files-$STAMP.tar.gz"
 [ -s "$DB" ] || { echo "no database backup for $STAMP at $DB" >&2; exit 1; }
+
+refuse() {
+  echo "refusing restore target '$TARGET': $*" >&2
+  exit 1
+}
+
+# sqlite3 exits 0 when this pragma runs. A broken index comes back as text,
+# not a failed command; only the exact word "ok" is a pass. `show` reprints
+# that word under "--- integrity ---", which is what a drill log looks for.
+require_integrity() {
+  local db="$1" label="$2" show="${3:-}" integrity
+  if ! integrity="$(sqlite3 "$db" "PRAGMA integrity_check;" 2>&1)"; then
+    echo "integrity check failed for $label" >&2
+    printf '%s\n' "$integrity" >&2
+    exit 1
+  fi
+  if [ "$show" = "show" ]; then
+    printf '%s\n' "$integrity"
+  fi
+  [ "$integrity" = "ok" ] || {
+    echo "integrity check failed for $label: expected ok" >&2
+    printf '%s\n' "$integrity" >&2
+    exit 1
+  }
+}
+
+if [ -z "$TARGET" ]; then
+  refuse "a restore target must not be empty"
+fi
+
+# -m so a target that does not exist yet still canonicalises. Symlink
+# components are resolved, so a link to ./data is judged as ./data.
+CANON="$(realpath -m -- "$TARGET")" || refuse "could not resolve the path"
+[ -n "$CANON" ] || refuse "could not resolve the path"
+TARGET="$CANON"
+
+REPO="$(pwd)"
+REPO_DATA="$(realpath -m -- "$REPO/data")"
+HOME_CANON="$(realpath -m -- "$HOME")"
+
+# $1 protected path, $2 label, $3 "inside" to also refuse descendants.
+# Descendants are refused only for data directories: ./restore-drill lives
+# in the repo, and that must keep working.
+guard() {
+  local prot="$1" label="$2" descendants="${3:-}"
+  [ -n "$prot" ] || return 0
+  if [ "$TARGET" = "$prot" ]; then
+    refuse "it is $label ($prot)"
+  fi
+  # TARGET is a strict ancestor of prot — removing it removes prot.
+  if [ "${prot#"$TARGET"/}" != "$prot" ]; then
+    refuse "it is an ancestor of $label ($prot)"
+  fi
+  if [ "$descendants" = "inside" ] && [ "${TARGET#"$prot"/}" != "$TARGET" ]; then
+    refuse "it is inside $label ($prot)"
+  fi
+}
+
+guard "/" "the filesystem root"
+guard "$HOME_CANON" "HOME"
+guard "$REPO" "the repo root"
+guard "$REPO_DATA" "the repo data directory" inside
+if [ -n "${DATA_DIR:-}" ]; then
+  DATA_CANON="$(realpath -m -- "$DATA_DIR")"
+  if [ "$DATA_CANON" != "$REPO_DATA" ]; then
+    guard "$DATA_CANON" "DATA_DIR" inside
+  fi
+fi
+
+# A copy, opened read-only, so the check cannot modify the backup and a
+# failure leaves the previous restore where it is.
+scratch="$(mktemp -d)"
+trap 'rm -rf "$scratch"' EXIT
+cp "$DB" "$scratch/results.db"
+ro="file:${scratch}/results.db?mode=ro"
+require_integrity "$ro" "$DB"
+fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
+  echo "foreign key check failed for $DB" >&2
+  exit 1
+}
+[ "$fk_src" = "0" ] || { echo "FOREIGN KEY VIOLATIONS IN BACKUP" >&2; exit 1; }
 
 echo "restoring $STAMP into $TARGET"
 rm -rf "$TARGET"; mkdir -p "$TARGET/data"
@@ -46,7 +139,7 @@ fi
 mkdir -p "$TARGET/data/portal"
 
 echo "--- integrity ---"
-sqlite3 "$TARGET/data/results.db" "PRAGMA integrity_check;"
+require_integrity "$TARGET/data/results.db" "restored database" show
 echo "--- foreign keys ---"
 fk="$(sqlite3 "$TARGET/data/results.db" 'PRAGMA foreign_key_check;' | wc -l)"
 echo "violations: $fk"
