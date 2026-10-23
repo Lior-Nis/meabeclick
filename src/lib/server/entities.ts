@@ -8,6 +8,9 @@
  */
 import { handle } from './db.ts';
 import type { LessonMode } from '../lesson-mode.ts';
+import { normalizeEmail } from './email-address.ts';
+
+export { normalizeEmail } from './email-address.ts';
 
 export type TeacherRow = {
   id: number; name: string; phone: string | null; active: number;
@@ -30,14 +33,6 @@ export type AccountRow = {
   credential: string; is_self: number; created_at: string;
   email: string | null; legacy_code: string | null;
 };
-
-/** Emails are matched, not displayed, so they are compared in one canonical
- *  form. A parent who books as `Dana@Gmail.com ` and later as `dana@gmail.com`
- *  is one account, not two — and since the email is what identifies a
- *  returning family, getting this wrong silently splits a family's history. */
-export function normalizeEmail(email: unknown): string {
-  return String(email ?? '').trim().toLowerCase();
-}
 
 export function createTeacher(t: { name: string; phone?: string | null }): TeacherRow {
   const info = handle().prepare(

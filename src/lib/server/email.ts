@@ -22,6 +22,7 @@
  * booking is never lost because mail was down.
  */
 import nodemailer from 'nodemailer';
+import type { Transporter } from 'nodemailer';
 import { PAYBOX_LINK, TUTOR_PHONE } from '../contact.ts';
 import { planLabel } from '../plans.ts';
 import { contactTutor } from '../tutors.ts';
@@ -143,7 +144,7 @@ export async function mailCredentialsRejected(now = Date.now()): Promise<boolean
   return rejectedCheck.value;
 }
 
-function transport(): nodemailer.Transporter | null {
+function transport(): Transporter | null {
   const user = process.env.GMAIL_USER;
   const pass = process.env.GMAIL_APP_PASSWORD;
   if (!user || !pass) {
