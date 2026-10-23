@@ -1,5 +1,7 @@
 const AT = '2026-01-15T10:00:00.000Z';
 
+const slidesHtml = '<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>שיעור בדיקה סינתטי</title></head><body><main><h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p></main></body></html>';
+
 const gameBody = JSON.stringify({
   title: 'בדיקה סינתטית — נוסחאות של פונקציה ריבועית',
   subject: 'מתמטיקה · תוכן בדיקה בלבד',
@@ -44,6 +46,11 @@ export function seedSyntheticRows(db) {
       'ready', NULL, NULL, ?, ?)`).run(AT, AT,
     JSON.stringify(['פתרו: x² = 16', 'בדקו הצבה בנוסחה y = 2x + 1']),
     JSON.stringify([{ title: 'נוסחאות — בדיקה', template: 'quiz', dataId: 'synthetic-linear-formulas' }]));
+
+  db.prepare(`INSERT INTO lesson_materials
+    (id, lesson_slug, kind, version, content, teacher_only, origin, published_at, created_at)
+    VALUES (98501, 'synthetic-quadratic-formulas', 'slides', 1, ?, NULL, 'generated', ?, ?)`)
+    .run(slidesHtml, AT, AT);
 
   db.prepare(`INSERT INTO homework
     (id, lesson_id, student_id, task, template, data_id, assigned_at, due_at, submitted_at,

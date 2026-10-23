@@ -32,7 +32,7 @@ export const DATA_TABLE_POLICY = Object.freeze({
   lesson_report_notes: { key: 'id', expectedKeys: empty },
   report_prompts: { key: 'id', expectedKeys: empty },
   lesson_requests: { key: 'id', expectedKeys: empty },
-  lesson_materials: { key: 'id', expectedKeys: empty },
+  lesson_materials: { key: 'id', expectedKeys: [98501] },
   drive_items: { key: 'id', expectedKeys: empty },
   lessons: { key: 'id', expectedKeys: [99001] },
   lessons_v2: { key: 'id', expectedKeys: empty },
@@ -176,6 +176,15 @@ export function verifySyntheticDatabase(db) {
     && lesson?.homework === '["פתרו: x² = 16","בדקו הצבה בנוסחה y = 2x + 1"]'
     && lesson?.games === '[{"title":"נוסחאות — בדיקה","template":"quiz","dataId":"synthetic-linear-formulas"}]',
   'lessons', 'formula/homework fixture changed');
+
+  const material = row(db, 'lesson_materials');
+  requireRow(material?.id === 98501 && material?.lesson_slug === 'synthetic-quadratic-formulas'
+    && material?.kind === 'slides' && material?.version === 1
+    && material?.content === '<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>שיעור בדיקה סינתטי</title></head><body><main><h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p></main></body></html>'
+    && material?.teacher_only === null && material?.origin === 'generated'
+    && material?.published_at === '2026-01-15T10:00:00.000Z'
+    && material?.created_at === '2026-01-15T10:00:00.000Z',
+  'lesson_materials', 'published slide fixture changed');
 
   const homework = row(db, 'homework');
   requireRow(homework?.id === 95001 && homework?.student_id === 92001

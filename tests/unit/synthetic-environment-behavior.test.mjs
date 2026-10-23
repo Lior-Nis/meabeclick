@@ -1,7 +1,7 @@
 import { test } from 'node:test';
 import assert from 'node:assert/strict';
 import { DatabaseSync } from 'node:sqlite';
-import { mkdtemp, writeFile, mkdir, readFile, readdir, chmod } from 'node:fs/promises';
+import { mkdtemp, writeFile, mkdir, readFile, readdir, chmod, access, rm } from 'node:fs/promises';
 import { tmpdir } from 'node:os';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
@@ -41,7 +41,15 @@ async function fakeLifecycleTools() {
   const dir = await mkdtemp(join(tmpdir(), 'synthetic-lifecycle-'));
   const bin = join(dir, 'bin');
   const log = join(dir, 'calls.log');
+  const scripts = join(dir, 'scripts');
+  const fixtureLifecycle = join(scripts, 'synthetic-vps.sh');
   await mkdir(bin);
+  await mkdir(scripts);
+  const lifecycleSource = await readFile(lifecycle, 'utf8');
+  await writeFile(fixtureLifecycle, lifecycleSource.replace(
+    '/tmp/meabeclick-synthetic-${UID}.lock.d',
+    join(dir, 'lifecycle.lock.d'),
+  ), { mode: 0o755 });
   await writeFile(join(bin, 'docker'), `#!/usr/bin/env bash
 printf 'docker' >> "$FAKE_CALL_LOG"
 printf ' <%s>' "$@" >> "$FAKE_CALL_LOG"
@@ -49,6 +57,10 @@ printf '\n' >> "$FAKE_CALL_LOG"
 case " $* " in
   *" $FAKE_DOCKER_FAIL_MATCH "*) exit 42 ;;
 esac
+if [[ " $* " == *" \${FAKE_DOCKER_DELAY_MATCH:-__never__} "* ]]; then
+  : > "$FAKE_DOCKER_DELAY_STARTED"
+  while [[ ! -e "$FAKE_DOCKER_DELAY_RELEASE" ]]; do sleep 0.01; done
+fi
 `, { mode: 0o755 });
   await writeFile(join(bin, 'node'), `#!/usr/bin/env bash
 printf 'node' >> "$FAKE_CALL_LOG"
@@ -58,7 +70,7 @@ case " $* " in
   *" \${FAKE_NODE_FAIL_MATCH:-__never__} "*) exit 43 ;;
 esac
 `, { mode: 0o755 });
-  return { dir, bin, log };
+  return { dir, bin, log, lifecycle: fixtureLifecycle };
 }
 
 function lifecycleEnv(fixture, extra = {}) {
@@ -69,6 +81,19 @@ function lifecycleEnv(fixture, extra = {}) {
     SYNTHETIC_PORT: '4273',
     ...extra,
   };
+}
+
+async function waitForFile(path, timeoutMs = 2000) {
+  const deadline = Date.now() + timeoutMs;
+  while (Date.now() < deadline) {
+    try {
+      await access(path);
+      return;
+    } catch {
+      await new Promise((resolve) => setTimeout(resolve, 10));
+    }
+  }
+  throw new Error(`timed out waiting for ${path}`);
 }
 
 async function readLog(path) {
@@ -114,7 +139,7 @@ test('rendered synthetic Compose is loopback-only and keeps the app on the inter
 
 test('lifecycle starts gateway only after seed and database verification', async () => {
   const fixture = await fakeLifecycleTools();
-  const result = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
+  const result = run('bash', [fixture.lifecycle, 'up'], { env: lifecycleEnv(fixture) });
   assert.equal(result.status, 0, result.stderr);
   const log = await readLog(fixture.log);
   const gatewayRemoval = log.indexOf('<rm> <--stop> <--force> <gateway>');
@@ -132,9 +157,9 @@ test('lifecycle starts gateway only after seed and database verification', async
 
 test('rerunning up removes an existing gateway before rebuild and keeps it absent through verification', async () => {
   const fixture = await fakeLifecycleTools();
-  const first = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
+  const first = run('bash', [fixture.lifecycle, 'up'], { env: lifecycleEnv(fixture) });
   assert.equal(first.status, 0, first.stderr);
-  const second = run('bash', [lifecycle, 'up'], { env: lifecycleEnv(fixture) });
+  const second = run('bash', [fixture.lifecycle, 'up'], { env: lifecycleEnv(fixture) });
   assert.equal(second.status, 0, second.stderr);
 
   const lines = (await readLog(fixture.log)).trim().split('\n');
@@ -173,7 +198,7 @@ for (const failure of [
 ]) {
   test(`lifecycle fails closed and removes synthetic resources after ${failure.name} failure`, async () => {
     const fixture = await fakeLifecycleTools();
-    const result = run('bash', [lifecycle, 'up'], {
+    const result = run('bash', [fixture.lifecycle, 'up'], {
       env: lifecycleEnv(fixture, { FAKE_DOCKER_FAIL_MATCH: failure.match }),
     });
     assert.notEqual(result.status, 0);
@@ -185,7 +210,7 @@ for (const failure of [
 
 test('lifecycle fails closed when the magic-link student portal HTTP smoke fails', async () => {
   const fixture = await fakeLifecycleTools();
-  const result = run('bash', [lifecycle, 'up'], {
+  const result = run('bash', [fixture.lifecycle, 'up'], {
     env: lifecycleEnv(fixture, { FAKE_NODE_FAIL_MATCH: 'synthetic/http-smoke.mjs' }),
   });
   assert.notEqual(result.status, 0);
@@ -198,7 +223,7 @@ test('lifecycle fails closed when the magic-link student portal HTTP smoke fails
 
 test('standalone verification failure also removes the synthetic project and volume', async () => {
   const fixture = await fakeLifecycleTools();
-  const result = run('bash', [lifecycle, 'verify'], {
+  const result = run('bash', [fixture.lifecycle, 'verify'], {
     env: lifecycleEnv(fixture, { FAKE_DOCKER_FAIL_MATCH: 'synthetic/verify.mjs' }),
   });
   assert.notEqual(result.status, 0);
@@ -208,7 +233,7 @@ test('standalone verification failure also removes the synthetic project and vol
 
 test('standalone verify fails closed when the student portal HTTP smoke fails', async () => {
   const fixture = await fakeLifecycleTools();
-  const result = run('bash', [lifecycle, 'verify'], {
+  const result = run('bash', [fixture.lifecycle, 'verify'], {
     env: lifecycleEnv(fixture, { FAKE_NODE_FAIL_MATCH: 'synthetic/http-smoke.mjs' }),
   });
   assert.notEqual(result.status, 0);
@@ -219,7 +244,7 @@ test('standalone verify fails closed when the student portal HTTP smoke fails', 
 
 test('all lifecycle Docker Compose calls use the fixed empty env source and teardown is scoped', async () => {
   const fixture = await fakeLifecycleTools();
-  const result = run('bash', [lifecycle, 'down'], { env: lifecycleEnv(fixture) });
+  const result = run('bash', [fixture.lifecycle, 'down'], { env: lifecycleEnv(fixture) });
   assert.equal(result.status, 0, result.stderr);
   const log = await readLog(fixture.log);
   for (const line of log.trim().split('\n')) {
@@ -229,10 +254,54 @@ test('all lifecycle Docker Compose calls use the fixed empty env source and tear
   assert.doesNotMatch(log, /<system> <prune>|<volume> <rm>|<rm>/);
 });
 
+test('lifecycle lock rejects concurrent fixed-project commands before Docker is invoked', async () => {
+  const fixture = await fakeLifecycleTools();
+  const started = join(fixture.dir, 'holder-started');
+  const release = join(fixture.dir, 'holder-release');
+  const holder = spawn('bash', [fixture.lifecycle, 'up'], {
+    cwd: root,
+    env: lifecycleEnv(fixture, {
+      FAKE_DOCKER_DELAY_MATCH: 'rm --stop --force gateway',
+      FAKE_DOCKER_DELAY_STARTED: started,
+      FAKE_DOCKER_DELAY_RELEASE: release,
+    }),
+    stdio: ['ignore', 'pipe', 'pipe'],
+  });
+  let holderStderr = '';
+  holder.stderr.on('data', (chunk) => { holderStderr += chunk; });
+  const holderClosed = new Promise((resolve) => holder.on('close', resolve));
+
+  try {
+    await waitForFile(started);
+
+    for (const command of ['up', 'verify', 'rebuild', 'down']) {
+      const before = await readLog(fixture.log);
+      const contender = run('bash', [fixture.lifecycle, command], {
+        env: lifecycleEnv(fixture, { FAKE_DOCKER_DELAY_MATCH: '__never__' }),
+      });
+      assert.equal(contender.status, 75, `${command}: ${contender.stderr}`);
+      assert.match(contender.stderr, /another synthetic lifecycle command is active/i);
+      assert.equal(await readLog(fixture.log), before, `${command} invoked Docker while blocked`);
+    }
+
+    await writeFile(release, 'release\n');
+    const holderStatus = await holderClosed;
+    assert.equal(holderStatus, 0, holderStderr);
+
+    const reacquired = run('bash', [fixture.lifecycle, 'down'], { env: lifecycleEnv(fixture) });
+    assert.equal(reacquired.status, 0, `lock was not reusable after release: ${reacquired.stderr}`);
+  } finally {
+    await writeFile(release, 'release\n').catch(() => {});
+    if (holder.exitCode === null) holder.kill('SIGKILL');
+    await holderClosed;
+    await rm(fixture.dir, { recursive: true, force: true });
+  }
+});
+
 test('lifecycle validates SYNTHETIC_PORT before invoking Docker', async () => {
   for (const port of ['0', '1023', '65536', '4173:80', 'not-a-port']) {
     const fixture = await fakeLifecycleTools();
-    const result = run('bash', [lifecycle, 'config'], { env: lifecycleEnv(fixture, { SYNTHETIC_PORT: port }) });
+    const result = run('bash', [fixture.lifecycle, 'config'], { env: lifecycleEnv(fixture, { SYNTHETIC_PORT: port }) });
     assert.equal(result.status, 64, `${port}: ${result.stderr}`);
     await assert.rejects(readLog(fixture.log));
   }
@@ -277,7 +346,7 @@ test('HTTP smoke refuses a normalized numeric loopback alias before any request'
   assert.match(result.stderr, /HTTP smoke target rejected/);
 });
 
-test('HTTP smoke exercises enter, student page, and portal API with the established cookie', async () => {
+test('HTTP smoke follows API material/game URLs and validates concrete completed homework', async () => {
   const requests = [];
   const server = createServer((request, response) => {
     requests.push({ url: request.url, cookie: request.headers.cookie });
@@ -294,9 +363,27 @@ test('HTTP smoke exercises enter, student page, and portal API with the establis
       }).end(JSON.stringify({
         name: 'תלמידת בדיקה גמא',
         lessons: [{ slidesUrl: '/lessons/synthetic-quadratic-formulas' }],
-        games: [{ dataId: 'synthetic-linear-formulas' }],
-        homework: [{ id: 95001 }],
+        games: [{
+          dataId: 'synthetic-linear-formulas',
+          url: '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature',
+        }],
+        homework: [{
+          id: 95001,
+          task: 'פתרו x² = 16 והסבירו את שתי התשובות — משימת בדיקה',
+          submitted: true,
+          graded: true,
+          grade: 'ok',
+          gradedBy: 'teacher',
+          template: 'quiz',
+          dataId: 'synthetic-linear-formulas',
+        }],
       }));
+    } else if (request.url === '/lessons/synthetic-quadratic-formulas') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        .end('<h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p>');
+    } else if (request.url === '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        .end('<h1>בדיקה סינתטית — נוסחאות של פונקציה ריבועית</h1><p>אם y = x², מה הערך של y כאשר x = 3?</p>');
     } else {
       response.writeHead(404).end();
     }
@@ -318,8 +405,178 @@ test('HTTP smoke exercises enter, student page, and portal API with the establis
   await new Promise((resolve) => server.close(resolve));
 
   assert.equal(result.status, 0, result.stderr);
-  assert.match(result.stdout, /magic-link and student portal HTTP smoke passed/);
-  assert.equal(requests.length, 3);
+  assert.match(result.stdout, /lesson, game, and completed homework HTTP smoke passed/);
+  assert.deepEqual(requests.map(({ url }) => url), [
+    requests[0].url,
+    '/app/student?s=synthetic-student-gamma',
+    '/api/portal/synthetic-student-gamma',
+    '/lessons/synthetic-quadratic-formulas',
+    '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature',
+  ]);
+  assert.equal(requests.length, 5);
+  assert.equal(requests[1].cookie, 'maab_family=fixed-test-session');
+  assert.equal(requests[2].cookie, 'maab_family=fixed-test-session');
+  assert.equal(requests[3].cookie, undefined);
+  assert.equal(requests[4].cookie, undefined);
+});
+
+for (const redirectCase of [
+  {
+    name: 'student page',
+    path: '/app/student?s=synthetic-student-gamma',
+    expectedError: /student portal page smoke returned HTTP 302/,
+  },
+  {
+    name: 'portal API',
+    path: '/api/portal/synthetic-student-gamma',
+    expectedError: /student portal API smoke returned HTTP 302/,
+  },
+]) {
+  test(`HTTP smoke rejects a ${redirectCase.name} redirect without contacting its foreign target`, async () => {
+    let escapedRequests = 0;
+    const portalBody = JSON.stringify({
+      name: 'תלמידת בדיקה גמא',
+      lessons: [{ slidesUrl: '/lessons/synthetic-quadratic-formulas' }],
+      games: [{
+        dataId: 'synthetic-linear-formulas',
+        url: '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature',
+      }],
+      homework: [{
+        id: 95001,
+        task: 'פתרו x² = 16 והסבירו את שתי התשובות — משימת בדיקה',
+        submitted: true,
+        graded: true,
+        grade: 'ok',
+        gradedBy: 'teacher',
+        template: 'quiz',
+        dataId: 'synthetic-linear-formulas',
+      }],
+    });
+    const escaped = createServer((_request, response) => {
+      escapedRequests += 1;
+      if (redirectCase.name === 'portal API') {
+        response.writeHead(200, { 'content-type': 'application/json' }).end(portalBody);
+      } else {
+        response.writeHead(200).end('foreign student page');
+      }
+    });
+    await new Promise((resolve) => escaped.listen(0, '127.0.0.1', resolve));
+    const escapedAddress = escaped.address();
+    assert.ok(escapedAddress && typeof escapedAddress === 'object');
+
+    const server = createServer((request, response) => {
+      if (request.url?.startsWith('/enter?t=s.92001.')) {
+        response.writeHead(303, {
+          location: '/app/student?s=synthetic-student-gamma',
+          'set-cookie': 'maab_family=fixed-test-session; Path=/; HttpOnly; SameSite=Lax',
+        }).end();
+      } else if (request.url === redirectCase.path) {
+        response.writeHead(302, { location: `http://127.0.0.1:${escapedAddress.port}/sentinel` }).end();
+      } else if (request.url === '/app/student?s=synthetic-student-gamma') {
+        response.writeHead(200).end('student page');
+      } else if (request.url === '/api/portal/synthetic-student-gamma') {
+        response.writeHead(200, { 'content-type': 'application/json' }).end(portalBody);
+      } else if (request.url === '/lessons/synthetic-quadratic-formulas') {
+        response.writeHead(200).end('<h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p>');
+      } else if (request.url?.startsWith('/app/play/quiz?')) {
+        response.writeHead(200).end('<h1>בדיקה סינתטית — נוסחאות של פונקציה ריבועית</h1><p>אם y = x², מה הערך של y כאשר x = 3?</p>');
+      } else {
+        response.writeHead(404).end();
+      }
+    });
+    await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+    const address = server.address();
+    assert.ok(address && typeof address === 'object');
+
+    try {
+      const result = await new Promise((resolve) => {
+        const child = spawn(process.execPath, ['synthetic/http-smoke.mjs', `http://127.0.0.1:${address.port}`], {
+          cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+        });
+        let stdout = '';
+        let stderr = '';
+        child.stdout.on('data', (chunk) => { stdout += chunk; });
+        child.stderr.on('data', (chunk) => { stderr += chunk; });
+        child.on('close', (status) => resolve({ status, stdout, stderr }));
+      });
+
+      assert.notEqual(result.status, 0);
+      assert.match(result.stderr, redirectCase.expectedError);
+      assert.equal(escapedRequests, 0, 'HTTP smoke contacted a foreign redirect target');
+    } finally {
+      await new Promise((resolve) => server.close(resolve));
+      await new Promise((resolve) => escaped.close(resolve));
+    }
+  });
+}
+
+test('HTTP smoke never follows a returned fixture redirect off the synthetic origin', async () => {
+  let escapedRequests = 0;
+  const escaped = createServer((_request, response) => {
+    escapedRequests += 1;
+    response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+      .end('<h1>בדיקה סינתטית — נוסחאות של פונקציה ריבועית</h1><p>אם y = x², מה הערך של y כאשר x = 3?</p>');
+  });
+  await new Promise((resolve) => escaped.listen(0, '127.0.0.1', resolve));
+  const escapedAddress = escaped.address();
+  assert.ok(escapedAddress && typeof escapedAddress === 'object');
+
+  const server = createServer((request, response) => {
+    if (request.url?.startsWith('/enter?t=s.92001.')) {
+      response.writeHead(303, {
+        location: '/app/student?s=synthetic-student-gamma',
+        'set-cookie': 'maab_family=fixed-test-session; Path=/; HttpOnly; SameSite=Lax',
+      }).end();
+    } else if (request.url === '/app/student?s=synthetic-student-gamma') {
+      response.writeHead(200).end('student page');
+    } else if (request.url === '/api/portal/synthetic-student-gamma') {
+      response.writeHead(200, { 'content-type': 'application/json' }).end(JSON.stringify({
+        name: 'תלמידת בדיקה גמא',
+        lessons: [{ slidesUrl: '/lessons/synthetic-quadratic-formulas' }],
+        games: [{
+          dataId: 'synthetic-linear-formulas',
+          url: '/app/play/quiz?d=synthetic-linear-formulas&s=synthetic-student-gamma&t=fixed-signature',
+        }],
+        homework: [{
+          id: 95001,
+          task: 'פתרו x² = 16 והסבירו את שתי התשובות — משימת בדיקה',
+          submitted: true,
+          graded: true,
+          grade: 'ok',
+          gradedBy: 'teacher',
+          template: 'quiz',
+          dataId: 'synthetic-linear-formulas',
+        }],
+      }));
+    } else if (request.url === '/lessons/synthetic-quadratic-formulas') {
+      response.writeHead(200, { 'content-type': 'text/html; charset=utf-8' })
+        .end('<h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p>');
+    } else if (request.url?.startsWith('/app/play/quiz?')) {
+      response.writeHead(302, { location: `http://127.0.0.1:${escapedAddress.port}/escaped` }).end();
+    } else {
+      response.writeHead(404).end();
+    }
+  });
+  await new Promise((resolve) => server.listen(0, '127.0.0.1', resolve));
+  const address = server.address();
+  assert.ok(address && typeof address === 'object');
+
+  const result = await new Promise((resolve) => {
+    const child = spawn(process.execPath, ['synthetic/http-smoke.mjs', `http://127.0.0.1:${address.port}`], {
+      cwd: root, encoding: 'utf8', stdio: ['ignore', 'pipe', 'pipe'],
+    });
+    let stdout = '';
+    let stderr = '';
+    child.stdout.on('data', (chunk) => { stdout += chunk; });
+    child.stderr.on('data', (chunk) => { stderr += chunk; });
+    child.on('close', (status) => resolve({ status, stdout, stderr }));
+  });
+  await new Promise((resolve) => server.close(resolve));
+  await new Promise((resolve) => escaped.close(resolve));
+
+  assert.notEqual(result.status, 0);
+  assert.match(result.stderr, /signed game smoke returned HTTP 302/);
+  assert.equal(escapedRequests, 0, 'HTTP smoke followed a redirect off the synthetic origin');
 });
 
 test('portal fixture is deterministic, exact, atomic, and cleans stale files on rerun', async () => {
@@ -389,6 +646,7 @@ function createPolicyFixture() {
     else if (table === 'enrollments') db.exec('CREATE TABLE enrollments (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), subject TEXT, level TEXT, teacher_id INTEGER REFERENCES teachers(id))');
     else if (table === 'bookings_v2') db.exec('CREATE TABLE bookings_v2 (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), enrollment_id INTEGER REFERENCES enrollments(id), start TEXT, end TEXT, duration INTEGER, at TEXT, status TEXT, source_utm TEXT, heard_from TEXT, mode TEXT, teacher_id INTEGER REFERENCES teachers(id), heard_from_detail TEXT)');
     else if (table === 'lessons') db.exec('CREATE TABLE lessons (id INTEGER PRIMARY KEY, slug TEXT, student TEXT, subject TEXT, level TEXT, topic TEXT, title TEXT, context TEXT, at TEXT, lesson_at TEXT, status TEXT, problem TEXT, slides TEXT, homework TEXT, games TEXT)');
+    else if (table === 'lesson_materials') db.exec('CREATE TABLE lesson_materials (id INTEGER PRIMARY KEY, lesson_slug TEXT, kind TEXT, version INTEGER, content TEXT, teacher_only TEXT, origin TEXT, published_at TEXT, created_at TEXT)');
     else if (table === 'homework') db.exec('CREATE TABLE homework (id INTEGER PRIMARY KEY, lesson_id INTEGER, student_id INTEGER REFERENCES students_v2(id), task TEXT, template TEXT, data_id TEXT, assigned_at TEXT, due_at TEXT, submitted_at TEXT, submitted_by TEXT, graded_at TEXT, grade TEXT, graded_by TEXT, node_id INTEGER, booking_id INTEGER REFERENCES bookings_v2(id), held_until TEXT, answer TEXT)');
     else if (table === 'results_v2') db.exec('CREATE TABLE results_v2 (id INTEGER PRIMARY KEY, student_id INTEGER REFERENCES students_v2(id), at TEXT, data_id TEXT, template TEXT, score INTEGER, total INTEGER, tries INTEGER, stars INTEGER, seconds INTEGER, missed TEXT, hints INTEGER)');
     else if (table === 'game_filler') db.exec('CREATE TABLE game_filler (id TEXT PRIMARY KEY, body TEXT)');
@@ -410,6 +668,17 @@ test('database policy purges migration defaults/catalog rows and accepts only th
   const { seedSyntheticRows } = await import('../../synthetic/seed-data.mjs');
   seedSyntheticRows(db);
   assert.doesNotThrow(() => verifySyntheticDatabase(db));
+  assert.deepEqual({ ...db.prepare('SELECT * FROM lesson_materials').get() }, {
+    id: 98501,
+    lesson_slug: 'synthetic-quadratic-formulas',
+    kind: 'slides',
+    version: 1,
+    content: '<!doctype html><html lang="he" dir="rtl"><head><meta charset="utf-8"><title>שיעור בדיקה סינתטי</title></head><body><main><h1>שיעור בדיקה: y = x²</h1><p>תוכן שקופיות סינתטי בלבד — נוסחת קודקוד.</p></main></body></html>',
+    teacher_only: null,
+    origin: 'generated',
+    published_at: '2026-01-15T10:00:00.000Z',
+    created_at: '2026-01-15T10:00:00.000Z',
+  });
 
   for (const [table, policy] of Object.entries(DATA_TABLE_POLICY)) {
     if (table === 'schema_version' || policy.expectedKeys.length > 0) continue;
@@ -439,6 +708,7 @@ test('database verification rejects extra IDs and altered synthetic identity/con
     ['enrollments', "UPDATE enrollments SET level = 'unexpected-content'"],
     ['bookings_v2', "UPDATE bookings_v2 SET mode = 'unexpected-content'"],
     ['lessons', "UPDATE lessons SET homework = 'unexpected-content'"],
+    ['lesson_materials', "UPDATE lesson_materials SET content = 'unexpected-content'"],
     ['homework', "UPDATE homework SET answer = 'unexpected-content'"],
     ['results_v2', 'UPDATE results_v2 SET tries = 999'],
     ['game_filler', "UPDATE game_filler SET body = '{}'"],

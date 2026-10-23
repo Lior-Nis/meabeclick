@@ -12,6 +12,30 @@ if [[ ! "$PORT" =~ ^[0-9]+$ ]] || (( PORT < 1024 || PORT > 65535 )); then
   exit 64
 fi
 
+case "${1:-}" in
+  up|verify|down|rebuild)
+    if ! command -v flock >/dev/null 2>&1; then
+      printf '[synthetic] flock is required to serialize synthetic lifecycle commands\n' >&2
+      exit 69
+    fi
+    LOCK_DIR="/tmp/meabeclick-synthetic-${UID}.lock.d"
+    if [[ ! -e "$LOCK_DIR" && ! -L "$LOCK_DIR" ]]; then
+      (umask 077; mkdir "$LOCK_DIR") 2>/dev/null || true
+    fi
+    if [[ -L "$LOCK_DIR" || ! -d "$LOCK_DIR" ]] \
+      || [[ "$(stat -c '%u' -- "$LOCK_DIR" 2>/dev/null || true)" != "$UID" ]] \
+      || [[ "$(stat -c '%a' -- "$LOCK_DIR" 2>/dev/null || true)" != "700" ]]; then
+      printf '[synthetic] lifecycle lock directory must be a user-owned mode-700 directory: %s\n' "$LOCK_DIR" >&2
+      exit 73
+    fi
+    exec 9<"$LOCK_DIR"
+    if ! flock -n 9; then
+      printf '[synthetic] another synthetic lifecycle command is active; retry after it finishes\n' >&2
+      exit 75
+    fi
+    ;;
+esac
+
 verify_existing() {
   local verified=0
   cleanup_failed_verify() {
