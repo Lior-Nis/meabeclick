@@ -10,8 +10,11 @@
 # The target is resolved to a canonical path (symlinks included) and refused
 # — nothing deleted — when it is empty, /, $HOME, the repo root, ./data, or
 # $DATA_DIR, an ancestor of any of those, or anything inside ./data or
-# $DATA_DIR. The backup is integrity-checked on a read-only copy before the
-# previous restore is removed, so a corrupt file cannot wipe a good drill.
+# $DATA_DIR. The backup directory is refused the same way, and so is every
+# path inside the repo except ./restore-drill. The database and the files
+# archive are unpacked into a scratch directory beside the target and checked
+# there; the previous restore is replaced only after that, so a corrupt
+# backup cannot wipe a good drill.
 #
 # The point is that a backup nobody has restored is a hope, not a backup.
 # Run this after any change to what gets backed up, and before any cutover.
@@ -81,8 +84,8 @@ REPO_DATA="$(realpath -m -- "$REPO/data")"
 HOME_CANON="$(realpath -m -- "$HOME")"
 
 # $1 protected path, $2 label, $3 "inside" to also refuse descendants.
-# Descendants are refused only for data directories: ./restore-drill lives
-# in the repo, and that must keep working.
+# ./restore-drill is the one path inside the repo a restore may replace;
+# that exception is applied after these guards.
 guard() {
   local prot="$1" label="$2" descendants="${3:-}"
   [ -n "$prot" ] || return 0
@@ -109,14 +112,36 @@ if [ -n "${DATA_DIR:-}" ]; then
   fi
 fi
 
-# A copy, opened read-only, so the check cannot modify the backup and a
-# failure leaves the previous restore where it is. What gets installed is
-# this copy — not a second read of the backup, which could have changed
-# between the check and the copy.
-scratch="$(mktemp -d)"
-trap 'rm -rf "$scratch"' EXIT
-cp "$DB" "$scratch/results.db"
-ro="file:${scratch}/results.db?mode=ro"
+# Anything inside the checkout would take the script with it. ./restore-drill
+# is the documented default and the only exception; a path under it is not.
+DRILL="$(realpath -m -- "$REPO/restore-drill")"
+if [ "$TARGET" != "$DRILL" ] && [ "${TARGET#"$REPO"/}" != "$TARGET" ]; then
+  refuse "it is inside the repo ($REPO); only $DRILL may be replaced there"
+fi
+
+SRC_CANON="$(realpath -m -- "$SRC")"
+guard "$SRC_CANON" "the backup directory" inside
+
+# Beside the target, not under /tmp, so the final mv is a rename on the
+# same filesystem. The trap drops the scratch dir on any exit — including
+# a failed check — and puts the previous restore back if a swap was
+# interrupted after the old directory had been moved aside.
+mkdir -p -- "$(dirname -- "$TARGET")"
+aside=""
+scratch="$(mktemp -d "$(dirname -- "$TARGET")/.restore-scratch.XXXXXX")"
+cleanup() {
+  if [ -n "$aside" ] && [ -e "$aside" ] && [ ! -e "$TARGET" ]; then
+    mv -- "$aside" "$TARGET" || true
+  fi
+  if [ -d "$scratch" ]; then
+    rm -rf "$scratch"
+  fi
+}
+trap cleanup EXIT
+mkdir -p "$scratch/data"
+cp "$DB" "$scratch/data/results.db"
+# Read-only, so the check cannot modify the copy that will be installed.
+ro="file:${scratch}/data/results.db?mode=ro"
 require_integrity "$ro" "$DB"
 fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
   echo "foreign key check failed for $DB" >&2
@@ -124,16 +149,40 @@ fk_src="$(sqlite3 "$ro" 'PRAGMA foreign_key_check;' | wc -l)" || {
 }
 [ "$fk_src" = "0" ] || { echo "FOREIGN KEY VIOLATIONS IN BACKUP" >&2; exit 1; }
 
-echo "restoring $STAMP into $TARGET"
-rm -rf "$TARGET"; mkdir -p "$TARGET/data"
-cp "$scratch/results.db" "$TARGET/data/results.db"
-
 if [ -s "$FILES" ]; then
-  tar -xzf "$FILES" -C "$TARGET/data"
+  # Extract here, before the previous restore is touched. A truncated
+  # archive fails this command and the trap throws the scratch tree away.
+  tar -xzf "$FILES" -C "$scratch/data" || {
+    echo "files archive is corrupt: $FILES" >&2
+    exit 1
+  }
 else
   # Loud, because this is the exact shape of the failure the drill found:
   # a perfect database and no boards behind it.
   echo "WARNING: no files-$STAMP.tar.gz — portal records and generated content are NOT in this restore." >&2
+fi
+
+mkdir -p "$scratch/data/portal"
+# The archive is unpacked on top of the checked database. Re-check before
+# the swap so a tarball that replaced results.db cannot land.
+require_integrity "$ro" "$DB"
+
+echo "restoring $STAMP into $TARGET"
+# Move the old tree aside, then rename the scratch dir into its place.
+# rm-then-mv would drop the previous restore if the rename failed.
+chmod 755 "$scratch"
+if [ -e "$TARGET" ] || [ -L "$TARGET" ]; then
+  aside="$(mktemp -u "$(dirname -- "$TARGET")/.restore-aside.XXXXXX")"
+  mv -- "$TARGET" "$aside"
+  if ! mv -- "$scratch" "$TARGET"; then
+    mv -- "$aside" "$TARGET"
+    echo "failed to swap the checked restore into $TARGET" >&2
+    exit 1
+  fi
+  rm -rf "$aside"
+  aside=""
+else
+  mv -- "$scratch" "$TARGET"
 fi
 
 # portalDir() refuses to start when the directory is absent, so a restore

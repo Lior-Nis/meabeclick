@@ -21,6 +21,7 @@ import {
   mkdirSync,
   mkdtempSync,
   readFileSync,
+  readdirSync,
   rmdirSync,
   rmSync,
   symlinkSync,
@@ -40,28 +41,37 @@ const sqliteProbe = spawnSync('sqlite3', ['-version'], { encoding: 'utf8' });
 const hasSqlite = sqliteProbe.status === 0;
 const skipReason = 'sqlite3 CLI is not on PATH (GitHub Ubuntu 24.04 ships sqlite3 3.45.1; this runner does not, so the script cannot be executed here)';
 
-function beforeTargetRemoval() {
-  const rmAt = script.indexOf('rm -rf "$TARGET"');
-  assert.ok(rmAt > 0, 'the script should still remove the target once the backup has checked out');
-  return script.slice(0, rmAt);
+function beforeReplace() {
+  const marks = ['rm -rf "$TARGET"', 'mv -- "$TARGET"', 'mv -- "$scratch" "$TARGET"']
+    .map((s) => script.indexOf(s))
+    .filter((i) => i >= 0);
+  assert.ok(marks.length > 0, 'the script should still replace the target once the backup has checked out');
+  return script.slice(0, Math.min(...marks));
 }
 
 test('integrity_check must be exactly ok before the target is removed', () => {
-  const before = beforeTargetRemoval();
+  const before = beforeReplace();
   assert.match(before, /PRAGMA integrity_check/);
   assert.match(before, /\[\s*"\$integrity"\s*=\s*"ok"\s*\]/);
 });
 
 test('the restore installs the copy that passed the check', () => {
   const checked = script.indexOf('require_integrity "$ro"');
-  const installed = script.indexOf('cp "$scratch/results.db" "$TARGET/data/results.db"');
-  assert.ok(checked > 0, 'the pre-check should still run against the scratch copy');
-  assert.ok(installed > checked, 'the checked copy is what gets installed, not a second read of the backup');
+  const swapped = script.indexOf('mv -- "$scratch" "$TARGET"');
+  assert.ok(checked > 0 && swapped > checked, 'the checked tree is what gets moved into place');
   assert.doesNotMatch(script.slice(checked), /cp "\$DB"/);
 });
 
+test('the scratch tree is beside the target and removed on exit', () => {
+  const before = beforeReplace();
+  assert.match(before, /mktemp -d "\$\(dirname -- "\$TARGET"\)\/\.restore-scratch\.XXXXXX"/);
+  assert.match(before, /tar -xzf "\$FILES" -C "\$scratch\/data"/);
+  assert.match(script, /trap cleanup EXIT/);
+  assert.match(script, /rm -rf "\$scratch"/);
+});
+
 test('a dangerous target is refused before anything is deleted', () => {
-  const before = beforeTargetRemoval();
+  const before = beforeReplace();
   assert.match(before, /refusing restore target/);
   assert.match(before, /realpath\s+-m/);
   assert.match(before, /DATA_DIR/);
@@ -159,7 +169,7 @@ function repoLayout(work) {
   const copy = join(repo, 'server', 'restore-db.sh');
   mkdirSync(dirname(copy), { recursive: true });
   copyFileSync(scriptPath, copy);
-  return { script: copy, drill: join(repo, 'restore-drill') };
+  return { repo, script: copy, drill: join(repo, 'restore-drill') };
 }
 
 function run(h, args, { allow = [], extraEnv = {}, script = scriptPath } = {}) {
@@ -228,6 +238,7 @@ describe('restore-db.sh', { concurrency: false }, () => {
       db.close();
       assert.equal(row.name, 'fixture');
       assert.ok(existsSync(join(target, 'data', 'portal')));
+      assert.match(r.stderr, new RegExp(`WARNING: no files-${STAMP}\\.tar\\.gz`));
     } finally {
       rmSync(h.work, { recursive: true, force: true });
     }
@@ -421,6 +432,111 @@ describe('restore-db.sh', { concurrency: false }, () => {
       assert.match(r.stderr, /refusing restore target/);
       assert.equal(r.rmLog, '');
       assert.equal(existsSync(layout.drill), false);
+    } finally {
+      rmSync(h.work, { recursive: true, force: true });
+    }
+  });
+
+  test('a truncated files archive leaves the previous restore in place', (t) => {
+    if (skipWithoutSqlite(t)) return;
+    const h = harness();
+    const parent = join(h.work, 'parent');
+    const target = previousRestore(parent);
+    writeFileSync(join(h.backups, `files-${STAMP}.tar.gz`), 'this is not a gzip tarball');
+    try {
+      const r = run(h, [STAMP, target]);
+      assert.equal(r.status, 1, r.stderr);
+      assert.match(r.stderr, /files archive is corrupt/);
+      assert.equal(readFileSync(join(target, 'data', 'KEEP'), 'utf8'), 'previous');
+      assert.doesNotMatch(r.rmLog, /previous-restore/);
+      assert.ok(r.rmLog.includes(`${parent}/.restore-scratch.`), r.rmLog);
+      assert.deepEqual(readdirSync(parent).filter((n) => n.startsWith('.restore-')), []);
+    } finally {
+      rmSync(h.work, { recursive: true, force: true });
+    }
+  });
+
+  test('a files archive is unpacked into the restore that gets swapped in', (t) => {
+    if (skipWithoutSqlite(t)) return;
+    const h = harness();
+    const stage = join(h.work, 'stage');
+    mkdirSync(join(stage, 'portal'), { recursive: true });
+    writeFileSync(join(stage, 'portal', 'board.json'), '{"fake":true}\n');
+    const packed = spawnSync('tar', ['-czf', join(h.backups, `files-${STAMP}.tar.gz`), '-C', stage, 'portal'], { encoding: 'utf8' });
+    assert.equal(packed.status, 0, packed.stderr);
+    const parent = join(h.work, 'parent');
+    const target = previousRestore(parent);
+    writeFileSync(join(parent, 'KEEP'), 'sibling');
+    try {
+      const r = run(h, [STAMP, target]);
+      assert.equal(r.status, 0, r.stderr);
+      assert.doesNotMatch(r.stderr, /WARNING: no files-/);
+      assert.equal(readFileSync(join(target, 'data', 'portal', 'board.json'), 'utf8'), '{"fake":true}\n');
+      assert.equal(existsSync(join(target, 'data', 'KEEP')), false);
+      assert.equal(readFileSync(join(parent, 'KEEP'), 'utf8'), 'sibling');
+      assert.deepEqual(readdirSync(parent).filter((n) => n.startsWith('.restore-')), []);
+    } finally {
+      rmSync(h.work, { recursive: true, force: true });
+    }
+  });
+
+  test('the backup directory, its parent, and a path inside it are refused', (t) => {
+    if (skipWithoutSqlite(t)) return;
+    const h = harness();
+    const vault = join(h.work, 'vault');
+    const backups = join(vault, 'backups');
+    mkdirSync(join(backups, 'nested'), { recursive: true });
+    writeBackup(backups);
+    writeFileSync(join(backups, 'KEEP'), 'backups');
+    writeFileSync(join(backups, 'nested', 'KEEP'), 'inside');
+    writeFileSync(join(vault, 'KEEP'), 'above');
+    const extraEnv = { BACKUP_DIR: backups };
+    try {
+      const direct = run(h, [STAMP, backups], { extraEnv });
+      assert.equal(direct.status, 1, direct.stderr);
+      assert.match(direct.stderr, /backup directory/);
+      assert.equal(readFileSync(join(backups, 'KEEP'), 'utf8'), 'backups');
+      assert.ok(existsSync(join(backups, `results-${STAMP}.db`)));
+      const above = run(h, [STAMP, vault], { extraEnv });
+      assert.equal(above.status, 1, above.stderr);
+      assert.match(above.stderr, /backup directory/);
+      assert.equal(readFileSync(join(vault, 'KEEP'), 'utf8'), 'above');
+      assert.equal(readFileSync(join(backups, 'KEEP'), 'utf8'), 'backups');
+      const inside = run(h, [STAMP, join(backups, 'nested')], { extraEnv });
+      assert.equal(inside.status, 1, inside.stderr);
+      assert.match(inside.stderr, /backup directory/);
+      assert.equal(readFileSync(join(backups, 'nested', 'KEEP'), 'utf8'), 'inside');
+      assert.equal(direct.rmLog + above.rmLog + inside.rmLog, '');
+    } finally {
+      rmSync(h.work, { recursive: true, force: true });
+    }
+  });
+
+  test('a directory inside the repo is refused, except ./restore-drill itself', (t) => {
+    if (skipWithoutSqlite(t)) return;
+    const h = harness();
+    const layout = repoLayout(h.work);
+    const kept = join(layout.repo, 'server', 'KEEP');
+    writeFileSync(kept, 'script-dir');
+    const nested = join(layout.drill, 'extra', 'KEEP');
+    mkdirSync(dirname(nested), { recursive: true });
+    writeFileSync(nested, 'drill-child');
+    try {
+      const server = run(h, [STAMP, 'server'], { script: layout.script });
+      assert.equal(server.status, 1, server.stderr);
+      assert.match(server.stderr, /inside the repo/);
+      assert.equal(readFileSync(kept, 'utf8'), 'script-dir');
+      assert.equal(server.rmLog, '');
+      const child = run(h, [STAMP, 'restore-drill/extra'], { script: layout.script });
+      assert.equal(child.status, 1, child.stderr);
+      assert.match(child.stderr, /inside the repo/);
+      assert.equal(readFileSync(nested, 'utf8'), 'drill-child');
+      assert.equal(child.rmLog, '');
+      const real = run(h, [STAMP, 'server']);
+      assert.equal(real.status, 1, real.stderr);
+      assert.match(real.stderr, /inside the repo/);
+      assert.equal(real.rmLog, '');
+      assert.ok(existsSync(scriptPath));
     } finally {
       rmSync(h.work, { recursive: true, force: true });
     }
