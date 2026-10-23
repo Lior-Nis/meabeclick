@@ -3,6 +3,7 @@ import assert from 'node:assert/strict';
 import { readFileSync } from 'node:fs';
 import { dirname, join } from 'node:path';
 import { fileURLToPath } from 'node:url';
+import { FORBIDDEN_EXTERNAL_CONFIG } from '../../synthetic/integration-guard.mjs';
 
 const root = join(dirname(fileURLToPath(import.meta.url)), '..', '..');
 const read = (path) => readFileSync(join(root, path), 'utf8');
@@ -10,7 +11,9 @@ const read = (path) => readFileSync(join(root, path), 'utf8');
 const compose = read('docker-compose.synthetic.yml');
 const productionCompose = read('docker-compose.yml');
 const entrypoint = read('synthetic/entrypoint.mjs');
+const integrationGuard = read('synthetic/integration-guard.mjs');
 const seed = read('synthetic/seed.mjs');
+const seedData = read('synthetic/seed-data.mjs');
 const lifecycle = read('scripts/synthetic-vps.sh');
 const dockerfile = read('Dockerfile');
 const docs = read('docs/synthetic-vps.md');
@@ -19,30 +22,12 @@ const appBlock = compose.slice(compose.indexOf('\n  app:'), compose.indexOf('\n 
 const gatewayBlock = compose.slice(compose.indexOf('\n  gateway:'), compose.indexOf('\n  seed:'));
 const networkBlock = compose.slice(compose.indexOf('\nnetworks:'), compose.indexOf('\nvolumes:'));
 
-const forbiddenExternalConfig = [
-  'GMAIL_USER',
-  'GMAIL_APP_PASSWORD',
-  'GOOGLE_SERVICE_ACCOUNT_EMAIL',
-  'GOOGLE_SERVICE_ACCOUNT_KEY',
-  'GOOGLE_SERVICE_ACCOUNT_KEY_FILE',
-  'GOOGLE_OAUTH_CLIENT_ID',
-  'GOOGLE_OAUTH_CLIENT_SECRET',
-  'GOOGLE_OAUTH_REFRESH_TOKEN',
-  'GOOGLE_WEB_CLIENT_ID',
-  'GOOGLE_WEB_CLIENT_SECRET',
-  'CALLMEBOT_API_KEY',
-  'OPS_CALLMEBOT_API_KEY',
-  'OPS_SLACK_WEBHOOK_URL',
-  'OPENAI_API_KEY',
-  'CALENDAR_ID',
-  'CALENDAR_ICS_URLS',
-];
 
 test('synthetic Compose has a fixed project identity distinct from production', () => {
   assert.match(compose, /^name:\s*meabeclick-synthetic\s*$/m);
   assert.doesNotMatch(productionCompose, /^name:\s*meabeclick-synthetic\s*$/m);
   assert.match(lifecycle, /--project-name meabeclick-synthetic/);
-  assert.match(lifecycle, /--file docker-compose\.synthetic\.yml/);
+  assert.match(lifecycle, /--file .*docker-compose\.synthetic\.yml/);
 });
 
 test('synthetic access is loopback-only on a non-production port', () => {
@@ -69,9 +54,9 @@ test('synthetic app uses only its own named data volume and no secret sources', 
 });
 
 test('external integrations and lesson-engine credentials are absent and guarded', () => {
-  for (const key of forbiddenExternalConfig) {
+  for (const key of FORBIDDEN_EXTERNAL_CONFIG) {
     assert.doesNotMatch(appBlock, new RegExp(`^\\s*${key}:`, 'm'), `${key} must not be passed to the app`);
-    assert.match(entrypoint, new RegExp(`['\"]${key}['\"]`), `${key} must be rejected if injected`);
+    assert.match(integrationGuard, new RegExp(`['\"]${key}['\"]`), `${key} must be in the shared rejection inventory`);
   }
   assert.match(entrypoint, /SYNTHETIC_TEST_MODE/);
   assert.match(entrypoint, /\/synthetic-data\/synthetic\.db/);
@@ -79,18 +64,19 @@ test('external integrations and lesson-engine credentials are absent and guarded
 });
 
 test('deterministic seed is visibly fictional and covers the release-test model', () => {
-  assert.match(seed, /example\.invalid/);
-  assert.match(seed, /הורה בדיקה/);
-  assert.match(seed, /תלמידת בדיקה/);
-  assert.match(seed, /מורה בדיקה/);
-  assert.match(seed, /INSERT INTO bookings_v2/);
-  assert.match(seed, /INSERT INTO lessons/);
-  assert.match(seed, /INSERT INTO homework/);
-  assert.match(seed, /INSERT INTO game_filler/);
-  assert.match(seed, /INSERT INTO results_v2/);
-  assert.match(seed, /submitted_at/);
-  assert.match(seed, /x²|x\^2/);
-  assert.match(seed, /refusing to seed a database containing non-synthetic/);
+  assert.match(seedData, /example\.invalid/);
+  assert.match(seedData, /הורה בדיקה/);
+  assert.match(seedData, /תלמידת בדיקה/);
+  assert.match(seedData, /מורה בדיקה/);
+  assert.match(seedData, /INSERT INTO bookings_v2/);
+  assert.match(seedData, /INSERT INTO lessons/);
+  assert.match(seedData, /INSERT INTO homework/);
+  assert.match(seedData, /INSERT INTO game_filler/);
+  assert.match(seedData, /INSERT INTO results_v2/);
+  assert.match(seedData, /submitted_at/);
+  assert.match(seedData, /x²|x\^2/);
+  assert.match(seed, /purgeApplicationData/);
+  assert.match(seed, /verifySyntheticDatabase/);
 });
 
 test('teardown is hard-scoped to only the synthetic project and volume', () => {

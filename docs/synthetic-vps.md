@@ -10,9 +10,10 @@ This stack is for UX and release testing with fictional data only. It does not d
 - Network: the app and seeder use `meabeclick-synthetic_synthetic_internal` with `internal: true`, so they have no external route. A fixed-target Node gateway joins that network and a separate access bridge only to make Docker's loopback port publishing work; it has no credentials, data volume, shell-configurable target, or application command.
 - Data: named volume `meabeclick-synthetic_synthetic_data`, mounted only at `/synthetic-data`; database `/synthetic-data/synthetic.db`.
 - Access: the data-less gateway publishes `127.0.0.1:4173` by default and forwards only to `app:3000`. There is no public listener, Caddy service, DNS change, or TLS automation.
-- No `.env`, host `data/`, service-account JSON, Codex home, protected knowledgebase path, production database, or other host path is mounted.
-- The entrypoint refuses to start if integration credentials/config are injected, lesson-engine credentials exist, paths escape `/synthetic-data`, or the URL is not loopback-only.
-- The named volume is marked before first database creation. An unmarked non-empty data directory is refused. The seeder additionally refuses any account/student row that is not obviously synthetic.
+- Every lifecycle call pins Docker Compose to `--env-file /dev/null`, so Compose never implicitly reads the project-root production `.env`. `SYNTHETIC_PORT` is the only supported shell override and must be an integer from 1024 through 65535. No `.env`, host `data/`, service-account JSON, Codex home, protected knowledgebase path, production database, or other host path is mounted.
+- The entrypoint rejects a shared source-controlled inventory of integration credentials/config and all lesson/question engine, binary, model, effort, and timeout redirects. It also refuses Codex credential files, paths outside `/synthetic-data`, and non-loopback URLs.
+- The named volume is marked before first database creation. An unmarked non-empty data directory is refused. After migrations, the seeder removes every application row except migration bookkeeping—including migration-created named tutors and generic catalog exercises—then inserts the deterministic fixture in one transaction.
+- Final verification is exhaustive against `src/lib/server/storage-inventory.ts`: every known data table is either constrained to exact synthetic IDs/content or required to be empty. Unknown/missing tables, real/default tutor fields, extra bookings/enrollments/payments/reports/results, and altered formula/homework/submission fixtures fail verification.
 - Gmail/SMTP, Calendar, Drive, Meet OAuth, CallMeBot/WhatsApp, Slack alerts, and Codex/OpenAI credentials are absent. The application network blocks egress as a second, independent control. The access gateway cannot read the database or invoke anything except the fixed app target.
 
 The fixed tutor password is `synthetic-tutor-only`. It is intentionally public and valid only in this isolated stack. All seeded names contain `בדיקה`, all email addresses use reserved `example.invalid`, and phone/content values are obvious fixtures.
@@ -33,7 +34,9 @@ Validate the fully rendered configuration without starting anything:
 ./scripts/synthetic-vps.sh up
 ```
 
-This builds the local image, starts only the synthetic `app`, waits for health, applies the idempotent deterministic seed, verifies synthetic-only row counts, and performs an HTTP smoke check.
+This builds the local image and starts only the internal synthetic `app`. While no host port exists, it waits for migrations/health, replaces all application data with the deterministic fixture, and runs exhaustive database verification. Only then does it start the loopback gateway and perform the HTTP smoke check.
+
+If app startup, seeding, database verification, gateway startup, or the HTTP smoke fails, the command fails closed and removes the entire fixed synthetic Compose project, including its named data volume. A partially seeded or unverified environment is never left available.
 
 Open `http://127.0.0.1:4173`. Use `/login` and the fixed synthetic tutor password for the tutor flow. The seeded account/student, completed homework, formula-rich quiz (`y = x²`), game result, booking, lesson, and report appear in the normal application views.
 
@@ -61,7 +64,7 @@ Expected evidence includes:
 
 - Compose config validation succeeds.
 - Only `meabeclick-synthetic-*` resources are shown.
-- Database verification reports 1 synthetic account, 1 student, 2 tutors, 1 lesson, 1 submitted homework item, and 1 result.
+- Database verification reports exact allowlisted fixture counts (1 account, 1 student, 2 tutors, 1 enrollment, 1 booking, 1 lesson, 1 submitted homework item, 1 result, 1 report, and 1 synthetic game catalog row) and zero rows in every other application data table.
 - HTTP smoke returns 200.
 
 The check prints counts only; it does not print seeded records.
@@ -80,7 +83,7 @@ Clean rebuild from an empty synthetic volume:
 ./scripts/synthetic-vps.sh rebuild
 ```
 
-The lifecycle script hard-codes both `--project-name meabeclick-synthetic` and `--file docker-compose.synthetic.yml`. It does not accept a project/file override and never invokes broad removal commands such as `docker system prune` or `docker volume rm`.
+The lifecycle script hard-codes `--env-file /dev/null`, `--project-name meabeclick-synthetic`, and the absolute path to `docker-compose.synthetic.yml`. It does not accept an env/project/file override and never invokes broad removal commands such as `docker system prune` or `docker volume rm`.
 
 ## Safe VPS metadata observed during design
 

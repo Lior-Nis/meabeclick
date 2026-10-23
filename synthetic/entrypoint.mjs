@@ -1,25 +1,21 @@
 import { existsSync, mkdirSync, readdirSync, readFileSync, writeFileSync } from 'node:fs';
 import { spawn } from 'node:child_process';
+import { integrationGuardIssues } from './integration-guard.mjs';
 
 const DATA_DIR = '/synthetic-data';
 const DB_PATH = '/synthetic-data/synthetic.db';
 const MARKER = '/synthetic-data/.meabeclick-synthetic-volume';
 const MARKER_BODY = 'meabeclick-synthetic-volume-v1\n';
 
-const forbidden = [
-  'GMAIL_USER', 'GMAIL_APP_PASSWORD', 'BOOKING_EMAIL_TO',
-  'GOOGLE_SERVICE_ACCOUNT_EMAIL', 'GOOGLE_SERVICE_ACCOUNT_KEY', 'GOOGLE_SERVICE_ACCOUNT_KEY_FILE',
-  'GOOGLE_OAUTH_CLIENT_ID', 'GOOGLE_OAUTH_CLIENT_SECRET', 'GOOGLE_OAUTH_REFRESH_TOKEN',
-  'GOOGLE_WEB_CLIENT_ID', 'GOOGLE_WEB_CLIENT_SECRET',
-  'CALLMEBOT_PHONE', 'CALLMEBOT_API_KEY', 'OPS_CALLMEBOT_PHONE', 'OPS_CALLMEBOT_API_KEY',
-  'OPS_SLACK_WEBHOOK_URL', 'OPENAI_API_KEY', 'CALENDAR_ID', 'CALENDAR_ICS_URLS',
-  'DRIVE_BACKUP_FOLDER_ID', 'DRIVE_BACKUP_FOLDER',
-];
-
 /** @param {string} message */
 function refuse(message) {
   console.error(`[synthetic] refusing to start: ${message}`);
   process.exit(78);
+}
+
+const integrationIssues = integrationGuardIssues(process.env, existsSync);
+if (integrationIssues.length) {
+  refuse(`external integration/engine variables are set or redirected: ${integrationIssues.join(', ')}`);
 }
 
 if (process.env.SYNTHETIC_TEST_MODE !== '1') refuse('SYNTHETIC_TEST_MODE must be 1');
@@ -29,12 +25,6 @@ if (process.env.PORTAL_DIR !== `${DATA_DIR}/portal`) refuse('PORTAL_DIR must sta
 if (process.env.ORIGIN !== process.env.SITE_URL || !process.env.ORIGIN?.startsWith('http://127.0.0.1:')) {
   refuse('ORIGIN and SITE_URL must be the same loopback-only URL');
 }
-
-const injected = forbidden.filter((key) => process.env[key]);
-if (injected.length) refuse(`external integration variables are set: ${injected.join(', ')}`);
-
-const codexAuth = `${process.env.CODEX_HOME ?? ''}/auth.json`;
-if (existsSync(codexAuth)) refuse('lesson-engine credentials are present');
 
 mkdirSync(DATA_DIR, { recursive: true });
 if (!existsSync(MARKER)) {
