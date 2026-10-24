@@ -41,7 +41,7 @@ export const DECK_PALETTE: Record<string, string> = {
   card: '#ffffff',
   text: '#1e293b',
   muted: '#64748b',
-  brand: '#2563eb',
+  brand: '#3f6212',
   cta: '#fa8231',
   mint: '#10b981',
   border: '#e2e8f0',

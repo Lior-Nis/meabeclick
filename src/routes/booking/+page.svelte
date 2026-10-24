@@ -1149,7 +1149,7 @@
   .dur-card:hover {
     border-color: var(--accent);
     /* Was rgba(46,123,116,…) — a teal left over from a palette this
-       project no longer uses, sitting against the blue accent token. */
+       project no longer uses, sitting against the moss accent token. */
     box-shadow: 0 4px 16px var(--shadow-accent);
     transform: translateY(-2px);
   }
@@ -1163,7 +1163,7 @@
     box-shadow: 0 4px 24px var(--accent2-glow);
   }
   /* Selection is a word ("נבחר") plus a solid ring. --accent-dim is an 8%
-     wash and disappears on the peach card; #2563eb clears 3:1 on white and
+     wash and disappears on the peach card; #3f6212 clears 3:1 on white and
      on that wash. */
   .dur-card.selected {
     border-color: var(--accent);

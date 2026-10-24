@@ -303,7 +303,7 @@
                 <div class="dp-stat-lbl">שיעורים</div>
               </div>
 <div class="dp-stat">
-                <div class="dp-stat-val" id="dp-stat-progress" style="color:#2563EB">0%</div>
+                <div class="dp-stat-val" id="dp-stat-progress" style="color:#3F6212">0%</div>
                 <div class="dp-stat-lbl">התקדמות</div>
               </div>
             </div>
@@ -614,8 +614,8 @@ h1, h2, h3, h4 {
   max-width: 700px;
   height: 500px;
   background: radial-gradient(ellipse at center,
-    rgba(37, 99, 235, 0.12) 0%,
-    rgba(59, 130, 246, 0.06) 45%,
+    rgba(63, 98, 18, 0.12) 0%,
+    rgba(77, 124, 15, 0.06) 45%,
     transparent 70%);
   pointer-events: none;
 }
@@ -780,13 +780,13 @@ h1, h2, h3, h4 {
 /* Tutor info popup */
 .tutor-info {
   background: var(--bg-card)
-              linear-gradient(158deg, rgba(59, 130, 246, 0.10), rgba(255, 255, 255, 0) 58%);
-  border: 2px solid rgba(59, 130, 246, 0.35);
+              linear-gradient(158deg, rgba(77, 124, 15, 0.10), rgba(255, 255, 255, 0) 58%);
+  border: 2px solid rgba(77, 124, 15, 0.35);
   border-radius: var(--r-lg);
   padding: 1.3rem 1.5rem;
   /* A lit card: a tight brand halo plus a soft drop, instead of a flat grey shadow */
-  box-shadow: 0 0 0 6px rgba(37, 99, 235, 0.07),
-              0 18px 50px rgba(37, 99, 235, 0.22);
+  box-shadow: 0 0 0 6px rgba(63, 98, 18, 0.07),
+              0 18px 50px rgba(63, 98, 18, 0.22);
   z-index: 9999;
   min-width: 260px;
 }
@@ -1676,7 +1676,7 @@ h1, h2, h3, h4 {
 }
 
 .mockup-chrome {
-  background: #EFF6FF;
+  background: #F7FEE7;
   border-bottom: 1px solid var(--border);
   padding: 6px 10px;
   display: flex;
@@ -1987,9 +1987,9 @@ h1, h2, h3, h4 {
   direction: ltr;
 }
 .hero-feature-carousel :global(.ac-viewport) {
-  border: 1px solid rgba(37, 99, 235, 0.16);
+  border: 1px solid rgba(63, 98, 18, 0.16);
   border-radius: 20px;
-  background: linear-gradient(135deg, rgba(219, 234, 254, 0.46), rgba(255,255,255,0.88));
+  background: linear-gradient(135deg, rgba(247, 254, 231, 0.46), rgba(255,255,255,0.88));
   box-shadow: 0 18px 44px rgba(30, 58, 138, 0.12);
 }
 .hero-feature-carousel :global(.ac-track) { align-items: stretch; }
@@ -2024,7 +2024,7 @@ h1, h2, h3, h4 {
   padding: 1.3rem 1.45rem;
   text-align: right;
 }
-.hero-feature-eyebrow { color: #2563EB; font-size: 0.75rem; font-weight: 800; }
+.hero-feature-eyebrow { color: #3F6212; font-size: 0.75rem; font-weight: 800; }
 .hero-feature-copy h3 { margin: 0.5rem 0 0.35rem; color: #0F172A; font-size: clamp(1.15rem, 2.2vw, 1.55rem); line-height: 1.25; }
 .hero-feature-copy p { margin: 0; color: #475569; font-size: 0.94rem; line-height: 1.65; }
 

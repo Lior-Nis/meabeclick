@@ -191,12 +191,12 @@ function linkBlock(href: string, label: string): string {
   return `
     <div style="margin:18px 0">
       <a href="${esc(href)}"
-         style="display:inline-block;background:#2563EB;color:#ffffff;text-decoration:none;
+         style="display:inline-block;background:#3F6212;color:#ffffff;text-decoration:none;
                 font-weight:800;font-size:16px;padding:13px 26px;border-radius:12px">${esc(label)}</a>
     </div>
     <div style="font-size:12px;color:#64748B;line-height:1.6;word-break:break-all">
       אם הכפתור לא עובד, אפשר להעתיק את הכתובת:<br>
-      <span style="color:#2563EB">${esc(href)}</span>
+      <span style="color:#3F6212">${esc(href)}</span>
     </div>`;
 }
 
@@ -289,7 +289,7 @@ export async function sendBookingEmail(
     + (noRoom ? `\n${noRoom}` : '');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">📚 הזמנת שיעור חדשה</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">📚 הזמנת שיעור חדשה</h2>
     <p style="color:#64748B;margin:0 0 16px">${esc(b.name)} · ${esc(b.subject)}</p>
     ${rowsTable(rows)}
     <p style="margin-top:16px;padding:10px 12px;border-radius:8px;
@@ -300,16 +300,16 @@ export async function sendBookingEmail(
     ${manual ? `<p style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#FFFBEB;color:#B45309;font-weight:700">${esc(manual)}</p>` : ''}
     ${noRoom ? `<p style="margin-top:10px;padding:10px 12px;border-radius:8px;background:#FFFBEB;color:#B45309;font-weight:700">${esc(noRoom)}</p>` : ''}
     ${enrolled ? `
-    <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#EFF6FF;border:1px solid #BFDBFE">
+    <div style="margin-top:16px;padding:12px 14px;border-radius:10px;background:#F7FEE7;border:1px solid #D9F99D">
       <div style="font-weight:800;margin-bottom:6px">${esc(status)}</div>
       <div style="font-size:.95em;line-height:1.7">
-        הדף שלהם: <a href="${esc(enrolled.portalLink)}" style="color:#2563EB">${esc(enrolled.student.name)}</a><br>
+        הדף שלהם: <a href="${esc(enrolled.portalLink)}" style="color:#3F6212">${esc(enrolled.student.name)}</a><br>
         <span style="color:#64748B">הקישור נשלח אליהם ישירות — לא צריך להעביר ידנית.</span>
       </div>
     </div>` : ''}
     <p style="margin-top:14px">
-      <a href="tel:${esc(b.phone)}" style="color:#2563EB">📞 חיוג</a> ·
-      <a href="https://wa.me/${esc(b.phone.replace(/\D/g, ''))}" style="color:#2563EB">💬 וואטסאפ</a>
+      <a href="tel:${esc(b.phone)}" style="color:#3F6212">📞 חיוג</a> ·
+      <a href="https://wa.me/${esc(b.phone.replace(/\D/g, ''))}" style="color:#11763A">💬 וואטסאפ</a>
     </p>`);
 
   await tx.sendMail({
@@ -376,11 +376,11 @@ export async function sendFamilyBookingEmail(
   ].join('\n');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">✅ ${esc(greeting)}</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">✅ ${esc(greeting)}</h2>
     <p style="color:#64748B;margin:0 0 16px">מאה בקליק · שיעורים פרטיים</p>
     ${rowsTable(rows)}
     ${placeBlock(b.place)}
-    <div style="margin-top:20px;padding:16px 18px;border-radius:14px;background:#EFF6FF;border:1px solid #BFDBFE">
+    <div style="margin-top:20px;padding:16px 18px;border-radius:14px;background:#F7FEE7;border:1px solid #D9F99D">
       <div style="font-weight:800;font-size:17px;margin-bottom:4px">הדף האישי של ${esc(enrolled.student.name)}</div>
       <div style="color:#334155;font-size:14px;line-height:1.7">
         כאן יופיעו סיכומי השיעורים, שיעורי הבית והמצגות.
@@ -438,7 +438,7 @@ export async function sendConfirmBookingEmail(r: {
   ].join('\n');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">⏳ לאשר את השיעור?</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">⏳ לאשר את השיעור?</h2>
     <p style="color:#64748B;margin:0 0 16px">התקבלה בקשה לשיעור עם כתובת המייל הזו</p>
     ${rowsTable(rows)}
     ${linkBlock(r.link, '✅ לאישור השיעור')}
@@ -546,7 +546,7 @@ export async function sendPortalLinkEmail(
   ].join('\n');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">🔑 הקישור שלכם</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">🔑 הקישור שלכם</h2>
     <p style="color:#64748B;margin:0 0 16px">${esc(familyName)} · מאה בקליק</p>
     ${linkBlock(portalLink, '📚 כניסה לדף האישי')}
     <p style="margin-top:20px;font-size:14px;color:#64748B;line-height:1.8">
@@ -612,13 +612,13 @@ export async function sendLessonReminderEmail(r: {
   ].join('\n');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">⏰ תזכורת לשיעור הקרוב</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">⏰ תזכורת לשיעור הקרוב</h2>
     <p style="color:#64748B;margin:0 0 16px">מאה בקליק · שיעורים פרטיים</p>
     ${rowsTable(rows)}
     ${placeBlock(r.place)}
     <p style="margin-top:20px;color:#64748B">
       צריך לשנות או לבטל?
-      <a href="https://wa.me/${esc(phone)}" style="color:#2563EB">💬 הודיעו בוואטסאפ</a>
+      <a href="https://wa.me/${esc(phone)}" style="color:#11763A">💬 הודיעו בוואטסאפ</a>
     </p>`);
 
   await tx.sendMail({
@@ -667,12 +667,12 @@ export async function sendLessonReportedEmail(r: {
   ].join('\n');
 
   const html = shell(`
-    <h2 style="color:#2563EB;margin:0 0 4px">📚 השיעור של ${esc(r.studentName)} סוכם</h2>
+    <h2 style="color:#3F6212;margin:0 0 4px">📚 השיעור של ${esc(r.studentName)} סוכם</h2>
     <p style="color:#64748B;margin:0 0 16px">${esc(when)} · מאה בקליק</p>
     <p style="margin:0;font-weight:700">שיעורי הבית:</p>
     ${list}
     <p style="margin-top:20px">
-      <a href="${esc(r.link)}" style="background:#2563EB;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">לדף האישי</a>
+      <a href="${esc(r.link)}" style="background:#3F6212;color:#fff;padding:10px 18px;border-radius:10px;text-decoration:none">לדף האישי</a>
     </p>
     ${payBlock()}`);
 

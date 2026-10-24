@@ -793,14 +793,13 @@
   .sec-header { display: flex; align-items: center; gap: 10px; margin-bottom: 1rem; padding-bottom: 10px; border-bottom: 2px solid var(--border); }
   .sec-icon { font-size: 1.2rem; }
   .sec-title { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
-  /* --accent on --accent-dim is 4.44:1 at this size — just under AA.
-     --accent-deep is the same hue one step darker, for small text on the
-     tinted fills. */
-  .sec-badge { margin-right: auto; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--accent-dim); color: var(--accent-deep); border: 1px solid rgba(37,99,235,0.25); }
+  /* --accent-deep keeps this small badge one step stronger while staying in
+     the moss family; both accent text variants clear AA on tinted fills. */
+  .sec-badge { margin-right: auto; font-size: 0.72rem; font-weight: 700; padding: 3px 10px; border-radius: 20px; background: var(--accent-dim); color: var(--accent-deep); border: 1px solid rgba(63,98,18,0.25); }
 
   .next-lesson-box {
     background: linear-gradient(135deg, var(--accent-dim), rgba(250,130,49,0.04));
-    border: 1.5px solid rgba(37,99,235,0.22); border-radius: var(--r-md);
+    border: 1.5px solid rgba(63,98,18,0.22); border-radius: var(--r-md);
     padding: 18px 22px; display: flex; align-items: center; gap: 18px;
   }
   .nl-icon { font-size: 2.2rem; flex-shrink: 0; }
@@ -813,11 +812,11 @@
   .table-wrap { overflow-x: auto; border-radius: var(--r-md); box-shadow: 0 2px 12px var(--shadow); }
   .data-table { width: 100%; border-collapse: collapse; font-size: 0.88rem; background: var(--bg-card); border-radius: var(--r-md); overflow: hidden; }
   .data-table thead { background: var(--accent-dim); }
-  .data-table th { text-align: right; padding: 11px 15px; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1.5px solid rgba(37,99,235,0.18); }
+  .data-table th { text-align: right; padding: 11px 15px; color: var(--accent); font-size: 0.72rem; font-weight: 800; letter-spacing: 0.07em; text-transform: uppercase; border-bottom: 1.5px solid rgba(63,98,18,0.18); }
   .data-table td { padding: 11px 15px; border-bottom: 1px solid var(--border); color: var(--text-primary); vertical-align: top; }
   .data-table tr:last-child td { border-bottom: none; }
   .data-table tr:hover td { background: var(--accent-dim); }
-  .pill { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(37,99,235,0.2); }
+  .pill { display: inline-block; font-size: 0.72rem; font-weight: 700; padding: 3px 9px; border-radius: 20px; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(63,98,18,0.2); }
   .lesson-topic { font-weight: 700; }
   .empty-row { text-align: center; color: var(--text-muted); padding: 24px; font-size: 0.9rem; }
 
@@ -860,7 +859,7 @@
   .pay-sum-card { border-radius: var(--r-md); padding: 15px 18px; text-align: center; }
   .pay-sum-card.paid    { background: var(--accent3-dim); border: 1px solid var(--accent3-strong); }
   .pay-sum-card.pending { background: #FEF3C7; border: 1px solid #D97706; }
-  .pay-sum-card.total   { background: var(--accent-dim); border: 1px solid rgba(37,99,235,0.22); }
+  .pay-sum-card.total   { background: var(--accent-dim); border: 1px solid rgba(63,98,18,0.22); }
   .psc-amount { font-size: 1.5rem; font-weight: 900; }
   .pay-sum-card.paid    .psc-amount { color: var(--accent3-strong); }
   .pay-sum-card.pending .psc-amount { color: #D97706; }
