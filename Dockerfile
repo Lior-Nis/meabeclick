@@ -53,6 +53,14 @@ COPY --chown=node:node games ./games
 # src/lib/server/plans/templates.ts), exactly like games/registry.json above.
 COPY --chown=node:node templates ./templates
 
+# The synthetic release-test stack uses a guarded entrypoint and deterministic
+# seed from this directory. Production never invokes them. Pre-creating the
+# named-volume target as `node` makes Docker's first-mount ownership safe;
+# otherwise a fresh volume is root-owned and the non-root runtime cannot even
+# create its isolated database.
+COPY --chown=node:node synthetic ./synthetic
+RUN mkdir /synthetic-data && chown node:node /synthetic-data
+
 COPY --from=builder --chown=node:node /app/build ./build
 COPY --chown=node:node static ./static
 

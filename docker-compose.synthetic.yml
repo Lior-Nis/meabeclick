@@ -1,0 +1,92 @@
+name: meabeclick-synthetic
+
+services:
+  app:
+    build:
+      context: .
+    image: meabeclick-synthetic:local
+    pull_policy: never
+    init: true
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=64m
+    environment:
+      NODE_ENV: synthetic
+      SYNTHETIC_TEST_MODE: "1"
+      PORT: "3000"
+      ORIGIN: http://127.0.0.1:${SYNTHETIC_PORT:-4173}
+      SITE_URL: http://127.0.0.1:${SYNTHETIC_PORT:-4173}
+      PROTOCOL_HEADER: x-forwarded-proto
+      HOST_HEADER: host
+      DATA_DIR: /synthetic-data
+      PORTAL_DIR: /synthetic-data/portal
+      DB_PATH: /synthetic-data/synthetic.db
+      CODEX_HOME: /tmp/no-codex-credentials
+      ADMIN_PASSWORD: synthetic-tutor-only
+      SESSION_SECRET: synthetic-test-secret-not-for-production-7ee72572
+    command: ["node", "synthetic/entrypoint.mjs"]
+    volumes:
+      - synthetic_data:/synthetic-data
+    networks:
+      - synthetic_internal
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/me').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 10s
+
+  gateway:
+    image: meabeclick-synthetic:local
+    pull_policy: never
+    init: true
+    restart: "no"
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=16m
+    depends_on:
+      app:
+        condition: service_healthy
+    environment:
+      SYNTHETIC_PROXY_TARGET: http://app:3000
+    command: ["node", "synthetic/loopback-proxy.mjs"]
+    ports:
+      - "127.0.0.1:${SYNTHETIC_PORT:-4173}:3000"
+    networks:
+      - synthetic_internal
+      - synthetic_access
+    healthcheck:
+      test: ["CMD", "node", "-e", "fetch('http://127.0.0.1:3000/api/me').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))"]
+      interval: 3s
+      timeout: 2s
+      retries: 20
+      start_period: 5s
+
+  seed:
+    image: meabeclick-synthetic:local
+    pull_policy: never
+    profiles: ["tools"]
+    read_only: true
+    tmpfs:
+      - /tmp:rw,noexec,nosuid,size=32m
+    environment:
+      SYNTHETIC_TEST_MODE: "1"
+      DB_PATH: /synthetic-data/synthetic.db
+      SYNTHETIC_DATA_MARKER: /synthetic-data/.meabeclick-synthetic-volume
+    command: ["node", "synthetic/seed.mjs"]
+    volumes:
+      - synthetic_data:/synthetic-data
+    networks:
+      - synthetic_internal
+
+networks:
+  synthetic_internal:
+    internal: true
+  # Docker 29 does not activate published ports on an internal-only bridge.
+  # Only this credential-less, data-less fixed-target gateway joins the access
+  # bridge; the application remains on the no-egress network exclusively.
+  synthetic_access:
+
+volumes:
+  synthetic_data:
