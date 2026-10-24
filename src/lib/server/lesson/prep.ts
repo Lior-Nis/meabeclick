@@ -946,7 +946,7 @@ export function renderSlides(plan: LessonPlan, { subject, level, student }: { su
   .options{list-style:hebrew;margin-top:1rem}
   .why{margin-top:.8rem;line-height:1.8}
   .sr{position:absolute;width:1px;height:1px;overflow:hidden;clip:rect(0 0 0 0);white-space:nowrap}
-  .problem{margin-top:1.3rem;background:#EFF6FF;border-right:5px solid var(--brand);
+  .problem{margin-top:1.3rem;background:#F7FEE7;border-right:5px solid var(--brand);
            border-radius:0 12px 12px 0;padding:.9rem 1.1rem;font-weight:700;font-size:1.1rem}
   .answer{margin-top:1.2rem;background:#ECFDF5;border:1.5px solid var(--mint);color:#047857;
           border-radius:12px;padding:.7rem 1rem;font-weight:800;display:inline-block}

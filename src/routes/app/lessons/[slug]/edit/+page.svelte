@@ -436,7 +436,7 @@
     border: 1px solid var(--border); background: var(--bg-card); color: var(--text-primary);
   }
   button:disabled { opacity: .5; cursor: default; }
-  button.primary { background: var(--accent); border-color: var(--accent); color: var(--btn-text, #fff); font-weight: 700; }
+  button.primary { background: var(--accent); border-color: var(--accent); color: #fff; font-weight: 700; }
   button.danger { color: var(--danger); }
   button.add { margin-bottom: 8px; }
   .msg { font-weight: 600; color: var(--accent); }

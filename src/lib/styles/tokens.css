@@ -12,18 +12,18 @@
 
   /* Backgrounds */
   --bg-base: #f8fafc;
-  --bg-surface: #eff6ff;
+  --bg-surface: #f7fee7;
   --bg-card: #ffffff;
   --bg-card-solid: #f8fafc;
 
-  /* Primary accent — soft blue (headings, links, brand marks) */
-  --accent: #2563eb;
-  --accent-soft: #3b82f6;
+  /* Primary accent — moss green (headings, links, brand marks) */
+  --accent: #3f6212;
+  --accent-soft: #4d7c0f;
   /* One step darker, for SMALL text sitting on --accent-dim or another
-     tinted fill: --accent itself lands at 4.44:1 there, just under AA. */
-  --accent-deep: #1d4ed8;
-  --accent-dim: rgba(37, 99, 235, 0.08);
-  --accent-glow: rgba(37, 99, 235, 0.18);
+     tinted fill. Both moss text variants clear AA on every brand ground. */
+  --accent-deep: #365314;
+  --accent-dim: rgba(63, 98, 18, 0.08);
+  --accent-glow: rgba(63, 98, 18, 0.18);
 
   /* Secondary accent — peach-orange. FILLS ONLY: a button ground under
      --btn-text (5.78:1). As text, a border or a focus ring on a light
@@ -32,9 +32,9 @@
   --accent2-dim: rgba(250, 130, 49, 0.1);
   --accent2-glow: rgba(250, 130, 49, 0.25);
   /* The peach as TEXT, BORDER or FOCUS RING. Same hue family, deep enough
-     for 4.5:1 on white, the page background, the blue surface and the
+     for 4.5:1 on white, the page background, the moss surface and the
      peach wash (--accent2-dim) over either — 4.76:1 on the darkest of
-     those, the wash over the blue surface. Checked by
+     those, the wash over the moss surface. Checked by
      tests/unit/tokens-contrast.test.mjs. Same discipline as
      --accent3-strong and --accent-deep below. */
   --accent2-strong: #b83d0b;
@@ -66,12 +66,9 @@
   --text-primary: #1e293b;
   --text-muted: #64748b;
   --text-faint: #94a3b8;
-  /* Muted text ON A TINTED SURFACE. --text-muted clears 4.5:1 on white
-     (4.76) but only reaches 4.37 on --bg-surface, so body copy inside a
-     blue-tinted panel needs this instead. Same discipline as
-     --accent3-strong above: the weaker value keeps its name for the case it
-     is correct in, and the stronger one gets its own token rather than
-     every call site repeating a literal. */
+  /* Stronger muted text for places that need extra emphasis. The regular
+     --text-muted now clears AA on the moss --bg-surface as well as white and
+     the page background; tests/unit/tokens-contrast.test.mjs guards that. */
   --text-muted-strong: #475569;
 
   /* Destructive / error — booking.html and login.html each hardcoded this
@@ -91,7 +88,7 @@
   /* Shadows */
   --shadow: rgba(30, 41, 59, 0.06);
   --shadow-md: rgba(30, 41, 59, 0.12);
-  --shadow-accent: rgba(37, 99, 235, 0.18);
+  --shadow-accent: rgba(63, 98, 18, 0.18);
 
   /* Nav */
   --nav-bg: rgba(248, 250, 252, 0.92);

@@ -406,6 +406,6 @@
     "dataIdFormat": "{student-slug}-{topic-slug}-{template}",
     "reporting": "Every template POSTs its result to /api/game-result on completion: { dataId, student, template, score, total, durationSec, missed: [] }. Stored in SQLite (server/db.mjs); if that write fails the request still returns ok, since a storage hiccup must never make a finished game look broken to the student.",
     "reuse": "Data files are keyed by topic, not by student. Two students on the same topic share one data file; only the URL's student parameter differs.",
-    "styling": "All templates use the site palette: bg #F8FAFC, text #1E293B, brand #2563EB, CTA #FA8231, success #10B981 (fills only, #047857 for green text). RTL, Heebo, min 44px touch targets, works from 380px wide."
+    "styling": "All templates use the site palette: bg #F8FAFC, text #1E293B, moss green primary #3F6212, CTA #FA8231, success #10B981 (fills only, #047857 for green text). RTL, Heebo, min 44px touch targets, works from 380px wide."
   }
 }

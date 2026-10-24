@@ -1574,8 +1574,8 @@
   }
   .btn:hover { opacity: .88; transform: translateY(-1px); }
   .btn-gold { background: var(--accent); color: #fff; }
-  .btn-outline { background: var(--accent-dim); border: 1.5px solid rgba(37,99,235,0.22); color: var(--accent); }
-  .btn-ghost { background: rgba(37,99,235,0.04); border: 1.5px solid var(--border-strong); color: var(--text-muted); cursor: pointer; font-family: 'Heebo', sans-serif; font-weight: 700; border-radius: var(--r-sm); padding: 8px 18px; font-size: .85rem; }
+  .btn-outline { background: var(--accent-dim); border: 1.5px solid rgba(63,98,18,0.22); color: var(--accent); }
+  .btn-ghost { background: rgba(63,98,18,0.04); border: 1.5px solid var(--border-strong); color: var(--text-muted); cursor: pointer; font-family: 'Heebo', sans-serif; font-weight: 700; border-radius: var(--r-sm); padding: 8px 18px; font-size: .85rem; }
   .btn-danger { background: rgba(220,38,38,0.08); border: 1px solid rgba(220,38,38,0.28); color: var(--danger); }
   .btn-sm { padding: 5px 12px; font-size: .78rem; }
 
@@ -1674,7 +1674,7 @@
   .lsn-context { font-size: .82rem; color: var(--text-muted); margin-top: 8px; line-height: 1.6; }
   .lsn-problem { font-size: .8rem; color: var(--danger); background: rgba(220,38,38,0.08); border-radius: var(--r-sm); padding: 6px 10px; margin-top: 8px; }
   .lsn-links { display: flex; flex-wrap: wrap; gap: 6px; margin-top: 10px; }
-  .lsn-links a { font-size: .78rem; font-weight: 700; text-decoration: none; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(37,99,235,0.22); border-radius: 999px; padding: 4px 11px; }
+  .lsn-links a { font-size: .78rem; font-weight: 700; text-decoration: none; background: var(--accent-dim); color: var(--accent); border: 1px solid rgba(63,98,18,0.22); border-radius: 999px; padding: 4px 11px; }
   .lsn-links a:hover { background: var(--accent); color: #fff; }
   .lsn-broken { font-size: .78rem; font-weight: 700; background: rgba(220,38,38,0.08); color: var(--danger); border: 1px solid rgba(220,38,38,0.28); border-radius: 999px; padding: 4px 11px; }
   .lsn-hw { font-size: .78rem; color: var(--text-muted); margin-top: 8px; }
@@ -1687,7 +1687,7 @@
 
   .sc-header { background: linear-gradient(135deg, var(--accent-dim), rgba(250,130,49,0.04)); border-bottom: 1px solid var(--border-strong); padding: 18px 24px; display: flex; align-items: center; justify-content: space-between; gap: 12px; }
   .sc-header-left { display: flex; align-items: center; gap: 14px; }
-  .sc-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--accent-dim); border: 2px solid rgba(37,99,235,0.22); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
+  .sc-avatar { width: 48px; height: 48px; border-radius: 50%; background: var(--accent-dim); border: 2px solid rgba(63,98,18,0.22); display: flex; align-items: center; justify-content: center; font-size: 1.4rem; flex-shrink: 0; }
   .sc-name { font-size: 1.1rem; font-weight: 800; color: var(--text-primary); }
   .sc-subject { font-size: .82rem; color: var(--text-muted); margin-top: 2px; }
   .sc-badges { display: flex; gap: 6px; flex-wrap: wrap; }
@@ -1724,13 +1724,13 @@
   .paid-badge   { color: var(--accent3-strong); font-weight: 700; font-size: .8rem; }
   .unpaid-badge { color: var(--danger);   font-weight: 700; font-size: .8rem; }
 
-  .payment-summary { display: flex; gap: 20px; margin-bottom: 14px; padding: 12px 16px; background: var(--accent-dim); border: 1px solid rgba(37,99,235,0.22); border-radius: var(--r-md); }
+  .payment-summary { display: flex; gap: 20px; margin-bottom: 14px; padding: 12px 16px; background: var(--accent-dim); border: 1px solid rgba(63,98,18,0.22); border-radius: var(--r-md); }
   .ps-item { text-align: center; }
   .ps-item .psi-val { font-size: 1.3rem; font-weight: 900; }
   .ps-item .psi-lbl { font-size: .72rem; color: var(--text-muted); margin-top: 2px; }
 
   /* Next lesson */
-  .next-lesson-box { background: var(--accent-dim); border: 1px solid rgba(37,99,235,0.22); border-radius: var(--r-md); padding: 16px; }
+  .next-lesson-box { background: var(--accent-dim); border: 1px solid rgba(63,98,18,0.22); border-radius: var(--r-md); padding: 16px; }
   .nl-label { font-size: .72rem; font-weight: 700; color: var(--accent); letter-spacing: .1em; text-transform: uppercase; margin-bottom: 10px; }
   .nl-date { font-size: 1.5rem; font-weight: 900; color: var(--text-primary); }
   .nl-meta { font-size: .85rem; color: var(--text-muted); margin-top: 4px; }

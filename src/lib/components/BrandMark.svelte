@@ -20,7 +20,7 @@
    *
    * ## Never place this on an --accent fill
    *
-   * The mark's ink is #2563EB, which IS `--accent` — the logo is invisible
+   * The mark's ink is #3F6212, which IS `--accent` — the logo is invisible
    * on the student hero and on the parent page's `.student-header`
    * gradient. Both keep the mark in neutral chrome above the coloured block
    * rather than inside it.

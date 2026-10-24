@@ -14,7 +14,7 @@ CTA moment alone reading Persuade.
 
 This is an extension inside an established world, not a new identity. The
 landing page owns the world; booking and the portal drifted out of it (a stale
-teal against the blue accent token, a header that drops the logo). Pulling them
+teal against the moss green accent token, a header that drops the logo). Pulling them
 back in IS the visual work. No concept tournament, no DESIGN.md change.
 
 ## Audience, job, task
@@ -39,18 +39,18 @@ account access arrives later by separate message — here the receipt IS the doo
 and the same screen that confirms the lesson opens the portal it created.
 
 **OWN-WORLD:** The landing page's system, applied without dilution: `--accent`
-blue as the single committed accent (the teal literals deleted), the wordmark
+moss green as the single committed accent (the teal literals deleted), the wordmark
 and logo present on every step, Heebo, the 22px card radius and 1.5px border of
 the existing `.card`, `--bg-surface` on inset panels. Recognizable with all
 content removed by its rounded-card rhythm on a light `#f8fafc` ground and one
-blue action per screen.
+moss green action per screen.
 
 **STORY:** "I picked a time and gave my details" → "I'm booked, and this is my
 child's page" → "I sent my child their link." Belief: this is a real product
 with a place for us in it, not a form that emails a stranger.
 
 **FIRST VIEWPORT:** Booking step 3 as a full-screen sheet below 600px, not a
-card in a 90vh scroller: fields in one column, the blue confirm button pinned in
+card in a 90vh scroller: fields in one column, the moss green confirm button pinned in
 a fixed footer, always visible, price on it. Above it, the chosen slot and
 duration as a compact fixed summary. On confirm, the same surface becomes the
 handoff: portal link, copy button, share-to-WhatsApp, and the child's join code.
